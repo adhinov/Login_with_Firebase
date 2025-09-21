@@ -4,10 +4,10 @@
 
 @layer base {
   :root {
-    --background: 0 0% 94%; /* Light gray #F0F0F0 */
-    --foreground: 240 10% 3.9%; /* Default dark text */
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
 
-    --card: 0 0% 100%; /* White card */
+    --card: 0 0% 100%;
     --card-foreground: 240 10% 3.9%;
 
     --popover: 0 0% 100%;
@@ -29,7 +29,7 @@
     --destructive-foreground: 0 0% 98%;
 
     --border: 0 0% 87%; /* Border color, slightly darker than background */
-    --input: 0 0% 100%; /* Input background - white for clarity */
+    --input: 0 0% 87%; /* Input background - white for clarity */
     --ring: 174 100% 29%; /* Teal #009688 ring for focus */
 
     --chart-1: 12 76% 61%;
@@ -76,7 +76,7 @@
     --destructive-foreground: 0 0% 98%;
 
     --border: 240 5% 25%;
-    --input: 240 5% 20%;
+    --input: 240 5% 25%;
     --ring: 174 100% 39%; /* Teal ring, bit brighter for dark mode */
     
     --chart-1: 220 70% 50%;
