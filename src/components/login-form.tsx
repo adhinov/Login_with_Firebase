@@ -21,10 +21,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
+  CardFooter
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import Link from 'next/link';
@@ -166,7 +165,7 @@ export function LoginForm() {
                   <Link href="/forgot-password">Forgot password?</Link>
                 </Button>
             </div>
-            <Button type="submit" className="w-full text-lg py-6 mt-40" disabled={form.formState.isSubmitting}>
+            <Button type="submit" className="w-full text-lg py-6 mt-48" disabled={form.formState.isSubmitting}>
               <LogIn className="mr-2 h-5 w-5" /> Login
             </Button>
           </form>
