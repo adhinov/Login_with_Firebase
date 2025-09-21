@@ -75,7 +75,7 @@ export function LoginForm() {
       </CardHeader>
       <CardContent>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-2">
             <FormField
               control={form.control}
               name="email"
@@ -163,7 +163,7 @@ export function LoginForm() {
                 )}
               />
                <Button variant="link" size="sm" className="px-0 text-sm h-auto" asChild>
-                  <Link href="#">Forgot password?</Link>
+                  <Link href="/forgot-password">Forgot password?</Link>
                 </Button>
             </div>
             <Button type="submit" className="w-full text-lg py-6" disabled={form.formState.isSubmitting}>
