@@ -5,7 +5,7 @@ import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { Mail, Lock, User, UserPlus } from "lucide-react";
+import { Mail, Lock, User, UserPlus, Eye, EyeOff } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -42,6 +42,9 @@ type SignupFormValues = z.infer<typeof formSchema>;
 
 export function SignupForm() {
   const { toast } = useToast();
+  const [showPassword, setShowPassword] = React.useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
+
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -142,10 +145,10 @@ export function SignupForm() {
                       <div className="relative">
                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                         <Input
-                          type="password"
+                          type={showPassword ? "text" : "password"}
                           id="password"
                           {...field}
-                          className="pl-10 text-base peer"
+                          className="pl-10 pr-10 text-base peer"
                           placeholder=" "
                         />
                          <FormLabel
@@ -154,6 +157,18 @@ export function SignupForm() {
                         >
                           Password
                         </FormLabel>
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword((prev) => !prev)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground"
+                          aria-label={showPassword ? "Hide password" : "Show password"}
+                        >
+                          {showPassword ? (
+                            <EyeOff className="h-5 w-5" />
+                          ) : (
+                            <Eye className="h-5 w-5" />
+                          )}
+                        </button>
                       </div>
                     </FormControl>
                   </div>
@@ -171,10 +186,10 @@ export function SignupForm() {
                       <div className="relative">
                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                         <Input
-                          type="password"
+                          type={showConfirmPassword ? "text" : "password"}
                           id="confirmPassword"
                           {...field}
-                          className="pl-10 text-base peer"
+                          className="pl-10 pr-10 text-base peer"
                           placeholder=" "
                         />
                         <FormLabel
@@ -183,6 +198,18 @@ export function SignupForm() {
                         >
                           Confirm Password
                         </FormLabel>
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPassword((prev) => !prev)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground"
+                          aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                        >
+                          {showConfirmPassword ? (
+                            <EyeOff className="h-5 w-5" />
+                          ) : (
+                            <Eye className="h-5 w-5" />
+                          )}
+                        </button>
                       </div>
                     </FormControl>
                   </div>
