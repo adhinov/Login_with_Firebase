@@ -142,7 +142,7 @@ export function LoginForm() {
                 </FormItem>
               )}
             />
-            <div className="flex items-center justify-between pt-2">
+            <div className="flex items-center justify-between">
               <FormField
                 control={form.control}
                 name="rememberMe"
@@ -155,18 +155,18 @@ export function LoginForm() {
                       />
                     </FormControl>
                     <div className="space-y-1 leading-none">
-                      <FormLabel className="font-normal text-sm">
+                      <FormLabel className="font-normal text-xs">
                         Remember me
                       </FormLabel>
                     </div>
                   </FormItem>
                 )}
               />
-               <Button variant="link" size="sm" className="px-0 text-sm h-auto" asChild>
+               <Button variant="link" size="sm" className="px-0 text-xs h-auto" asChild>
                   <Link href="/forgot-password">Forgot password?</Link>
                 </Button>
             </div>
-            <Button type="submit" className="w-full text-lg py-6 mt-6" disabled={form.formState.isSubmitting}>
+            <Button type="submit" className="w-full text-lg py-6 mt-8" disabled={form.formState.isSubmitting}>
               <LogIn className="mr-2 h-5 w-5" /> Login
             </Button>
           </form>
