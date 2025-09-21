@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -77,7 +78,7 @@ export function SignupForm() {
       </CardHeader>
       <CardContent>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
               name="name"
@@ -214,6 +215,9 @@ export function SignupForm() {
                     </FormControl>
                   </div>
                   <FormMessage />
+                  <FormDescription className="text-xs">
+                    Password must be at least 8 characters.
+                  </FormDescription>
                 </FormItem>
               )}
             />
