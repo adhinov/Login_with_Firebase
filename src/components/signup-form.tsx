@@ -74,21 +74,27 @@ export function SignupForm() {
       </CardHeader>
       <CardContent>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 pt-6">
             <FormField
               control={form.control}
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-base">Name</FormLabel>
                   <FormControl>
                     <div className="relative">
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                      <Input 
-                        placeholder="John Doe" 
-                        {...field} 
-                        className="pl-10 text-base"
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground peer-focus:text-primary" />
+                      <Input
+                        id="name"
+                        {...field}
+                        className="peer pl-10 h-10"
+                        placeholder=" "
                       />
+                      <FormLabel
+                        htmlFor="name"
+                        className="absolute left-10 top-2 text-muted-foreground transition-all duration-300 peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:text-base peer-focus:top-2 peer-focus:-translate-y-0 peer-focus:text-xs peer-focus:text-primary"
+                      >
+                        Name
+                      </FormLabel>
                     </div>
                   </FormControl>
                   <FormMessage />
@@ -100,16 +106,22 @@ export function SignupForm() {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-base">Email</FormLabel>
                   <FormControl>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                      <Input 
-                        type="email" 
-                        placeholder="you@example.com" 
-                        {...field} 
-                        className="pl-10 text-base"
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground peer-focus:text-primary" />
+                      <Input
+                        type="email"
+                        id="email"
+                        {...field}
+                        className="peer pl-10 h-10"
+                        placeholder=" "
                       />
+                      <FormLabel
+                        htmlFor="email"
+                        className="absolute left-10 top-2 text-muted-foreground transition-all duration-300 peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:text-base peer-focus:top-2 peer-focus:-translate-y-0 peer-focus:text-xs peer-focus:text-primary"
+                      >
+                        Email
+                      </FormLabel>
                     </div>
                   </FormControl>
                   <FormMessage />
@@ -121,16 +133,22 @@ export function SignupForm() {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-base">Password</FormLabel>
                   <FormControl>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                      <Input 
-                        type="password" 
-                        placeholder="••••••••" 
-                        {...field} 
-                        className="pl-10 text-base"
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground peer-focus:text-primary" />
+                      <Input
+                        type="password"
+                        id="password"
+                        {...field}
+                        className="peer pl-10 h-10"
+                        placeholder=" "
                       />
+                       <FormLabel
+                        htmlFor="password"
+                        className="absolute left-10 top-2 text-muted-foreground transition-all duration-300 peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:text-base peer-focus:top-2 peer-focus:-translate-y-0 peer-focus:text-xs peer-focus:text-primary"
+                      >
+                        Password
+                      </FormLabel>
                     </div>
                   </FormControl>
                   <FormMessage />
@@ -142,16 +160,22 @@ export function SignupForm() {
               name="confirmPassword"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-base">Confirm Password</FormLabel>
                   <FormControl>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                      <Input 
-                        type="password" 
-                        placeholder="••••••••" 
-                        {...field} 
-                        className="pl-10 text-base"
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground peer-focus:text-primary" />
+                      <Input
+                        type="password"
+                        id="confirmPassword"
+                        {...field}
+                        className="peer pl-10 h-10"
+                        placeholder=" "
                       />
+                       <FormLabel
+                        htmlFor="confirmPassword"
+                        className="absolute left-10 top-2 text-muted-foreground transition-all duration-300 peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:text-base peer-focus:top-2 peer-focus:-translate-y-0 peer-focus:text-xs peer-focus:text-primary"
+                      >
+                        Confirm Password
+                      </FormLabel>
                     </div>
                   </FormControl>
                   <FormMessage />
