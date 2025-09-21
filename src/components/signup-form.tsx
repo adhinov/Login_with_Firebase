@@ -74,24 +74,31 @@ export function SignupForm() {
       </CardHeader>
       <CardContent>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             <FormField
               control={form.control}
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-base">Name</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                      <Input
-                        id="name"
-                        {...field}
-                        className="pl-10 text-base"
-                        placeholder="Your Name"
-                      />
-                    </div>
-                  </FormControl>
+                  <div className="relative">
+                    <FormControl>
+                      <div className="relative">
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                        <Input
+                          id="name"
+                          {...field}
+                          className="pl-10 text-base peer"
+                          placeholder=" "
+                        />
+                        <FormLabel
+                          htmlFor="name"
+                          className="absolute text-base text-muted-foreground duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-background px-2 left-10 peer-focus:px-2 peer-focus:text-primary peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4"
+                        >
+                          Name
+                        </FormLabel>
+                      </div>
+                    </FormControl>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
@@ -101,19 +108,26 @@ export function SignupForm() {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-base">Email</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                      <Input
-                        type="email"
-                        id="email"
-                        {...field}
-                        className="pl-10 text-base"
-                        placeholder="you@example.com"
-                      />
-                    </div>
-                  </FormControl>
+                  <div className="relative">
+                    <FormControl>
+                       <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                        <Input
+                          type="email"
+                          id="email"
+                          {...field}
+                          className="pl-10 text-base peer"
+                          placeholder=" "
+                        />
+                        <FormLabel
+                          htmlFor="email"
+                          className="absolute text-base text-muted-foreground duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-background px-2 left-10 peer-focus:px-2 peer-focus:text-primary peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4"
+                        >
+                          Email
+                        </FormLabel>
+                      </div>
+                    </FormControl>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
@@ -123,19 +137,26 @@ export function SignupForm() {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-base">Password</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                      <Input
-                        type="password"
-                        id="password"
-                        {...field}
-                        className="pl-10 text-base"
-                        placeholder="••••••••"
-                      />
-                    </div>
-                  </FormControl>
+                  <div className="relative">
+                    <FormControl>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                        <Input
+                          type="password"
+                          id="password"
+                          {...field}
+                          className="pl-10 text-base peer"
+                          placeholder=" "
+                        />
+                         <FormLabel
+                          htmlFor="password"
+                          className="absolute text-base text-muted-foreground duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-background px-2 left-10 peer-focus:px-2 peer-focus:text-primary peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4"
+                        >
+                          Password
+                        </FormLabel>
+                      </div>
+                    </FormControl>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
@@ -145,19 +166,26 @@ export function SignupForm() {
               name="confirmPassword"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-base">Confirm Password</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                      <Input
-                        type="password"
-                        id="confirmPassword"
-                        {...field}
-                        className="pl-10 text-base"
-                        placeholder="••••••••"
-                      />
-                    </div>
-                  </FormControl>
+                  <div className="relative">
+                    <FormControl>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                        <Input
+                          type="password"
+                          id="confirmPassword"
+                          {...field}
+                          className="pl-10 text-base peer"
+                          placeholder=" "
+                        />
+                        <FormLabel
+                          htmlFor="confirmPassword"
+                          className="absolute text-base text-muted-foreground duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-background px-2 left-10 peer-focus:px-2 peer-focus:text-primary peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4"
+                        >
+                          Confirm Password
+                        </FormLabel>
+                      </div>
+                    </FormControl>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
