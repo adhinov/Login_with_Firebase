@@ -142,7 +142,7 @@ export function LoginForm() {
                 </FormItem>
               )}
             />
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between pt-4">
               <FormField
                 control={form.control}
                 name="rememberMe"
