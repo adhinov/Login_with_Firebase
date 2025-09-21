@@ -91,7 +91,7 @@ export function ForgotPasswordForm() {
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full text-lg py-6" disabled={form.formState.isSubmitting}>
+            <Button type="submit" className="w-full py-6" disabled={form.formState.isSubmitting}>
               <Send className="mr-2 h-5 w-5" /> Send Password Reset Link
             </Button>
           </form>
