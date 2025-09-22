@@ -51,10 +51,10 @@
   }
 
   .dark {
-    --background: 240 6% 10%; /* Dark Gray */
+    --background: 220 40% 10%; /* Dark Blue */
     --foreground: 0 0% 98%; /* Light Gray/White */
 
-    --card: 240 6% 18%; /* Slightly Lighter Dark Gray for Card */
+    --card: 220 30% 15%; /* Slightly Lighter Dark Blue for Card */
     --card-foreground: 0 0% 98%;
 
     --popover: 240 6% 10%;
