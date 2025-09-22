@@ -167,8 +167,7 @@ export function LoginForm() {
                   </Button>
               </div>
             </div>
-            <div className="flex-grow" />
-            <Button type="submit" className="w-full text-lg py-6 mt-32" disabled={form.formState.isSubmitting}>
+            <Button type="submit" className="w-full text-lg py-6 mt-8" disabled={form.formState.isSubmitting}>
               <LogIn className="mr-2 h-5 w-5" /> Login
             </Button>
           </form>
