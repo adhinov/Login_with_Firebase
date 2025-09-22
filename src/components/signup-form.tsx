@@ -76,7 +76,7 @@ export function SignupForm() {
           Enter your details to create a new account.
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pb-2">
         <Form {...form}>
           <form onSubmit={form. handleSubmit(onSubmit)} className="space-y-4">
             <FormField

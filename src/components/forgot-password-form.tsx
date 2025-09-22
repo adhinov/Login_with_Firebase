@@ -61,7 +61,7 @@ export function ForgotPasswordForm() {
           Enter your email to receive a password reset link.
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pb-2">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
