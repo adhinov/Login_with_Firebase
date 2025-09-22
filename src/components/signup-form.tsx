@@ -228,7 +228,7 @@ export function SignupForm() {
         </Form>
       </CardContent>
       <CardFooter className="flex-col items-center text-sm">
-        <p className="text-muted-foreground">
+        <p className="text-muted-foreground mt-4">
           Already have an account?{' '}
           <Button variant="link" className="p-0 h-auto text-primary" asChild>
             <Link href="/login">Login</Link>

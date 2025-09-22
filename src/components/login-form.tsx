@@ -174,7 +174,7 @@ export function LoginForm() {
         </Form>
       </CardContent>
       <CardFooter className="flex-col items-center text-sm">
-        <p className="text-muted-foreground">
+        <p className="text-muted-foreground mt-4">
           Don&apos;t have an account?{' '}
           <Button variant="link" className="p-0 h-auto text-primary" asChild>
             <Link href="/signup">Sign up</Link>
