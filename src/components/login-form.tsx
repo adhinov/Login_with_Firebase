@@ -167,13 +167,14 @@ export function LoginForm() {
                   </Button>
               </div>
             </div>
-            <Button type="submit" className="w-full text-lg py-6 mt-8" disabled={form.formState.isSubmitting}>
+            <div className="flex-grow" />
+            <Button type="submit" className="w-full text-lg py-6 mt-16" disabled={form.formState.isSubmitting}>
               <LogIn className="mr-2 h-5 w-5" /> Login
             </Button>
           </form>
         </Form>
       </CardContent>
-      <CardFooter className="flex-col items-center text-sm">
+      <CardFooter className="flex-col items-center text-sm pt-4">
         <p className="text-muted-foreground">
           Don&apos;t have an account?{' '}
           <Button variant="link" className="p-0 h-auto text-primary" asChild>
