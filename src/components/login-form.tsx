@@ -68,7 +68,7 @@ export function LoginForm() {
   }
 
   return (
-    <Card className="w-full max-w-72 shadow-xl">
+    <Card className="w-full max-w-xs shadow-xl">
       <CardHeader>
         <CardTitle className="text-3xl font-bold text-center">Login</CardTitle>
       </CardHeader>
@@ -167,7 +167,7 @@ export function LoginForm() {
                   </Button>
               </div>
             </div>
-            <Button type="submit" className="w-full text-lg py-6 mt-12" disabled={form.formState.isSubmitting}>
+            <Button type="submit" className="w-full text-lg py-6 mt-16" disabled={form.formState.isSubmitting}>
               <LogIn className="mr-2 h-5 w-5" /> Login
             </Button>
           </form>
