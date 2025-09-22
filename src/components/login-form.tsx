@@ -74,7 +74,7 @@ export function LoginForm() {
       </CardHeader>
       <CardContent>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-[350px]">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
               <FormField
                 control={form.control}
@@ -167,8 +167,7 @@ export function LoginForm() {
                   </Button>
               </div>
             </div>
-            <div className="flex-grow" />
-            <Button type="submit" className="w-full text-lg py-6" disabled={form.formState.isSubmitting}>
+            <Button type="submit" className="w-full text-lg py-6 mt-8" disabled={form.formState.isSubmitting}>
               <LogIn className="mr-2 h-5 w-5" /> Login
             </Button>
           </form>
