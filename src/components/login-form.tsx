@@ -92,7 +92,7 @@ export function LoginForm() {
                           className="pl-10 text-base peer"
                         />
                          <FormLabel
-                          className="absolute text-base text-muted-foreground duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-card px-2 left-10 peer-focus:px-2 peer-focus:text-primary peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4"
+                          className="absolute text-base text-muted-foreground duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-card px-2 left-10 peer-focus:px-2 peer-focus:text-primary peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4 pointer-events-none"
                         >
                           Email
                         </FormLabel>
@@ -119,7 +119,7 @@ export function LoginForm() {
                           className="pl-10 pr-10 text-base peer"
                         />
                          <FormLabel
-                          className="absolute text-base text-muted-foreground duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-card px-2 left-10 peer-focus:px-2 peer-focus:text-primary peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4"
+                          className="absolute text-base text-muted-foreground duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-card px-2 left-10 peer-focus:px-2 peer-focus:text-primary peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4 pointer-events-none"
                         >
                           Password
                         </FormLabel>
@@ -166,7 +166,7 @@ export function LoginForm() {
                   <Link href="/forgot-password">Forgot password?</Link>
                 </Button>
             </div>
-            <Separator className="my-8 bg-gray-600" />
+            <Separator className="my-8 bg-gray-400" />
             <Button type="submit" className="w-full text-lg py-6" disabled={form.formState.isSubmitting}>
               <LogIn className="mr-2 h-5 w-5" /> Login
             </Button>
