@@ -69,7 +69,7 @@ export function SignupForm() {
   }
 
   return (
-    <Card className="w-full max-w-md shadow-xl">
+    <Card className="w-full max-w-sm shadow-xl">
       <CardHeader>
         <CardTitle className="text-3xl font-bold text-center">Create Account</CardTitle>
         <CardDescription className="text-center">
@@ -78,7 +78,7 @@ export function SignupForm() {
       </CardHeader>
       <CardContent>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form. handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
               name="name"
