@@ -72,7 +72,7 @@ export function LoginForm() {
       <CardHeader>
         <CardTitle className="text-3xl font-bold text-center">Login</CardTitle>
       </CardHeader>
-      <CardContent className="pb-2">
+      <CardContent className="pb-0">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
