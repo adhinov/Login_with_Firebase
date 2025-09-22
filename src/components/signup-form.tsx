@@ -69,7 +69,7 @@ export function SignupForm() {
   }
 
   return (
-    <Card className="w-full max-w-sm shadow-xl">
+    <Card className="w-full max-w-xs shadow-xl">
       <CardHeader>
         <CardTitle className="text-3xl font-bold text-center">Create Account</CardTitle>
         <CardDescription className="text-center">
