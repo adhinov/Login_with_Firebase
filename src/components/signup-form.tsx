@@ -215,7 +215,7 @@ export function SignupForm() {
                     </FormControl>
                   </div>
                   <FormMessage />
-                  <FormDescription className="text-xs">
+                  <FormDescription className="text-[11px]">
                     Password must be at least 8 characters.
                   </FormDescription>
                 </FormItem>
