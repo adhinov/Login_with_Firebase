@@ -142,12 +142,12 @@ export function LoginForm() {
                   </FormItem>
                 )}
               />
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between pt-0">
                 <FormField
                   control={form.control}
                   name="rememberMe"
                   render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                    <FormItem className="flex flex-row items-start space-x-2 space-y-0">
                       <FormControl>
                         <Checkbox
                           checked={field.value}
