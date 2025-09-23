@@ -51,16 +51,16 @@
   }
 
   .dark {
-    --background: 220 40% 5%; /* Dark Blue */
+    --background: 220 40% 12%; /* Dark Blue */
     --foreground: 0 0% 98%; /* Light Gray/White */
 
-    --card: 220 30% 12%; /* Slightly Lighter Dark Blue for Card */
+    --card: 220 30% 10%; /* Slightly Lighter Dark Blue for Card */
     --card-foreground: 0 0% 98%;
 
     --popover: 240 6% 10%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 231 48% 58%; /* Lighter Deep indigo for dark mode */
+    --primary: 217 91% 60%; /* More vibrant blue for dark mode */
     --primary-foreground: 0 0% 98%;
 
     --secondary: 230 45% 25%; /* Darker indigo/gray for secondary elements */
