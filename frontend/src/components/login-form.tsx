@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -23,10 +22,10 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  CardFooter
+  CardFooter,
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import Link from 'next/link';
+import Link from "next/link";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -36,7 +35,7 @@ const formSchema = z.object({
 
 type LoginFormValues = z.infer<typeof formSchema>;
 
-export function LoginForm() {
+export default function LoginForm() {
   const { toast } = useToast();
   const [showPassword, setShowPassword] = React.useState(false);
 
@@ -50,7 +49,6 @@ export function LoginForm() {
   });
 
   function onSubmit(data: LoginFormValues) {
-    // Simulate API call
     if (data.email === "error@example.com" && data.password === "password123") {
       toast({
         title: "Login Failed",
@@ -62,20 +60,23 @@ export function LoginForm() {
         title: "Login Successful",
         description: `Welcome back! You are now logged in.`,
       });
-      // form.reset(); // Optionally reset form on success
-      // Potentially redirect user: router.push('/dashboard')
+      // TODO: Redirect ke halaman welcome
+      // router.push("/welcome")
     }
   }
 
   return (
     <Card className="w-full max-w-[20rem] shadow-xl">
       <CardHeader>
-        <CardTitle className="text-3xl font-bold text-center text-lime-300">Login</CardTitle>
+        <CardTitle className="text-3xl font-bold text-center text-lime-300">
+          Login
+        </CardTitle>
       </CardHeader>
       <CardContent className="pb-0">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
+              {/* Email */}
               <FormField
                 control={form.control}
                 name="email"
@@ -91,9 +92,7 @@ export function LoginForm() {
                             {...field}
                             className="pl-12 text-base peer"
                           />
-                           <FormLabel
-                            className="absolute text-base text-muted-foreground duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-card px-2 left-9 peer-focus:px-2 peer-focus:text-primary peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4 pointer-events-none"
-                          >
+                          <FormLabel className="absolute text-base text-muted-foreground duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-card px-2 left-9 peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4 pointer-events-none">
                             Email
                           </FormLabel>
                         </div>
@@ -103,6 +102,8 @@ export function LoginForm() {
                   </FormItem>
                 )}
               />
+
+              {/* Password */}
               <FormField
                 control={form.control}
                 name="password"
@@ -118,16 +119,16 @@ export function LoginForm() {
                             {...field}
                             className="pl-12 pr-10 text-base peer"
                           />
-                           <FormLabel
-                            className="absolute text-base text-muted-foreground duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-card px-2 left-9 peer-focus:px-2 peer-focus:text-primary peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4 pointer-events-none"
-                          >
+                          <FormLabel className="absolute text-base text-muted-foreground duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-card px-2 left-9 peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4 pointer-events-none">
                             Password
                           </FormLabel>
                           <button
                             type="button"
                             onClick={() => setShowPassword((prev) => !prev)}
                             className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground"
-                            aria-label={showPassword ? "Hide password" : "Show password"}
+                            aria-label={
+                              showPassword ? "Hide password" : "Show password"
+                            }
                           >
                             {showPassword ? (
                               <EyeOff className="h-5 w-5" />
@@ -142,6 +143,8 @@ export function LoginForm() {
                   </FormItem>
                 )}
               />
+
+              {/* Remember Me + Forgot Password */}
               <div className="flex items-center justify-between pt-0">
                 <FormField
                   control={form.control}
@@ -162,20 +165,33 @@ export function LoginForm() {
                     </FormItem>
                   )}
                 />
-                 <Button variant="link" size="sm" className="px-0 text-xs h-auto" asChild>
-                    <Link href="/forgot-password">Forgot password?</Link>
-                  </Button>
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="px-0 text-xs h-auto"
+                  asChild
+                >
+                  <Link href="/forgot-password">Forgot password?</Link>
+                </Button>
               </div>
             </div>
-            <Button type="submit" className="w-full text-lg py-6 mt-28" disabled={form.formState.isSubmitting}>
+
+            {/* Submit */}
+            <Button
+              type="submit"
+              className="w-full text-lg py-6 mt-28"
+              disabled={form.formState.isSubmitting}
+            >
               <LogIn className="mr-2 h-5 w-5" /> Submit
             </Button>
           </form>
         </Form>
       </CardContent>
+
+      {/* Footer */}
       <CardFooter className="flex-col items-center text-sm">
         <p className="text-muted-foreground mt-4">
-          Don&apos;t have an account?{' '}
+          Don&apos;t have an account?{" "}
           <Button variant="link" className="p-0 h-auto text-primary" asChild>
             <Link href="/signup">Sign up</Link>
           </Button>

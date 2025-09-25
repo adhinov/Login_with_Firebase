@@ -1,9 +1,9 @@
-import type { Metadata } from 'next';
-import { LoginForm } from '@/components/login-form';
+import type { Metadata } from "next";
+import LoginForm from "@/components/login-form";
 
 export const metadata: Metadata = {
-  title: 'Login - LoginFlow',
-  description: 'Sign in to your LoginFlow account.',
+  title: "Login - LoginFlow",
+  description: "Sign in to your LoginFlow account.",
 };
 
 export default function LoginPage() {

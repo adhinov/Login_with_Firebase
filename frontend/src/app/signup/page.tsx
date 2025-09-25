@@ -1,9 +1,9 @@
-import type { Metadata } from 'next';
-import { SignupForm } from '@/components/signup-form';
+import type { Metadata } from "next";
+import SignupForm from "@/components/signup-form";
 
 export const metadata: Metadata = {
-  title: 'Sign Up - LoginFlow',
-  description: 'Create a new LoginFlow account.',
+  title: "Sign Up - LoginFlow",
+  description: "Create a new LoginFlow account.",
 };
 
 export default function SignupPage() {
