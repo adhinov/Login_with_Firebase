@@ -8,16 +8,13 @@ export const register = async (req, res) => {
   try {
     const { email, password, username, phone_number } = req.body;
 
-    // Cek kalau email sudah ada
     const existingUser = await findUserByEmail(email);
     if (existingUser) {
       return res.status(400).json({ message: "Email sudah terdaftar" });
     }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Buat user baru (role_id default = 2 untuk user biasa)
     const newUser = await createUser(email, hashedPassword, username, phone_number);
 
     res.status(201).json({
@@ -40,22 +37,18 @@ export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Cari user
     const user = await findUserByEmail(email);
     if (!user) {
       return res.status(401).json({ message: "Email atau password salah" });
     }
 
-    // Cek password
     const isMatch = await bcrypt.compare(password, user.password || "");
     if (!isMatch) {
       return res.status(401).json({ message: "Email atau password salah" });
     }
 
-    // Update last_login di DB
     await updateLastLogin(user.id);
 
-    // Buat JWT
     const token = jwt.sign(
       { id: user.id, role_id: user.role_id },
       process.env.JWT_SECRET,
@@ -75,6 +68,24 @@ export const login = async (req, res) => {
     });
   } catch (error) {
     console.error("❌ Login error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// ================= GET USER PROFILE =================
+export const getUserProfile = async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    // req.user berasal dari verifyToken (decoded JWT)
+    res.json({
+      message: "User profile fetched",
+      user: req.user,
+    });
+  } catch (error) {
+    console.error("❌ Get profile error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };

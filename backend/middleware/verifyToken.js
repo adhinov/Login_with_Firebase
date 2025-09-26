@@ -1,14 +1,33 @@
+// middleware/verifyToken.js
 import jwt from "jsonwebtoken";
 
 export const verifyToken = (req, res, next) => {
-  const token = req.headers["authorization"]?.split(" ")[1];
-  if (!token) return res.status(401).json({ message: "Token tidak ditemukan" });
-
   try {
+    // Ambil token dari header Authorization (format: Bearer <token>)
+    const authHeader = req.headers["authorization"];
+    if (!authHeader) {
+      return res.status(401).json({ message: "Authorization header tidak ditemukan" });
+    }
+
+    const token = authHeader.split(" ")[1];
+    if (!token) {
+      return res.status(401).json({ message: "Token tidak ditemukan" });
+    }
+
+    // Verifikasi token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Simpan data user ke request agar bisa diakses di route
     req.user = decoded;
+
     next();
   } catch (error) {
+    console.error("❌ Token verification error:", error.message);
+
+    if (error.name === "TokenExpiredError") {
+      return res.status(401).json({ message: "Token sudah kadaluarsa" });
+    }
+
     return res.status(403).json({ message: "Token tidak valid" });
   }
 };

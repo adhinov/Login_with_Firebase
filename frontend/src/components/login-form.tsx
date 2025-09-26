@@ -26,7 +26,9 @@ import {
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
+// ===== Validation Schema =====
 const formSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
   password: z.string().min(1, { message: "Password is required." }),
@@ -37,6 +39,7 @@ type LoginFormValues = z.infer<typeof formSchema>;
 
 export default function LoginForm() {
   const { toast } = useToast();
+  const router = useRouter();
   const [showPassword, setShowPassword] = React.useState(false);
 
   const form = useForm<LoginFormValues>({
@@ -48,20 +51,43 @@ export default function LoginForm() {
     },
   });
 
-  function onSubmit(data: LoginFormValues) {
-    if (data.email === "error@example.com" && data.password === "password123") {
-      toast({
-        title: "Login Failed",
-        description: "Invalid email or password.",
-        variant: "destructive",
+  async function onSubmit(data: LoginFormValues) {
+    try {
+      // Ganti URL sesuai backend kamu
+      const res = await fetch("http://localhost:5000/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: data.email,
+          password: data.password,
+        }),
       });
-    } else {
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        throw new Error(result.message || "Login failed");
+      }
+
+      // Simpan token di localStorage (atau sessionStorage kalau tidak rememberMe)
+      if (data.rememberMe) {
+        localStorage.setItem("token", result.token);
+      } else {
+        sessionStorage.setItem("token", result.token);
+      }
+
       toast({
         title: "Login Successful",
-        description: `Welcome back! You are now logged in.`,
+        description: "Welcome back! You are now logged in.",
       });
-      // TODO: Redirect ke halaman welcome
-      // router.push("/welcome")
+
+      router.push("/welcome");
+    } catch (err: any) {
+      toast({
+        title: "Login Failed",
+        description: err.message || "Invalid email or password.",
+        variant: "destructive",
+      });
     }
   }
 
@@ -72,6 +98,7 @@ export default function LoginForm() {
           Login
         </CardTitle>
       </CardHeader>
+
       <CardContent className="pb-0">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -126,9 +153,7 @@ export default function LoginForm() {
                             type="button"
                             onClick={() => setShowPassword((prev) => !prev)}
                             className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground"
-                            aria-label={
-                              showPassword ? "Hide password" : "Show password"
-                            }
+                            aria-label={showPassword ? "Hide password" : "Show password"}
                           >
                             {showPassword ? (
                               <EyeOff className="h-5 w-5" />
@@ -165,6 +190,7 @@ export default function LoginForm() {
                     </FormItem>
                   )}
                 />
+
                 <Button
                   variant="link"
                   size="sm"
