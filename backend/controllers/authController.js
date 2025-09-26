@@ -1,4 +1,3 @@
-// controllers/authController.js
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { findUserByEmail, createUser, updateLastLogin } from "../models/userModel.js";
@@ -17,14 +16,20 @@ export const register = async (req, res) => {
 
     const newUser = await createUser(email, hashedPassword, username, phone_number);
 
+    // buat payload JWT
+    const payload = {
+      id: newUser.id,
+      email: newUser.email,
+      username: newUser.username,
+      role_id: newUser.role_id,
+    };
+
+    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1h" });
+
     res.status(201).json({
       message: "Registrasi berhasil",
-      user: {
-        id: newUser.id,
-        email: newUser.email,
-        username: newUser.username,
-        role_id: newUser.role_id,
-      },
+      token,
+      user: payload,
     });
   } catch (error) {
     console.error("❌ Register error:", error);
@@ -49,22 +54,21 @@ export const login = async (req, res) => {
 
     await updateLastLogin(user.id);
 
-    const token = jwt.sign(
-      { id: user.id, role_id: user.role_id },
-      process.env.JWT_SECRET,
-      { expiresIn: "1h" }
-    );
+    // buat payload JWT
+    const payload = {
+      id: user.id,
+      email: user.email,
+      username: user.username,
+      role_id: user.role_id,
+      last_login: user.last_login,
+    };
+
+    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1h" });
 
     res.json({
       message: "Login berhasil",
       token,
-      user: {
-        id: user.id,
-        email: user.email,
-        username: user.username,
-        role_id: user.role_id,
-        last_login: user.last_login,
-      },
+      user: payload,
     });
   } catch (error) {
     console.error("❌ Login error:", error);
@@ -82,7 +86,13 @@ export const getUserProfile = async (req, res) => {
     // req.user berasal dari verifyToken (decoded JWT)
     res.json({
       message: "User profile fetched",
-      user: req.user,
+      user: {
+        id: req.user.id,
+        email: req.user.email,
+        username: req.user.username,
+        role_id: req.user.role_id,
+        last_login: req.user.last_login,
+      },
     });
   } catch (error) {
     console.error("❌ Get profile error:", error);
