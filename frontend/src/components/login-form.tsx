@@ -5,6 +5,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Mail, Lock, LogIn, Eye, EyeOff } from "lucide-react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -24,11 +27,8 @@ import {
   CardTitle,
   CardFooter,
 } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 
-// ===== Validation Schema =====
+// ✅ Schema validasi
 const formSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
   password: z.string().min(1, { message: "Password is required." }),
@@ -38,9 +38,10 @@ const formSchema = z.object({
 type LoginFormValues = z.infer<typeof formSchema>;
 
 export default function LoginForm() {
-  const { toast } = useToast();
   const router = useRouter();
   const [showPassword, setShowPassword] = React.useState(false);
+
+  const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(formSchema),
@@ -53,8 +54,7 @@ export default function LoginForm() {
 
   async function onSubmit(data: LoginFormValues) {
     try {
-      // Ganti URL sesuai backend kamu
-      const res = await fetch("http://localhost:5000/api/auth/login", {
+      const res = await fetch(`${API_URL}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -64,29 +64,32 @@ export default function LoginForm() {
       });
 
       const result = await res.json();
+      if (!res.ok) throw new Error(result.message || "Login failed");
 
-      if (!res.ok) {
-        throw new Error(result.message || "Login failed");
-      }
-
-      // Simpan token di localStorage (atau sessionStorage kalau tidak rememberMe)
+      // Simpan token
       if (data.rememberMe) {
         localStorage.setItem("token", result.token);
       } else {
         sessionStorage.setItem("token", result.token);
       }
+      localStorage.setItem("role", result.user.role);
 
-      toast({
-        title: "Login Successful",
-        description: "Welcome back! You are now logged in.",
+      // ✅ Toast sukses
+      toast.success(`Welcome back, ${result.user.username}! 🎉`, {
+        description: "Login berhasil.",
+        duration: 3000,
       });
 
-      router.push("/welcome");
+      // ✅ Redirect sesuai role
+      if (result.user.role === "admin") {
+        router.push("/adminDashboard");
+      } else {
+        router.push("/welcome");
+      }
     } catch (err: any) {
-      toast({
-        title: "Login Failed",
-        description: err.message || "Invalid email or password.",
-        variant: "destructive",
+      toast.error("Login gagal ❌", {
+        description: err.message || "Email atau password salah.",
+        duration: 3000,
       });
     }
   }
@@ -102,110 +105,101 @@ export default function LoginForm() {
       <CardContent className="pb-0">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="space-y-2">
-              {/* Email */}
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <div className="relative">
-                      <FormControl>
-                        <div className="relative">
-                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                          <Input
-                            type="email"
-                            placeholder=" "
-                            {...field}
-                            className="pl-12 text-base peer"
-                          />
-                          <FormLabel className="absolute text-base text-muted-foreground duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-card px-2 left-9 peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4 pointer-events-none">
-                            Email
-                          </FormLabel>
-                        </div>
-                      </FormControl>
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Password */}
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <div className="relative">
-                      <FormControl>
-                        <div className="relative">
-                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                          <Input
-                            type={showPassword ? "text" : "password"}
-                            placeholder=" "
-                            {...field}
-                            className="pl-12 pr-10 text-base peer"
-                          />
-                          <FormLabel className="absolute text-base text-muted-foreground duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-card px-2 left-9 peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4 pointer-events-none">
-                            Password
-                          </FormLabel>
-                          <button
-                            type="button"
-                            onClick={() => setShowPassword((prev) => !prev)}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground"
-                            aria-label={showPassword ? "Hide password" : "Show password"}
-                          >
-                            {showPassword ? (
-                              <EyeOff className="h-5 w-5" />
-                            ) : (
-                              <Eye className="h-5 w-5" />
-                            )}
-                          </button>
-                        </div>
-                      </FormControl>
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Remember Me + Forgot Password */}
-              <div className="flex items-center justify-between pt-0">
-                <FormField
-                  control={form.control}
-                  name="rememberMe"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-2 space-y-0">
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
+            {/* Email */}
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <div className="relative">
+                    <FormControl>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                        <Input
+                          type="email"
+                          placeholder=" "
+                          {...field}
+                          className="pl-12 text-base peer"
                         />
-                      </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel className="font-normal text-xs pointer-events-none">
-                          Remember me
+                        <FormLabel className="absolute text-base text-muted-foreground transform -translate-y-4 scale-75 top-2 z-10 bg-card px-2 left-9 peer-placeholder-shown:scale-100 peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4">
+                          Email
                         </FormLabel>
                       </div>
-                    </FormItem>
-                  )}
-                />
+                    </FormControl>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-                <Button
-                  variant="link"
-                  size="sm"
-                  className="px-0 text-xs h-auto"
-                  asChild
-                >
-                  <Link href="/forgot-password">Forgot password?</Link>
-                </Button>
-              </div>
+            {/* Password */}
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <div className="relative">
+                    <FormControl>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                        <Input
+                          type={showPassword ? "text" : "password"}
+                          placeholder=" "
+                          {...field}
+                          className="pl-12 pr-10 text-base peer"
+                        />
+                        <FormLabel className="absolute text-base text-muted-foreground transform -translate-y-4 scale-75 top-2 z-10 bg-card px-2 left-9 peer-placeholder-shown:scale-100 peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4">
+                          Password
+                        </FormLabel>
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword((prev) => !prev)}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground"
+                          aria-label={showPassword ? "Hide password" : "Show password"}
+                        >
+                          {showPassword ? (
+                            <EyeOff className="h-5 w-5" />
+                          ) : (
+                            <Eye className="h-5 w-5" />
+                          )}
+                        </button>
+                      </div>
+                    </FormControl>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Remember + Forgot */}
+            <div className="flex items-center justify-between pt-0">
+              <FormField
+                control={form.control}
+                name="rememberMe"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-2 space-y-0">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormLabel className="font-normal text-xs">
+                      Remember me
+                    </FormLabel>
+                  </FormItem>
+                )}
+              />
+
+              <Button variant="link" size="sm" className="px-0 text-xs h-auto" asChild>
+                <Link href="/forgot-password">Forgot password?</Link>
+              </Button>
             </div>
 
             {/* Submit */}
             <Button
               type="submit"
-              className="w-full text-lg py-6 mt-28"
+              className="w-full text-lg py-6 mt-10"
               disabled={form.formState.isSubmitting}
             >
               <LogIn className="mr-2 h-5 w-5" /> Submit
