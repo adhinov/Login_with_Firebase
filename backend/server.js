@@ -1,35 +1,49 @@
 // server.js
 import dotenv from "dotenv";
-dotenv.config(); // ✅ load .env duluan sebelum file lain
+dotenv.config(); // ✅ load .env duluan
 
 import express from "express";
 import cors from "cors";
 import authRoutes from "./routes/authRoutes.js";
-import "./config/db.js"; // ✅ koneksi database otomatis
+import "./config/db.js"; // ✅ koneksi database
 
 const app = express();
 
-// Debug: cek env variables
-console.log("📦 Loaded from .env:", {
-  DB_HOST: process.env.DB_HOST,
-  DB_USER: process.env.DB_USER,
-  DB_NAME: process.env.DB_NAME,
-  DB_PORT: process.env.DB_PORT,
-});
+// ==================== CORS CONFIG ====================
+const allowedOrigins = [
+  "http://localhost:5173", // Vite default
+  "http://localhost:3000", // Next.js default
+  "http://localhost:9002", // custom port kamu
+  "https://login-app-64w3.vercel.app", // ✅ domain vercel frontend
+];
 
-// Middleware
-app.use(cors());
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        console.warn("❌ Blocked by CORS:", origin);
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+  })
+);
+
 app.use(express.json());
 
-// Routes
+// ==================== ROUTES ====================
 app.use("/api/auth", authRoutes);
 
+// Health check
 app.get("/", (req, res) => {
-  res.send("Backend is running...");
+  res.json({ status: "ok", message: "Backend is running..." });
 });
 
-// Start server
+// ==================== START SERVER ====================
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log("✅ Allowed origins:", allowedOrigins);
 });

@@ -1,6 +1,15 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { findUserByEmail, createUser, updateLastLogin } from "../models/userModel.js";
+import {
+  findUserByEmail,
+  createUser,
+  updateLastLogin,
+} from "../models/userModel.js";
+
+// Helper: mapping role_id → string
+const getRoleString = (role_id) => {
+  return role_id === 1 ? "admin" : "user";
+};
 
 // ================= REGISTER =================
 export const register = async (req, res) => {
@@ -14,17 +23,23 @@ export const register = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const newUser = await createUser(email, hashedPassword, username, phone_number);
+    const newUser = await createUser(
+      email,
+      hashedPassword,
+      username,
+      phone_number
+    );
 
-    // buat payload JWT
     const payload = {
       id: newUser.id,
       email: newUser.email,
       username: newUser.username,
-      role_id: newUser.role_id,
+      role: getRoleString(newUser.role_id),
     };
 
-    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1h" });
+    const token = jwt.sign(payload, process.env.JWT_SECRET, {
+      expiresIn: "1h",
+    });
 
     res.status(201).json({
       message: "Registrasi berhasil",
@@ -37,7 +52,7 @@ export const register = async (req, res) => {
   }
 };
 
-// ================= LOGIN =================
+// ================= LOGIN USER =================
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -54,16 +69,17 @@ export const login = async (req, res) => {
 
     await updateLastLogin(user.id);
 
-    // buat payload JWT
     const payload = {
       id: user.id,
       email: user.email,
       username: user.username,
-      role_id: user.role_id,
+      role: getRoleString(user.role_id),
       last_login: user.last_login,
     };
 
-    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1h" });
+    const token = jwt.sign(payload, process.env.JWT_SECRET, {
+      expiresIn: "1h",
+    });
 
     res.json({
       message: "Login berhasil",
@@ -76,6 +92,48 @@ export const login = async (req, res) => {
   }
 };
 
+// ================= LOGIN ADMIN =================
+export const loginAdmin = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const user = await findUserByEmail(email);
+    if (!user || user.role_id !== 1) {
+      return res
+        .status(403)
+        .json({ message: "Akses ditolak. Hanya admin yang bisa login." });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password || "");
+    if (!isMatch) {
+      return res.status(401).json({ message: "Email atau password salah" });
+    }
+
+    await updateLastLogin(user.id);
+
+    const payload = {
+      id: user.id,
+      email: user.email,
+      username: user.username,
+      role: "admin",
+      last_login: user.last_login,
+    };
+
+    const token = jwt.sign(payload, process.env.JWT_SECRET, {
+      expiresIn: "1h",
+    });
+
+    res.json({
+      message: "Login admin berhasil",
+      token,
+      user: payload,
+    });
+  } catch (error) {
+    console.error("❌ Login admin error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 // ================= GET USER PROFILE =================
 export const getUserProfile = async (req, res) => {
   try {
@@ -83,14 +141,13 @@ export const getUserProfile = async (req, res) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    // req.user berasal dari verifyToken (decoded JWT)
     res.json({
       message: "User profile fetched",
       user: {
         id: req.user.id,
         email: req.user.email,
         username: req.user.username,
-        role_id: req.user.role_id,
+        role: req.user.role, // sudah string dari token
         last_login: req.user.last_login,
       },
     });
