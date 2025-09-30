@@ -106,3 +106,24 @@
     font-family: var(--font-geist-sans);
   }
 }
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-geist-sans);
+  }
+
+  /* ✅ Fix supaya teks input/textarea/select selalu terlihat */
+  input, textarea, select {
+    @apply text-gray-900 placeholder-gray-500;
+    background-color: hsl(var(--input));
+  }
+
+  .dark input, .dark textarea, .dark select {
+    @apply text-gray-100 placeholder-gray-400;
+    background-color: hsl(var(--input));
+  }
+}

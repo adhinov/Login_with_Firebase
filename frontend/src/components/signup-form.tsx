@@ -76,7 +76,7 @@ export default function SignupForm() {
       // ✅ Toast sukses
       toast.success("Registrasi Berhasil 🎉", {
         description: "Akun Anda sudah dibuat. Silakan login.",
-        duration: 3000,
+        duration: 4200,
       });
 
       // Redirect ke login
@@ -85,7 +85,7 @@ export default function SignupForm() {
       // ❌ Toast gagal
       toast.error("Signup Gagal ❌", {
         description: error.message || "Terjadi kesalahan saat signup.",
-        duration: 3000,
+        duration: 4200,
       });
     }
   }

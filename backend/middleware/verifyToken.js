@@ -3,7 +3,6 @@ import jwt from "jsonwebtoken";
 
 export const verifyToken = (req, res, next) => {
   try {
-    // Ambil token dari header Authorization (format: Bearer <token>)
     const authHeader = req.headers["authorization"];
     if (!authHeader) {
       return res.status(401).json({ message: "Authorization header tidak ditemukan" });
@@ -14,12 +13,9 @@ export const verifyToken = (req, res, next) => {
       return res.status(401).json({ message: "Token tidak ditemukan" });
     }
 
-    // Verifikasi token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Simpan data user ke request agar bisa diakses di route
-    req.user = decoded;
-
+    req.user = decoded; // simpan payload JWT (id, role, dll.)
     next();
   } catch (error) {
     console.error("❌ Token verification error:", error.message);

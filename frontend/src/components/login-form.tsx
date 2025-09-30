@@ -64,18 +64,28 @@ export default function LoginForm() {
       });
 
       const result = await res.json();
+      console.log("🔹 Login API result:", result);
+
       if (!res.ok) throw new Error(result.message || "Login failed");
 
-      // Simpan token
-      if (data.rememberMe) {
+      // ✅ Simpan token & role SELALU di localStorage
+      if (result.token) {
         localStorage.setItem("token", result.token);
-      } else {
-        sessionStorage.setItem("token", result.token);
+        console.log("✅ Token disimpan di localStorage:", result.token);
       }
-      localStorage.setItem("role", result.user.role);
+      if (result.user?.role) {
+        localStorage.setItem("role", result.user.role);
+        console.log("✅ Role disimpan di localStorage:", result.user.role);
+      }
+
+      // 🔎 Debug isi localStorage
+      console.log("📌 Cek localStorage setelah simpan:", {
+        token: localStorage.getItem("token"),
+        role: localStorage.getItem("role"),
+      });
 
       // ✅ Toast sukses
-      toast.success(`Welcome back, ${result.user.username}! 🎉`, {
+      toast.success(`Welcome back, ${result.user.username || "User"}! 🎉`, {
         description: "Login berhasil.",
         duration: 3000,
       });
@@ -87,6 +97,7 @@ export default function LoginForm() {
         router.push("/welcome");
       }
     } catch (err: any) {
+      console.error("❌ Login error:", err);
       toast.error("Login gagal ❌", {
         description: err.message || "Email atau password salah.",
         duration: 3000,

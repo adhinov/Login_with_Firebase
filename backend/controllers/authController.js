@@ -6,9 +6,15 @@ import {
   updateLastLogin,
 } from "../models/userModel.js";
 
-// Helper: mapping role_id → string
+// ================= HELPER: mapping role_id → string =================
 const getRoleString = (role_id) => {
-  return role_id === 1 ? "admin" : "user";
+  switch (role_id) {
+    case 1:
+      return "admin";
+    case 2:
+    default:
+      return "user";
+  }
 };
 
 // ================= REGISTER =================
@@ -16,13 +22,16 @@ export const register = async (req, res) => {
   try {
     const { email, password, username, phone_number } = req.body;
 
+    // Cek apakah email sudah dipakai
     const existingUser = await findUserByEmail(email);
     if (existingUser) {
       return res.status(400).json({ message: "Email sudah terdaftar" });
     }
 
+    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Buat user baru
     const newUser = await createUser(
       email,
       hashedPassword,
@@ -34,7 +43,7 @@ export const register = async (req, res) => {
       id: newUser.id,
       email: newUser.email,
       username: newUser.username,
-      role: getRoleString(newUser.role_id),
+      role: getRoleString(newUser.role_id), // 🔥 role string
     };
 
     const token = jwt.sign(payload, process.env.JWT_SECRET, {
@@ -52,7 +61,7 @@ export const register = async (req, res) => {
   }
 };
 
-// ================= LOGIN USER =================
+// ================= LOGIN (USER & ADMIN) =================
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -67,14 +76,15 @@ export const login = async (req, res) => {
       return res.status(401).json({ message: "Email atau password salah" });
     }
 
-    await updateLastLogin(user.id);
+    // Update last login
+    const updated = await updateLastLogin(user.id);
 
     const payload = {
       id: user.id,
       email: user.email,
       username: user.username,
-      role: getRoleString(user.role_id),
-      last_login: user.last_login,
+      role: getRoleString(user.role_id), // 🔥 role string
+      last_login: updated?.last_login || user.last_login,
     };
 
     const token = jwt.sign(payload, process.env.JWT_SECRET, {
@@ -92,7 +102,7 @@ export const login = async (req, res) => {
   }
 };
 
-// ================= LOGIN ADMIN =================
+// ================= LOGIN ADMIN ONLY =================
 export const loginAdmin = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -109,14 +119,14 @@ export const loginAdmin = async (req, res) => {
       return res.status(401).json({ message: "Email atau password salah" });
     }
 
-    await updateLastLogin(user.id);
+    const updated = await updateLastLogin(user.id);
 
     const payload = {
       id: user.id,
       email: user.email,
       username: user.username,
-      role: "admin",
-      last_login: user.last_login,
+      role: "admin", // 🔥 role fix string
+      last_login: updated?.last_login || user.last_login,
     };
 
     const token = jwt.sign(payload, process.env.JWT_SECRET, {
@@ -147,7 +157,7 @@ export const getUserProfile = async (req, res) => {
         id: req.user.id,
         email: req.user.email,
         username: req.user.username,
-        role: req.user.role, // sudah string dari token
+        role: req.user.role, // ✅ sudah string dari token
         last_login: req.user.last_login,
       },
     });
