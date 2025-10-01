@@ -1,9 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import axios from "axios";
 
 interface User {
   id: number;
@@ -11,141 +9,149 @@ interface User {
   username: string;
   role: string;
   created_at: string;
-  phone: string;
+  phone_number?: string; // sesuaikan dengan DB
 }
 
 export default function AdminDashboard() {
   const [users, setUsers] = useState<User[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [search, setSearch] = useState("");
+  const [lastLogin, setLastLogin] = useState<string>("");
 
-  // Dummy data (simulasi API response)
+  const fetchUsers = async () => {
+    try {
+      const res = await axios.get(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/users`
+      );
+      setUsers(res.data);
+    } catch (err) {
+      console.error("Error fetching users:", err);
+    }
+  };
+
   useEffect(() => {
-    const dummyData: User[] = [
-      {
-        id: 1,
-        email: "admin@example.com",
-        username: "Admin User",
-        role: "admin",
-        created_at: "2025-09-20T10:30:00Z",
-        phone: "+6281234567890",
-      },
-      {
-        id: 2,
-        email: "johndoe@example.com",
-        username: "John Doe",
-        role: "user",
-        created_at: "2025-09-22T15:45:00Z",
-        phone: "+6289876543210",
-      },
-      {
-        id: 3,
-        email: "janedoe@example.com",
-        username: "Jane Doe",
-        role: "user",
-        created_at: "2025-09-25T09:20:00Z",
-        phone: "+628111223344",
-      },
-    ];
-    setUsers(dummyData);
+    fetchUsers();
+
+    // Ambil last login dari localStorage
+    const loginTime = localStorage.getItem("lastLogin");
+    if (loginTime) setLastLogin(new Date(loginTime).toLocaleString("id-ID"));
   }, []);
 
-  // Filter user berdasarkan pencarian
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    window.location.href = "/login";
+  };
+
   const filteredUsers = users.filter(
     (user) =>
-      user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.role.toLowerCase().includes(searchTerm.toLowerCase())
+      user.email.toLowerCase().includes(search.toLowerCase()) ||
+      user.username.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <h1 className="text-2xl font-bold mb-6 text-gray-800">Admin Dashboard</h1>
+    <div className="p-6 bg-gray-100 min-h-screen text-gray-800">
+      <h1 className="text-2xl font-bold mb-2">Dashboard Admin</h1>
+      <p className="text-sm text-gray-600 mb-6">
+        Last Login (Anda):{" "}
+        <span className="font-medium text-gray-800">{lastLogin || "-"}</span>
+      </p>
 
-      <Card className="shadow-lg border border-gray-200">
-        <CardContent className="p-4">
-          {/* Search Bar */}
-            <div className="mb-4 flex items-center gap-2">
-              <input
-                type="text"
-                placeholder="Cari Pengguna..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="border border-gray-300 rounded-lg px-3 py-2 w-1/3 text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
+      {/* Search */}
+      <div className="mb-4">
+        <input
+          type="text"
+          placeholder="Cari pengguna..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-64 px-3 py-2 border rounded-md text-gray-800 placeholder-gray-400 text-sm"
+        />
+      </div>
 
-          {/* Tabel */}
-          <div className="overflow-x-auto">
-            <table className="min-w-full border border-gray-300 rounded-lg overflow-hidden">
-              <thead>
-                <tr className="bg-gray-200 text-gray-700">
-                  <th className="border border-gray-300 px-4 py-2 text-left font-semibold">
-                    ID
-                  </th>
-                  <th className="border border-gray-300 px-4 py-2 text-left font-semibold">
-                    Email
-                  </th>
-                  <th className="border border-gray-300 px-4 py-2 text-left font-semibold">
-                    Username
-                  </th>
-                  <th className="border border-gray-300 px-4 py-2 text-left font-semibold">
-                    Role
-                  </th>
-                  <th className="border border-gray-300 px-4 py-2 text-left font-semibold">
-                    Created At
-                  </th>
-                  <th className="border border-gray-300 px-4 py-2 text-left font-semibold">
-                    Phone
-                  </th>
+      {/* Card Table */}
+      <div className="bg-gray-200 shadow-lg rounded-lg p-6 w-fit mx-auto">
+        <h2 className="text-lg font-semibold mb-4">Data Pengguna</h2>
+
+        <div className="overflow-x-auto">
+          <table className="table-auto border-collapse border border-gray-300 text-xs">
+            <thead>
+              <tr className="bg-gray-300">
+                <th className="border border-gray-300 px-2 py-1 text-left">ID</th>
+                <th className="border border-gray-300 px-2 py-1 text-left">
+                  Email
+                </th>
+                <th className="border border-gray-300 px-2 py-1 text-left">
+                  Username
+                </th>
+                <th className="border border-gray-300 px-2 py-1 text-left">
+                  Role
+                </th>
+                <th className="border border-gray-300 px-2 py-1 text-left">
+                  Created At
+                </th>
+                <th className="border border-gray-300 px-2 py-1 text-left">
+                  Phone
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredUsers.map((user) => (
+                <tr key={user.id} className="bg-white hover:bg-gray-100">
+                  <td className="border border-gray-300 px-2 py-1">
+                    {user.id}
+                  </td>
+                  <td className="border border-gray-300 px-2 py-1">
+                    {user.email}
+                  </td>
+                  <td className="border border-gray-300 px-2 py-1">
+                    {user.username}
+                  </td>
+                  <td className="border border-gray-300 px-2 py-1">
+                    {user.role === "admin" ? (
+                      <span className="bg-red-100 text-red-600 px-2 py-1 rounded-full text-xs">
+                        admin
+                      </span>
+                    ) : (
+                      <span className="bg-green-100 text-green-600 px-2 py-1 rounded-full text-xs">
+                        user
+                      </span>
+                    )}
+                  </td>
+                  <td className="border border-gray-300 px-2 py-1">
+                    {new Date(user.created_at).toLocaleDateString("id-ID", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </td>
+                  <td className="border border-gray-300 px-2 py-1">
+                    {user.phone_number || "-"}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {filteredUsers.map((user, index) => (
-                  <tr
-                    key={user.id}
-                    className={`${
-                      index % 2 === 0 ? "bg-white" : "bg-gray-50"
-                    } text-gray-800`}
-                  >
-                    <td className="border border-gray-300 px-4 py-2">
-                      {user.id}
-                    </td>
-                    <td className="border border-gray-300 px-4 py-2">
-                      {user.email}
-                    </td>
-                    <td className="border border-gray-300 px-4 py-2">
-                      {user.username}
-                    </td>
-                    <td className="border border-gray-300 px-4 py-2">
-                      <Badge
-                        className={
-                          user.role === "admin"
-                            ? "bg-red-500 text-white"
-                            : "bg-blue-500 text-white"
-                        }
-                      >
-                        {user.role}
-                      </Badge>
-                    </td>
-                    <td className="border border-gray-300 px-4 py-2">
-                      {new Date(user.created_at).toLocaleDateString("id-ID")}
-                    </td>
-                    <td className="border border-gray-300 px-4 py-2">
-                      {user.phone}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
-          {/* Total pengguna */}
-          <div className="mt-4 text-sm text-gray-700">
-            Total Pengguna :{" "}
-            <span className="font-semibold">{filteredUsers.length}</span>
+        {/* Footer */}
+        <div className="flex justify-between items-center mt-6">
+          <span className="text-sm font-medium">
+            Total Pengguna: {filteredUsers.length}
+          </span>
+          <div className="flex space-x-2">
+            <button
+              onClick={fetchUsers}
+              className="px-3 py-1 bg-blue-500 text-white rounded-md text-sm hover:bg-blue-600"
+            >
+              Refresh
+            </button>
+            <button
+              onClick={handleLogout}
+              className="px-3 py-1 bg-red-500 text-white rounded-md text-sm hover:bg-red-600"
+            >
+              Logout
+            </button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }
