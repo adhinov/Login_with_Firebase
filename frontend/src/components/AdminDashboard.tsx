@@ -12,6 +12,20 @@ interface User {
   phone_number?: string; // sesuai kolom DB
 }
 
+// ✅ Formatter untuk Asia/Jakarta
+const formatToJakarta = (dateString: string) => {
+  if (!dateString) return "-";
+  const date = new Date(dateString);
+  return new Intl.DateTimeFormat("id-ID", {
+    timeZone: "Asia/Jakarta",
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+};
+
 export default function AdminDashboard() {
   const [users, setUsers] = useState<User[]>([]);
   const [search, setSearch] = useState("");
@@ -34,7 +48,7 @@ export default function AdminDashboard() {
     // Ambil last login dari localStorage (disimpan saat login)
     const loginTime = localStorage.getItem("lastLogin");
     if (loginTime) {
-      setLastLogin(new Date(loginTime).toLocaleString("id-ID"));
+      setLastLogin(formatToJakarta(loginTime));
     }
   }, []);
 
@@ -104,11 +118,7 @@ export default function AdminDashboard() {
                     )}
                   </td>
                   <td className="border border-gray-300 px-2 py-1">
-                    {new Date(user.created_at).toLocaleDateString("id-ID", {
-                      day: "2-digit",
-                      month: "short",
-                      year: "numeric",
-                    })}
+                    {formatToJakarta(user.created_at)}
                   </td>
                   <td className="border border-gray-300 px-2 py-1">
                     {user.phone_number || "-"}

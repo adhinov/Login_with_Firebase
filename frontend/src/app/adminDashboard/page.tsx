@@ -14,11 +14,34 @@ interface User {
   phone?: string | null;
 }
 
+// ✅ Formatter konsisten UTC+7 (WIB)
+const formatDateTime = (dateString: string): string => {
+  if (!dateString) return "-";
+  return new Date(dateString).toLocaleString("id-ID", {
+    timeZone: "Asia/Jakarta",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
+const formatDateOnly = (dateString: string): string => {
+  if (!dateString) return "-";
+  return new Date(dateString).toLocaleDateString("id-ID", {
+    timeZone: "Asia/Jakarta",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+};
+
 export default function AdminDashboard() {
   const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
-  const [lastLogin, setLastLogin] = useState<string>("");
+  const [lastLogin, setLastLogin] = useState<string>("Belum ada data");
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -26,7 +49,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     const token = localStorage.getItem("token");
     const role = localStorage.getItem("role");
-    const userData = localStorage.getItem("user"); // ⬅️ simpan user payload saat login
+    const userData = localStorage.getItem("user"); // payload user hasil login
 
     if (!token || role !== "admin") {
       setIsAuthorized(false);
@@ -36,30 +59,19 @@ export default function AdminDashboard() {
 
     setIsAuthorized(true);
 
-    // ✅ ambil last_login dari localStorage user payload
+    // ✅ Ambil last_login dari user payload
     if (userData) {
       try {
         const parsedUser = JSON.parse(userData);
         if (parsedUser.last_login) {
-          const formatted = new Date(parsedUser.last_login).toLocaleString(
-            "id-ID",
-            {
-              day: "2-digit",
-              month: "short",
-              year: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-            }
-          );
-          setLastLogin(formatted);
-        } else {
-          setLastLogin("Belum ada data");
+          setLastLogin(formatDateTime(parsedUser.last_login));
         }
       } catch (err) {
-        console.error("❌ Failed to parse user from localStorage", err);
+        console.error("❌ Gagal parse user dari localStorage", err);
       }
     }
 
+    // ✅ Fetch daftar user
     const fetchUsers = async () => {
       try {
         const res = await fetch(`${API_URL}/api/users`, {
@@ -79,7 +91,7 @@ export default function AdminDashboard() {
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("role");
-    localStorage.removeItem("user"); // ✅ clear user payload
+    localStorage.removeItem("user");
     router.replace("/login");
   };
 
@@ -103,7 +115,7 @@ export default function AdminDashboard() {
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-start bg-gray-500 p-6">
-      <div className="bg-white rounded-xl shadow-lg p-8 w-fit mx-auto">
+      <div className="bg-white rounded-xl shadow-lg p-8 w-fit max-w-full mx-auto">
         {/* Judul */}
         <h1 className="text-3xl font-bold text-gray-800 mb-2">
           Admin Dashboard
@@ -164,11 +176,7 @@ export default function AdminDashboard() {
                     )}
                   </td>
                   <td className="px-2 py-1 border">
-                    {new Date(user.created_at).toLocaleDateString("id-ID", {
-                      day: "2-digit",
-                      month: "short",
-                      year: "numeric",
-                    })}
+                    {formatDateOnly(user.created_at)}
                   </td>
                   <td className="px-2 py-1 border">
                     {user.phone_number || user.phone || "-"}

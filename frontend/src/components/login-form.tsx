@@ -4,7 +4,7 @@ import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { Mail, Lock, LogIn, Eye, EyeOff } from "lucide-react";
+import { Mail, Lock, LogIn, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -54,7 +54,7 @@ export default function LoginForm() {
   });
 
   async function onSubmit(data: LoginFormValues) {
-    setErrorMessage(null); // reset error tiap kali submit
+    setErrorMessage(null);
     try {
       const res = await fetch(`${API_URL}/api/auth/login`, {
         method: "POST",
@@ -68,7 +68,6 @@ export default function LoginForm() {
       const result = await res.json();
 
       if (!res.ok) {
-        // ✅ tampilkan error di UI & toast
         const msg = result.message || "Email atau password salah.";
         setErrorMessage(msg);
         toast.error("Login gagal ❌", {
@@ -78,25 +77,23 @@ export default function LoginForm() {
         return;
       }
 
-      // ✅ Simpan token, role, lastLogin di localStorage
+      // ✅ Simpan token dan payload user ke localStorage
       if (result.token) {
         localStorage.setItem("token", result.token);
       }
-      if (result.user?.role) {
-        localStorage.setItem("role", result.user.role);
-      }
-      if (result.user?.last_login) {
-        // simpan last login (sebelumnya) ke localStorage
-        localStorage.setItem("lastLogin", result.user.last_login);
+      if (result.user) {
+        localStorage.setItem("user", JSON.stringify(result.user));
+        localStorage.setItem("role", result.user.role || "");
+        if (result.user.last_login) {
+          localStorage.setItem("lastLogin", result.user.last_login);
+        }
       }
 
-      // ✅ Toast sukses
       toast.success(`Welcome back, ${result.user.username || "User"}! 🎉`, {
         description: "Login berhasil.",
         duration: 3000,
       });
 
-      // ✅ Redirect sesuai role
       if (result.user.role === "admin") {
         router.push("/adminDashboard");
       } else {
@@ -213,16 +210,26 @@ export default function LoginForm() {
               </Button>
             </div>
 
-            {/* Submit */}
+            {/* Submit with Spinner */}
             <Button
               type="submit"
-              className="w-full text-lg py-6 mt-6"
+              className="w-full text-lg py-6 mt-6 flex items-center justify-center"
               disabled={form.formState.isSubmitting}
             >
-              <LogIn className="mr-2 h-5 w-5" /> Submit
+              {form.formState.isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Loading...
+                </>
+              ) : (
+                <>
+                  <LogIn className="mr-2 h-5 w-5" />
+                  Submit
+                </>
+              )}
             </Button>
 
-            {/* ✅ Error message global */}
+            {/* Error message global */}
             {errorMessage && (
               <p className="text-red-500 text-sm text-center mt-2">{errorMessage}</p>
             )}

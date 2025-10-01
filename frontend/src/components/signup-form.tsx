@@ -218,6 +218,10 @@ export default function SignupForm() {
                       </div>
                     </FormControl>
                   </div>
+                  {/* 👉 Tambahan teks kecil */}
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Password must be at least 8 characters.
+                  </p>
                   <FormMessage />
                 </FormItem>
               )}
