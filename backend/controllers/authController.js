@@ -1,3 +1,4 @@
+// controllers/authController.js
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import {
@@ -15,6 +16,14 @@ const getRoleString = (role_id) => {
     default:
       return "user";
   }
+};
+
+// ================= HELPER: konversi tanggal ke UTC+7 ISO =================
+const toJakartaISO = (date) => {
+  if (!date) return null;
+  const d = new Date(date);
+  const jakartaTime = new Date(d.getTime() + 7 * 60 * 60 * 1000);
+  return jakartaTime.toISOString();
 };
 
 // ================= REGISTER =================
@@ -41,7 +50,7 @@ export const register = async (req, res) => {
       email: newUser.email,
       username: newUser.username,
       role: getRoleString(newUser.role_id),
-      last_login: null,
+      last_login: null, // user baru belum pernah login
     };
 
     const token = jwt.sign(payload, process.env.JWT_SECRET, {
@@ -74,8 +83,8 @@ export const login = async (req, res) => {
       return res.status(401).json({ message: "Email atau password salah" });
     }
 
-    // ✅ Simpan last_login sebelumnya
-    const previousLogin = user.last_login;
+    // ✅ Simpan last_login sebelumnya (convert ke UTC+7 ISO)
+    const previousLogin = toJakartaISO(user.last_login);
 
     // ✅ Update last_login → NOW()
     await updateLastLogin(user.id);
@@ -85,7 +94,7 @@ export const login = async (req, res) => {
       email: user.email,
       username: user.username,
       role: getRoleString(user.role_id),
-      last_login: previousLogin, // kirim last login lama
+      last_login: previousLogin,
     };
 
     const token = jwt.sign(payload, process.env.JWT_SECRET, {
@@ -120,8 +129,8 @@ export const loginAdmin = async (req, res) => {
       return res.status(401).json({ message: "Email atau password salah" });
     }
 
-    // ✅ Simpan last_login sebelumnya
-    const previousLogin = user.last_login;
+    // ✅ Simpan last_login sebelumnya (convert ke UTC+7 ISO)
+    const previousLogin = toJakartaISO(user.last_login);
 
     // ✅ Update last_login → NOW()
     await updateLastLogin(user.id);
@@ -163,7 +172,7 @@ export const getUserProfile = async (req, res) => {
         email: req.user.email,
         username: req.user.username,
         role: req.user.role,
-        last_login: req.user.last_login,
+        last_login: toJakartaISO(req.user.last_login),
       },
     });
   } catch (error) {
