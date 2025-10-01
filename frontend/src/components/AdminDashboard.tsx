@@ -9,7 +9,7 @@ interface User {
   username: string;
   role: string;
   created_at: string;
-  phone_number?: string; // sesuaikan dengan DB
+  phone_number?: string; // sesuai kolom DB
 }
 
 export default function AdminDashboard() {
@@ -31,13 +31,17 @@ export default function AdminDashboard() {
   useEffect(() => {
     fetchUsers();
 
-    // Ambil last login dari localStorage
+    // Ambil last login dari localStorage (disimpan saat login)
     const loginTime = localStorage.getItem("lastLogin");
-    if (loginTime) setLastLogin(new Date(loginTime).toLocaleString("id-ID"));
+    if (loginTime) {
+      setLastLogin(new Date(loginTime).toLocaleString("id-ID"));
+    }
   }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("role");
+    localStorage.removeItem("lastLogin");
     window.location.href = "/login";
   };
 
@@ -66,8 +70,8 @@ export default function AdminDashboard() {
         />
       </div>
 
-      {/* Card Table */}
-      <div className="bg-gray-200 shadow-lg rounded-lg p-6 w-fit mx-auto">
+      {/* Card + Table */}
+      <div className="bg-gray-200 shadow-lg rounded-lg p-6 w-full md:w-fit mx-auto">
         <h2 className="text-lg font-semibold mb-4">Data Pengguna</h2>
 
         <div className="overflow-x-auto">
@@ -75,42 +79,26 @@ export default function AdminDashboard() {
             <thead>
               <tr className="bg-gray-300">
                 <th className="border border-gray-300 px-2 py-1 text-left">ID</th>
-                <th className="border border-gray-300 px-2 py-1 text-left">
-                  Email
-                </th>
-                <th className="border border-gray-300 px-2 py-1 text-left">
-                  Username
-                </th>
-                <th className="border border-gray-300 px-2 py-1 text-left">
-                  Role
-                </th>
-                <th className="border border-gray-300 px-2 py-1 text-left">
-                  Created At
-                </th>
-                <th className="border border-gray-300 px-2 py-1 text-left">
-                  Phone
-                </th>
+                <th className="border border-gray-300 px-2 py-1 text-left">Email</th>
+                <th className="border border-gray-300 px-2 py-1 text-left">Username</th>
+                <th className="border border-gray-300 px-2 py-1 text-left">Role</th>
+                <th className="border border-gray-300 px-2 py-1 text-left">Created At</th>
+                <th className="border border-gray-300 px-2 py-1 text-left">Phone</th>
               </tr>
             </thead>
             <tbody>
               {filteredUsers.map((user) => (
                 <tr key={user.id} className="bg-white hover:bg-gray-100">
-                  <td className="border border-gray-300 px-2 py-1">
-                    {user.id}
-                  </td>
-                  <td className="border border-gray-300 px-2 py-1">
-                    {user.email}
-                  </td>
-                  <td className="border border-gray-300 px-2 py-1">
-                    {user.username}
-                  </td>
+                  <td className="border border-gray-300 px-2 py-1">{user.id}</td>
+                  <td className="border border-gray-300 px-2 py-1">{user.email}</td>
+                  <td className="border border-gray-300 px-2 py-1">{user.username}</td>
                   <td className="border border-gray-300 px-2 py-1">
                     {user.role === "admin" ? (
-                      <span className="bg-red-100 text-red-600 px-2 py-1 rounded-full text-xs">
+                      <span className="bg-red-100 text-red-600 px-2 py-0.5 rounded-full text-xs">
                         admin
                       </span>
                     ) : (
-                      <span className="bg-green-100 text-green-600 px-2 py-1 rounded-full text-xs">
+                      <span className="bg-green-100 text-green-600 px-2 py-0.5 rounded-full text-xs">
                         user
                       </span>
                     )}
@@ -132,7 +120,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Footer */}
-        <div className="flex justify-between items-center mt-6">
+        <div className="flex flex-col md:flex-row justify-between items-center mt-6 gap-3">
           <span className="text-sm font-medium">
             Total Pengguna: {filteredUsers.length}
           </span>

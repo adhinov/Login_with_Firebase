@@ -26,6 +26,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     const token = localStorage.getItem("token");
     const role = localStorage.getItem("role");
+    const userData = localStorage.getItem("user"); // ⬅️ simpan user payload saat login
 
     if (!token || role !== "admin") {
       setIsAuthorized(false);
@@ -34,6 +35,30 @@ export default function AdminDashboard() {
     }
 
     setIsAuthorized(true);
+
+    // ✅ ambil last_login dari localStorage user payload
+    if (userData) {
+      try {
+        const parsedUser = JSON.parse(userData);
+        if (parsedUser.last_login) {
+          const formatted = new Date(parsedUser.last_login).toLocaleString(
+            "id-ID",
+            {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            }
+          );
+          setLastLogin(formatted);
+        } else {
+          setLastLogin("Belum ada data");
+        }
+      } catch (err) {
+        console.error("❌ Failed to parse user from localStorage", err);
+      }
+    }
 
     const fetchUsers = async () => {
       try {
@@ -49,21 +74,12 @@ export default function AdminDashboard() {
     };
 
     fetchUsers();
-
-    const now = new Date();
-    const formatted = now.toLocaleString("id-ID", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-    setLastLogin(formatted);
   }, [router, API_URL]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("role");
+    localStorage.removeItem("user"); // ✅ clear user payload
     router.replace("/login");
   };
 

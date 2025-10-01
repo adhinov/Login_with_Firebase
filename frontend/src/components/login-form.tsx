@@ -40,6 +40,7 @@ type LoginFormValues = z.infer<typeof formSchema>;
 export default function LoginForm() {
   const router = useRouter();
   const [showPassword, setShowPassword] = React.useState(false);
+  const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -53,6 +54,7 @@ export default function LoginForm() {
   });
 
   async function onSubmit(data: LoginFormValues) {
+    setErrorMessage(null); // reset error tiap kali submit
     try {
       const res = await fetch(`${API_URL}/api/auth/login`, {
         method: "POST",
@@ -64,25 +66,29 @@ export default function LoginForm() {
       });
 
       const result = await res.json();
-      console.log("🔹 Login API result:", result);
 
-      if (!res.ok) throw new Error(result.message || "Login failed");
+      if (!res.ok) {
+        // ✅ tampilkan error di UI & toast
+        const msg = result.message || "Email atau password salah.";
+        setErrorMessage(msg);
+        toast.error("Login gagal ❌", {
+          description: msg,
+          duration: 3000,
+        });
+        return;
+      }
 
-      // ✅ Simpan token & role SELALU di localStorage
+      // ✅ Simpan token, role, lastLogin di localStorage
       if (result.token) {
         localStorage.setItem("token", result.token);
-        console.log("✅ Token disimpan di localStorage:", result.token);
       }
       if (result.user?.role) {
         localStorage.setItem("role", result.user.role);
-        console.log("✅ Role disimpan di localStorage:", result.user.role);
       }
-
-      // 🔎 Debug isi localStorage
-      console.log("📌 Cek localStorage setelah simpan:", {
-        token: localStorage.getItem("token"),
-        role: localStorage.getItem("role"),
-      });
+      if (result.user?.last_login) {
+        // simpan last login (sebelumnya) ke localStorage
+        localStorage.setItem("lastLogin", result.user.last_login);
+      }
 
       // ✅ Toast sukses
       toast.success(`Welcome back, ${result.user.username || "User"}! 🎉`, {
@@ -96,10 +102,10 @@ export default function LoginForm() {
       } else {
         router.push("/welcome");
       }
-    } catch (err: any) {
-      console.error("❌ Login error:", err);
+    } catch {
+      setErrorMessage("Terjadi kesalahan koneksi. Coba lagi.");
       toast.error("Login gagal ❌", {
-        description: err.message || "Email atau password salah.",
+        description: "Terjadi kesalahan koneksi. Coba lagi.",
         duration: 3000,
       });
     }
@@ -210,16 +216,20 @@ export default function LoginForm() {
             {/* Submit */}
             <Button
               type="submit"
-              className="w-full text-lg py-6 mt-10"
+              className="w-full text-lg py-6 mt-6"
               disabled={form.formState.isSubmitting}
             >
               <LogIn className="mr-2 h-5 w-5" /> Submit
             </Button>
+
+            {/* ✅ Error message global */}
+            {errorMessage && (
+              <p className="text-red-500 text-sm text-center mt-2">{errorMessage}</p>
+            )}
           </form>
         </Form>
       </CardContent>
 
-      {/* Footer */}
       <CardFooter className="flex-col items-center text-sm">
         <p className="text-muted-foreground mt-4">
           Don&apos;t have an account?{" "}
