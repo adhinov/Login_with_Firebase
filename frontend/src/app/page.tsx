@@ -1,18 +1,3 @@
-// src/app/page.tsx
-"use client";
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-
-export default function HomePage() {
-  const router = useRouter();
-
-  useEffect(() => {
-    router.replace("/login");
-  }, [router]);
-
-  return (
-    <main className="flex min-h-screen items-center justify-center">
-      <p>Loading...</p>
-    </main>
-  );
+export default function Home() {
+  return <h1>Hello World from /</h1>;
 }
