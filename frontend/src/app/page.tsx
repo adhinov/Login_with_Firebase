@@ -1,7 +1,18 @@
-// frontend/src/app/page.tsx
-import { redirect } from "next/navigation";
+// src/app/page.tsx
+"use client";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
-export default function Home() {
-  // Begitu user akses domain utama (/), langsung redirect ke /login
-  redirect("/login");
+export default function HomePage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    router.replace("/login");
+  }, [router]);
+
+  return (
+    <main className="flex min-h-screen items-center justify-center">
+      <p>Loading...</p>
+    </main>
+  );
 }
