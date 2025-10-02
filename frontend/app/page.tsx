@@ -1,3 +1,6 @@
+import { redirect } from "next/navigation";
+
 export default function Home() {
-  return <h1>Hello World from /</h1>;
+  // Begitu user buka "/", langsung redirect ke /login
+  redirect("/login");
 }
