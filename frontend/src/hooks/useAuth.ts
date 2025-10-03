@@ -1,66 +1,78 @@
 // hooks/useAuth.ts
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import {
-  login as loginService,
-  register as registerService,
-  getProfile,
-} from "@/services/authService";
+import { useState, useEffect, useCallback } from "react";
+import axios from "axios";
 
-// ✅ hanya ambil dari NEXT_PUBLIC_API_URL, tanpa fallback ke localhost
-const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "");
+export interface User {
+  id: number;
+  email: string;
+  username: string;
+  role: string;
+}
+
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  "https://login-app-production-7f54.up.railway.app";
 
 export function useAuth() {
-  const router = useRouter();
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // 🔹 Ambil profil user jika ada token
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      setLoading(false);
-      return;
-    }
+  // 🔹 Ambil profil dari backend
+  const fetchProfile = useCallback(async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setUser(null);
+        setLoading(false);
+        return;
+      }
 
-    getProfile(token)
-      .then((data) => {
-        setUser(data);
-      })
-      .catch((err) => {
-        console.error("❌ Gagal ambil profil:", err);
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-      })
-      .finally(() => setLoading(false));
+      const res = await axios.get(`${API_URL}/api/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setUser(res.data.user);
+    } catch (err) {
+      console.error("❌ Gagal ambil profil:", err);
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchProfile();
+  }, [fetchProfile]);
 
   // 🔹 Login
   const login = async (email: string, password: string) => {
-    const data = await loginService(email, password);
-    if (data?.token) {
-      localStorage.setItem("token", data.token);
-    }
-    if (data?.user) {
-      localStorage.setItem("user", JSON.stringify(data.user));
-      setUser(data.user);
-    }
-    return data;
+    const res = await axios.post(`${API_URL}/api/auth/login`, {
+      email,
+      password,
+    });
+    const { token, user } = res.data;
+
+    localStorage.setItem("token", token);
+    setUser(user);
+
+    return user;
   };
 
   // 🔹 Register
-  const register = async (username: string, email: string, password: string) => {
-    return await registerService(username, email, password);
+  const register = async (email: string, password: string, username: string) => {
+    const res = await axios.post(`${API_URL}/api/auth/register`, {
+      email,
+      password,
+      username,
+    });
+    return res.data;
   };
 
   // 🔹 Logout
   const logout = () => {
     localStorage.removeItem("token");
-    localStorage.removeItem("user");
     setUser(null);
-    router.push("/login");
   };
 
   return {
@@ -69,5 +81,6 @@ export function useAuth() {
     login,
     register,
     logout,
+    fetchProfile,
   };
 }
