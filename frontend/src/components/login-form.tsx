@@ -42,6 +42,7 @@ export default function LoginForm() {
   const [showPassword, setShowPassword] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
 
+  // ✅ ambil base API dari .env
   const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
   const form = useForm<LoginFormValues>({
@@ -68,8 +69,6 @@ export default function LoginForm() {
           password: data.password,
         }),
       });
-
-      console.log("🔹 Response raw:", res);
 
       let result: any = {};
       try {

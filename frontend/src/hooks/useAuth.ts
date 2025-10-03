@@ -1,18 +1,13 @@
 // src/hooks/useAuth.ts
-import { useEffect, useState } from "react";
+"use client";
 
-interface User {
-  id: number;
-  email: string;
-  username: string;
-  role: string;
-}
+import { useState, useEffect } from "react";
 
-const API_URL =
-  import.meta.env.VITE_API_URL || "https://login-app-production-7f54.up.railway.app";
+// Ambil base URL dari environment variable
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export function useAuth() {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -22,34 +17,19 @@ export function useAuth() {
       return;
     }
 
-    const fetchUser = async () => {
-      try {
-        const res = await fetch(`${API_URL}/api/auth/me`, {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (!res.ok) {
-          console.error("❌ Failed to fetch user:", res.status);
-          localStorage.removeItem("token");
-          setUser(null);
-        } else {
-          const data = await res.json();
-          console.log("✅ /me response:", data);
-          setUser(data.user);
-        }
-      } catch (err) {
-        console.error("❌ Error fetching /me:", err);
+    fetch(`${API_URL}/api/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(async (res) => {
+        if (!res.ok) throw new Error("Auth failed");
+        return res.json();
+      })
+      .then((data) => setUser(data.user))
+      .catch(() => {
         localStorage.removeItem("token");
         setUser(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUser();
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   return { user, loading };
