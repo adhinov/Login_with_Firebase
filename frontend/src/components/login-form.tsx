@@ -28,6 +28,8 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 
+import { useAuth } from "@/hooks/useAuth";
+
 // ✅ Schema validasi
 const formSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -37,15 +39,12 @@ const formSchema = z.object({
 
 type LoginFormValues = z.infer<typeof formSchema>;
 
-// ✅ pastikan API_URL selalu ada
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") ||
-  "https://login-app-production-7f54.up.railway.app";
-
 export default function LoginForm() {
   const router = useRouter();
   const [showPassword, setShowPassword] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
+
+  const { login } = useAuth();
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(formSchema),
@@ -59,47 +58,16 @@ export default function LoginForm() {
   async function onSubmit(data: LoginFormValues) {
     setErrorMessage(null);
 
-    console.log("🔹 API_URL:", API_URL);
-    console.log("🔹 Request payload:", data);
-
     try {
-      const res = await fetch(`${API_URL}/api/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: data.email,
-          password: data.password,
-        }),
-      });
+      const result = await login(data.email, data.password);
 
-      let result: any = {};
-      try {
-        result = await res.json();
-        console.log("🔹 Response JSON:", result);
-      } catch (jsonErr) {
-        console.error("❌ Gagal parsing JSON:", jsonErr);
-      }
-
-      if (!res.ok) {
-        const msg = result.message || "Email atau password salah.";
-        setErrorMessage(msg);
+      if (!result) {
+        setErrorMessage("Login gagal. Silakan coba lagi.");
         toast.error("Login gagal ❌", {
-          description: msg,
+          description: "Email atau password salah.",
           duration: 3000,
         });
         return;
-      }
-
-      // ✅ Simpan token dan payload user ke localStorage
-      if (result.token) {
-        localStorage.setItem("token", result.token);
-      }
-      if (result.user) {
-        localStorage.setItem("user", JSON.stringify(result.user));
-        localStorage.setItem("role", result.user.role || "");
-        if (result.user.last_login) {
-          localStorage.setItem("lastLogin", result.user.last_login);
-        }
       }
 
       toast.success(`Welcome back, ${result.user?.username || "User"}! 🎉`, {
