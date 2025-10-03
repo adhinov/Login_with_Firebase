@@ -1,75 +1,64 @@
-// src/hooks/useAuth.ts
+// hooks/useAuth.ts
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { login as loginService, getProfile } from "@/services/authService";
+import {
+  login as loginService,
+  register as registerService,
+  getProfile,
+} from "@/services/authService";
 
-interface User {
-  id: number;
-  email: string;
-  username: string;
-  role: string;
-}
+// ✅ hanya ambil dari NEXT_PUBLIC_API_URL, tanpa fallback ke localhost
+const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "");
 
 export function useAuth() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  // ✅ Cek token di localStorage saat pertama kali load
+  // 🔹 Ambil profil user jika ada token
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (token) {
-      getProfile(token)
-        .then((data) => {
-          if (data?.user) {
-            setUser(data.user);
-          }
-        })
-        .catch((err) => {
-          console.error("❌ Gagal ambil profil:", err);
-          logout();
-        })
-        .finally(() => setLoading(false));
-    } else {
+    if (!token) {
       setLoading(false);
+      return;
     }
+
+    getProfile(token)
+      .then((data) => {
+        setUser(data);
+      })
+      .catch((err) => {
+        console.error("❌ Gagal ambil profil:", err);
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+      })
+      .finally(() => setLoading(false));
   }, []);
 
-  // ✅ Fungsi login
+  // 🔹 Login
   const login = async (email: string, password: string) => {
-    try {
-      const result = await loginService(email, password);
-      if (result.token) {
-        localStorage.setItem("token", result.token);
-      }
-      if (result.user) {
-        localStorage.setItem("user", JSON.stringify(result.user));
-        localStorage.setItem("role", result.user.role || "");
-        setUser(result.user);
-      }
-
-      // ✅ Redirect sesuai role
-      if (result.user.role === "admin") {
-        router.push("/adminDashboard");
-      } else {
-        router.push("/welcome");
-      }
-
-      return result;
-    } catch (error) {
-      console.error("❌ Login error:", error);
-      throw error;
+    const data = await loginService(email, password);
+    if (data?.token) {
+      localStorage.setItem("token", data.token);
     }
+    if (data?.user) {
+      localStorage.setItem("user", JSON.stringify(data.user));
+      setUser(data.user);
+    }
+    return data;
   };
 
-  // ✅ Fungsi logout
+  // 🔹 Register
+  const register = async (username: string, email: string, password: string) => {
+    return await registerService(username, email, password);
+  };
+
+  // 🔹 Logout
   const logout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
-    localStorage.removeItem("role");
-    localStorage.removeItem("lastLogin");
     setUser(null);
     router.push("/login");
   };
@@ -78,6 +67,7 @@ export function useAuth() {
     user,
     loading,
     login,
+    register,
     logout,
   };
 }
