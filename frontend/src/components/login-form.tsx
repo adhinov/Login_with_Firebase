@@ -37,13 +37,15 @@ const formSchema = z.object({
 
 type LoginFormValues = z.infer<typeof formSchema>;
 
+// ✅ pastikan API_URL selalu ada
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") ||
+  "https://login-app-production-7f54.up.railway.app";
+
 export default function LoginForm() {
   const router = useRouter();
   const [showPassword, setShowPassword] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
-
-  // ✅ ambil base API dari .env
-  const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(formSchema),

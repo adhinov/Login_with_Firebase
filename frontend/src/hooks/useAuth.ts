@@ -1,13 +1,21 @@
 // src/hooks/useAuth.ts
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 
-// Ambil base URL dari environment variable
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"; // fallback dev
+
+interface User {
+  id: number;
+  email: string;
+  username: string;
+  role: string;
+  last_login?: string;
+}
 
 export function useAuth() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -18,16 +26,20 @@ export function useAuth() {
     }
 
     fetch(`${API_URL}/api/auth/me`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     })
       .then(async (res) => {
         if (!res.ok) throw new Error("Auth failed");
-        return res.json();
+        const data = await res.json();
+        setUser(data.user || null);
       })
-      .then((data) => setUser(data.user))
-      .catch(() => {
-        localStorage.removeItem("token");
+      .catch((err) => {
+        console.error("❌ Auth error:", err);
         setUser(null);
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
       })
       .finally(() => setLoading(false));
   }, []);
