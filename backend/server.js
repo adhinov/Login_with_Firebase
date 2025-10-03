@@ -5,22 +5,23 @@ dotenv.config(); // ✅ load .env duluan
 import express from "express";
 import cors from "cors";
 import authRoutes from "./routes/authRoutes.js";
-import "./config/db.js"; // ✅ koneksi database
 import userRoutes from "./routes/userRoutes.js";
+import "./config/db.js"; // ✅ koneksi database
 
 const app = express();
 
+// ==================== MIDDLEWARE ====================
+app.use(express.json());
+
 // ==================== CORS CONFIG ====================
-const allowedOrigins = [
-  "http://localhost:5173", // Vite default
-  "http://localhost:3000", // Next.js default
-  "http://localhost:9002", // custom port kamu
-  "https://login-app-64w3.vercel.app", // ✅ domain vercel frontend
-];
+const allowedOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(",")
+  : [];
 
 app.use(
   cors({
     origin: function (origin, callback) {
+      // kalau request tanpa origin (misalnya curl / postman) → izinkan
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
@@ -32,16 +33,17 @@ app.use(
   })
 );
 
-app.use("/api/users", userRoutes);
-
-app.use(express.json());
-
 // ==================== ROUTES ====================
 app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
 
 // Health check
 app.get("/", (req, res) => {
-  res.json({ status: "ok", message: "Backend is running..." });
+  res.json({
+    status: "ok",
+    message: "Backend is running...",
+    allowedOrigins,
+  });
 });
 
 // ==================== START SERVER ====================
