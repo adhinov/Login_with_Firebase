@@ -55,6 +55,10 @@ export default function LoginForm() {
 
   async function onSubmit(data: LoginFormValues) {
     setErrorMessage(null);
+
+    console.log("🔹 API_URL:", API_URL);
+    console.log("🔹 Request payload:", data);
+
     try {
       const res = await fetch(`${API_URL}/api/auth/login`, {
         method: "POST",
@@ -65,7 +69,15 @@ export default function LoginForm() {
         }),
       });
 
-      const result = await res.json();
+      console.log("🔹 Response raw:", res);
+
+      let result: any = {};
+      try {
+        result = await res.json();
+        console.log("🔹 Response JSON:", result);
+      } catch (jsonErr) {
+        console.error("❌ Gagal parsing JSON:", jsonErr);
+      }
 
       if (!res.ok) {
         const msg = result.message || "Email atau password salah.";
@@ -89,17 +101,18 @@ export default function LoginForm() {
         }
       }
 
-      toast.success(`Welcome back, ${result.user.username || "User"}! 🎉`, {
+      toast.success(`Welcome back, ${result.user?.username || "User"}! 🎉`, {
         description: "Login berhasil.",
         duration: 3000,
       });
 
-      if (result.user.role === "admin") {
+      if (result.user?.role === "admin") {
         router.push("/adminDashboard");
       } else {
         router.push("/welcome");
       }
-    } catch {
+    } catch (error: any) {
+      console.error("❌ Error detail:", error);
       setErrorMessage("Terjadi kesalahan koneksi. Coba lagi.");
       toast.error("Login gagal ❌", {
         description: "Terjadi kesalahan koneksi. Coba lagi.",
