@@ -24,7 +24,7 @@ router.post("/login", login);
 // POST /api/auth/admin/login
 router.post("/admin/login", loginAdmin);
 
-// Get profile dari JWT
+// Ambil profile user dari JWT
 // GET /api/auth/me
 router.get("/me", verifyToken, getUserProfile);
 

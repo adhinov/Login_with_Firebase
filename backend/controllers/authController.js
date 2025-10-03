@@ -58,13 +58,14 @@ export const register = async (req, res) => {
     });
 
     res.status(201).json({
+      success: true,
       message: "Registrasi berhasil",
       token,
       user: payload,
     });
   } catch (error) {
     console.error("❌ Register error:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -75,12 +76,12 @@ export const login = async (req, res) => {
 
     const user = await findUserByEmail(email);
     if (!user) {
-      return res.status(401).json({ message: "Email atau password salah" });
+      return res.status(401).json({ success: false, message: "Email atau password salah" });
     }
 
     const isMatch = await bcrypt.compare(password, user.password || "");
     if (!isMatch) {
-      return res.status(401).json({ message: "Email atau password salah" });
+      return res.status(401).json({ success: false, message: "Email atau password salah" });
     }
 
     // ✅ Simpan last_login sebelumnya (convert ke UTC+7 ISO)
@@ -102,13 +103,15 @@ export const login = async (req, res) => {
     });
 
     res.json({
+      success: true,
       message: "Login berhasil",
       token,
       user: payload,
+      previousLogin,
     });
   } catch (error) {
     console.error("❌ Login error:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -121,12 +124,12 @@ export const loginAdmin = async (req, res) => {
     if (!user || user.role_id !== 1) {
       return res
         .status(403)
-        .json({ message: "Akses ditolak. Hanya admin yang bisa login." });
+        .json({ success: false, message: "Akses ditolak. Hanya admin yang bisa login." });
     }
 
     const isMatch = await bcrypt.compare(password, user.password || "");
     if (!isMatch) {
-      return res.status(401).json({ message: "Email atau password salah" });
+      return res.status(401).json({ success: false, message: "Email atau password salah" });
     }
 
     // ✅ Simpan last_login sebelumnya (convert ke UTC+7 ISO)
@@ -148,13 +151,15 @@ export const loginAdmin = async (req, res) => {
     });
 
     res.json({
+      success: true,
       message: "Login admin berhasil",
       token,
       user: payload,
+      previousLogin,
     });
   } catch (error) {
     console.error("❌ Login admin error:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -162,10 +167,11 @@ export const loginAdmin = async (req, res) => {
 export const getUserProfile = async (req, res) => {
   try {
     if (!req.user) {
-      return res.status(401).json({ message: "Unauthorized" });
+      return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
     res.json({
+      success: true,
       message: "User profile fetched",
       user: {
         id: req.user.id,
@@ -177,6 +183,6 @@ export const getUserProfile = async (req, res) => {
     });
   } catch (error) {
     console.error("❌ Get profile error:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
