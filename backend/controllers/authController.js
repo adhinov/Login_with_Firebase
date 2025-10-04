@@ -54,6 +54,7 @@ export const register = async (req, res) => {
       email: newUser.email,
       username: newUser.username,
       role: getRoleString(newUser.role_id),
+      role_id: newUser.role_id,
       last_login: null,
     };
 
@@ -100,6 +101,7 @@ export const login = async (req, res) => {
       email: user.email,
       username: user.username,
       role: getRoleString(user.role_id),
+      role_id: user.role_id,
       last_login: previousLogin,
     };
 
@@ -143,6 +145,7 @@ export const loginAdmin = async (req, res) => {
       email: user.email,
       username: user.username,
       role: "admin",
+      role_id: 1,
       last_login: previousLogin,
     };
 
@@ -178,6 +181,7 @@ export const getUserProfile = async (req, res) => {
         email: req.user.email,
         username: req.user.username,
         role: req.user.role,
+        role_id: req.user.role_id,
         last_login: toJakartaISO(req.user.last_login),
       },
     });
