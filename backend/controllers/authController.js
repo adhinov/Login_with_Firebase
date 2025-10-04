@@ -1,6 +1,7 @@
 // controllers/authController.js
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import pool from "../config/db.js";
 import {
   findUserByEmail,
   createUser,
@@ -41,13 +42,7 @@ export const register = async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-
-    const newUser = await createUser(
-      email,
-      hashedPassword,
-      username || null,
-      phone_number || null
-    );
+    const newUser = await createUser(email, hashedPassword, username || null, phone_number || null);
 
     const payload = {
       id: newUser.id,
@@ -55,12 +50,9 @@ export const register = async (req, res) => {
       username: newUser.username,
       role: getRoleString(newUser.role_id),
       role_id: newUser.role_id,
-      last_login: null,
     };
 
-    const token = jwt.sign(payload, process.env.JWT_SECRET, {
-      expiresIn: "1h",
-    });
+    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1h" });
 
     res.status(201).json({
       success: true,
@@ -78,7 +70,6 @@ export const register = async (req, res) => {
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
-
     if (!email || !password) {
       return res.status(400).json({ success: false, message: "Email dan password wajib diisi" });
     }
@@ -105,9 +96,7 @@ export const login = async (req, res) => {
       last_login: previousLogin,
     };
 
-    const token = jwt.sign(payload, process.env.JWT_SECRET, {
-      expiresIn: "1h",
-    });
+    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1h" });
 
     res.json({
       success: true,
@@ -149,9 +138,7 @@ export const loginAdmin = async (req, res) => {
       last_login: previousLogin,
     };
 
-    const token = jwt.sign(payload, process.env.JWT_SECRET, {
-      expiresIn: "1h",
-    });
+    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1h" });
 
     res.json({
       success: true,
@@ -166,27 +153,27 @@ export const loginAdmin = async (req, res) => {
   }
 };
 
-// ================= GET USER PROFILE =================
+// ================= GET USER PROFILE (/api/auth/me) =================
 export const getUserProfile = async (req, res) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({ success: false, message: "Unauthorized" });
+    const userId = req.user.id;
+
+    const result = await pool.query(
+      "SELECT id, email, username, role_id, last_login FROM users WHERE id = $1",
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: "User tidak ditemukan" });
     }
 
-    res.json({
-      success: true,
-      message: "User profile fetched",
-      user: {
-        id: req.user.id,
-        email: req.user.email,
-        username: req.user.username,
-        role: req.user.role,
-        role_id: req.user.role_id,
-        last_login: toJakartaISO(req.user.last_login),
-      },
-    });
+    const user = result.rows[0];
+    user.role = getRoleString(user.role_id);
+    user.last_login = toJakartaISO(user.last_login);
+
+    res.json({ success: true, user });
   } catch (error) {
-    console.error("❌ Get profile error:", error);
+    console.error("❌ Get user profile error:", error.message);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
