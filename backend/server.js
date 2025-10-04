@@ -1,6 +1,6 @@
 // server.js
 import dotenv from "dotenv";
-dotenv.config(); // ✅ load .env duluan
+dotenv.config(); // ✅ Load .env duluan
 
 import express from "express";
 import cors from "cors";
@@ -16,13 +16,13 @@ app.use(express.json());
 // ==================== CORS CONFIG ====================
 const allowedOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(",")
-  : [];
+  : ["*"]; // fallback kalau tidak ada env
 
 app.use(
   cors({
     origin: function (origin, callback) {
-      // kalau request tanpa origin (misalnya curl / postman) → izinkan
-      if (!origin || allowedOrigins.includes(origin)) {
+      // request tanpa origin (curl / postman) → izinkan
+      if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes("*")) {
         callback(null, true);
       } else {
         console.warn("❌ Blocked by CORS:", origin);
@@ -34,15 +34,22 @@ app.use(
 );
 
 // ==================== ROUTES ====================
+// Semua auth endpoints akan mulai dengan /api/auth/...
 app.use("/api/auth", authRoutes);
+
+// Semua user endpoints akan mulai dengan /api/users/...
 app.use("/api/users", userRoutes);
 
-// Health check
+// Health check route
 app.get("/", (req, res) => {
   res.json({
     status: "ok",
-    message: "Backend is running...",
+    message: "Backend is running 🚀",
     allowedOrigins,
+    endpoints: {
+      auth: "/api/auth",
+      users: "/api/users",
+    },
   });
 });
 
@@ -51,4 +58,5 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log("✅ Allowed origins:", allowedOrigins);
+  console.log("✅ Available endpoints: /api/auth, /api/users");
 });

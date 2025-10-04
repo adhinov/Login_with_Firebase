@@ -31,9 +31,13 @@ export const register = async (req, res) => {
   try {
     const { email, password, username, phone_number } = req.body;
 
+    if (!email || !password) {
+      return res.status(400).json({ success: false, message: "Email dan password wajib diisi" });
+    }
+
     const existingUser = await findUserByEmail(email);
     if (existingUser) {
-      return res.status(400).json({ message: "Email sudah terdaftar" });
+      return res.status(400).json({ success: false, message: "Email sudah terdaftar" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -41,8 +45,8 @@ export const register = async (req, res) => {
     const newUser = await createUser(
       email,
       hashedPassword,
-      username,
-      phone_number
+      username || null,
+      phone_number || null
     );
 
     const payload = {
@@ -50,7 +54,7 @@ export const register = async (req, res) => {
       email: newUser.email,
       username: newUser.username,
       role: getRoleString(newUser.role_id),
-      last_login: null, // user baru belum pernah login
+      last_login: null,
     };
 
     const token = jwt.sign(payload, process.env.JWT_SECRET, {
@@ -74,6 +78,10 @@ export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    if (!email || !password) {
+      return res.status(400).json({ success: false, message: "Email dan password wajib diisi" });
+    }
+
     const user = await findUserByEmail(email);
     if (!user) {
       return res.status(401).json({ success: false, message: "Email atau password salah" });
@@ -84,10 +92,7 @@ export const login = async (req, res) => {
       return res.status(401).json({ success: false, message: "Email atau password salah" });
     }
 
-    // ✅ Simpan last_login sebelumnya (convert ke UTC+7 ISO)
     const previousLogin = toJakartaISO(user.last_login);
-
-    // ✅ Update last_login → NOW()
     await updateLastLogin(user.id);
 
     const payload = {
@@ -122,9 +127,7 @@ export const loginAdmin = async (req, res) => {
 
     const user = await findUserByEmail(email);
     if (!user || user.role_id !== 1) {
-      return res
-        .status(403)
-        .json({ success: false, message: "Akses ditolak. Hanya admin yang bisa login." });
+      return res.status(403).json({ success: false, message: "Akses ditolak. Hanya admin yang bisa login." });
     }
 
     const isMatch = await bcrypt.compare(password, user.password || "");
@@ -132,10 +135,7 @@ export const loginAdmin = async (req, res) => {
       return res.status(401).json({ success: false, message: "Email atau password salah" });
     }
 
-    // ✅ Simpan last_login sebelumnya (convert ke UTC+7 ISO)
     const previousLogin = toJakartaISO(user.last_login);
-
-    // ✅ Update last_login → NOW()
     await updateLastLogin(user.id);
 
     const payload = {
