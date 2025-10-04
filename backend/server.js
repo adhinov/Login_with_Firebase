@@ -15,13 +15,13 @@ app.use(express.json());
 
 // ==================== CORS CONFIG ====================
 const allowedOrigins = process.env.CORS_ORIGIN
-  ? process.env.CORS_ORIGIN.split(",")
+  ? process.env.CORS_ORIGIN.split(",").map((o) => o.trim())
   : ["*"]; // fallback kalau tidak ada env
 
 app.use(
   cors({
     origin: function (origin, callback) {
-      // request tanpa origin (curl / postman) → izinkan
+      // request tanpa origin (Postman/cURL) → izinkan
       if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes("*")) {
         callback(null, true);
       } else {
@@ -34,10 +34,10 @@ app.use(
 );
 
 // ==================== ROUTES ====================
-// Semua auth endpoints akan mulai dengan /api/auth/...
+// Semua auth endpoints → /api/auth/...
 app.use("/api/auth", authRoutes);
 
-// Semua user endpoints akan mulai dengan /api/users/...
+// Semua user endpoints → /api/users/...
 app.use("/api/users", userRoutes);
 
 // Health check route
