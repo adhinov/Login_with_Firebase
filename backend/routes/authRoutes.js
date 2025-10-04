@@ -4,7 +4,6 @@ import {
   register,
   login,
   loginAdmin,
-  getUserProfile,
 } from "../controllers/authController.js";
 import { verifyToken } from "../middleware/verifyToken.js";
 
@@ -26,6 +25,16 @@ router.post("/admin/login", loginAdmin);
 
 // Ambil profile user dari JWT
 // GET /api/auth/me
-router.get("/me", verifyToken, getUserProfile);
+router.get("/me", verifyToken, (req, res) => {
+  try {
+    // verifyToken sudah inject data token ke req.user
+    res.json({ 
+      success: true,
+      user: req.user 
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: "Terjadi kesalahan server" });
+  }
+});
 
 export default router;
