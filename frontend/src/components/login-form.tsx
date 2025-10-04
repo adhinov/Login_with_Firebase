@@ -75,6 +75,7 @@ export default function LoginForm() {
         duration: 3000,
       });
 
+      // ✅ Routing sesuai role
       if (result.user?.role === "admin") {
         router.push("/adminDashboard");
       } else {
@@ -87,6 +88,9 @@ export default function LoginForm() {
         description: "Terjadi kesalahan koneksi. Coba lagi.",
         duration: 3000,
       });
+    } finally {
+      // Pastikan form tidak terus disable
+      form.resetField("password");
     }
   }
 
@@ -117,7 +121,7 @@ export default function LoginForm() {
                           {...field}
                           className="pl-12 text-base peer"
                         />
-                        <FormLabel className="absolute text-base text-muted-foreground transform -translate-y-4 scale-75 top-2 z-10 bg-card px-2 left-9 peer-placeholder-shown:scale-100 peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4">
+                        <FormLabel className="absolute text-sm text-muted-foreground transform -translate-y-4 scale-75 top-2 z-10 bg-card px-2 left-9 peer-placeholder-shown:scale-100 peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4">
                           Email
                         </FormLabel>
                       </div>
@@ -144,7 +148,7 @@ export default function LoginForm() {
                           {...field}
                           className="pl-12 pr-10 text-base peer"
                         />
-                        <FormLabel className="absolute text-base text-muted-foreground transform -translate-y-4 scale-75 top-2 z-10 bg-card px-2 left-9 peer-placeholder-shown:scale-100 peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4">
+                        <FormLabel className="absolute text-sm text-muted-foreground transform -translate-y-4 scale-75 top-2 z-10 bg-card px-2 left-9 peer-placeholder-shown:scale-100 peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4">
                           Password
                         </FormLabel>
                         <button

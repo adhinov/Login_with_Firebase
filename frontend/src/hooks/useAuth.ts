@@ -8,7 +8,7 @@ export interface User {
   id: number;
   email: string;
   username: string;
-  role: string;
+  role: string; // "admin" | "user"
 }
 
 const API_URL =
@@ -19,7 +19,7 @@ export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // 🔹 Ambil profil dari backend
+  // 🔹 Ambil profil user dari backend
   const fetchProfile = useCallback(async () => {
     try {
       const token = localStorage.getItem("token");
@@ -32,10 +32,14 @@ export function useAuth() {
       const res = await axios.get(`${API_URL}/api/auth/me`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+
       setUser(res.data.user);
+      // Simpan ke localStorage juga (opsional)
+      localStorage.setItem("user", JSON.stringify(res.data.user));
     } catch (err) {
       console.error("❌ Gagal ambil profil:", err);
       setUser(null);
+      localStorage.removeItem("user");
     } finally {
       setLoading(false);
     }
@@ -51,12 +55,16 @@ export function useAuth() {
       email,
       password,
     });
+
     const { token, user } = res.data;
 
+    // Simpan token & user ke localStorage
     localStorage.setItem("token", token);
+    localStorage.setItem("user", JSON.stringify(user));
+
     setUser(user);
 
-    return user;
+    return { token, user }; // ⬅️ sekarang konsisten dengan login-form.tsx
   };
 
   // 🔹 Register
@@ -72,6 +80,7 @@ export function useAuth() {
   // 🔹 Logout
   const logout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("user");
     setUser(null);
   };
 
