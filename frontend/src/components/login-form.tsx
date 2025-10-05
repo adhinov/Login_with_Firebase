@@ -1,13 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Mail, Lock, LogIn, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
+import { Mail, Lock, LogIn, Eye, EyeOff, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -28,9 +28,7 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 
-import { useAuth } from "@/hooks/useAuth";
-
-// ✅ Schema validasi
+// Zod schema for validation
 const formSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
   password: z.string().min(1, { message: "Password is required." }),
@@ -44,8 +42,6 @@ export default function LoginForm() {
   const [showPassword, setShowPassword] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
 
-  const { login } = useAuth();
-
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -55,13 +51,33 @@ export default function LoginForm() {
     },
   });
 
+  // Direct login function
+  async function login(email: string, password: string) {
+    try {
+      const response = await fetch(
+        "https://login-app-production-7f54.up.railway.app/api/auth/login",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        }
+      );
+      if (!response.ok) {
+        throw new Error("Login failed");
+      }
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      throw error;
+    }
+  }
+
   async function onSubmit(data: LoginFormValues) {
     setErrorMessage(null);
-
     try {
       const result = await login(data.email, data.password);
 
-      if (!result) {
+      if (!result || !result.user) {
         setErrorMessage("Login gagal. Silakan coba lagi.");
         toast.error("Login gagal ❌", {
           description: "Email atau password salah.",
@@ -75,7 +91,7 @@ export default function LoginForm() {
         duration: 3000,
       });
 
-      // ✅ Routing sesuai role
+      // Routing sesuai role
       if (result.user?.role === "admin") {
         router.push("/adminDashboard");
       } else {
@@ -89,7 +105,6 @@ export default function LoginForm() {
         duration: 3000,
       });
     } finally {
-      // Pastikan form tidak terus disable
       form.resetField("password");
     }
   }
@@ -101,7 +116,6 @@ export default function LoginForm() {
           Login
         </CardTitle>
       </CardHeader>
-
       <CardContent className="pb-0">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -222,7 +236,6 @@ export default function LoginForm() {
           </form>
         </Form>
       </CardContent>
-
       <CardFooter className="flex-col items-center text-sm">
         <p className="text-muted-foreground mt-4">
           Don&apos;t have an account?{" "}
