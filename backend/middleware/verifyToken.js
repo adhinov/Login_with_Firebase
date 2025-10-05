@@ -2,9 +2,9 @@ import jwt from "jsonwebtoken";
 
 export const verifyToken = (req, res, next) => {
   try {
-    const authHeader = req.headers["authorization"];
+    const authHeader =
+      req.headers["authorization"] || req.headers["Authorization"];
 
-    // Cek ada header Authorization atau tidak
     if (!authHeader) {
       return res.status(401).json({
         success: false,
@@ -12,12 +12,13 @@ export const verifyToken = (req, res, next) => {
       });
     }
 
-    // Format header biasanya: "Bearer <token>"
+    // Format: "Bearer <token>"
     const parts = authHeader.split(" ");
     if (parts.length !== 2 || parts[0] !== "Bearer") {
       return res.status(400).json({
         success: false,
-        message: "Format Authorization header tidak valid (harus 'Bearer <token>')",
+        message:
+          "Format Authorization header tidak valid (harus 'Bearer <token>')",
       });
     }
 
@@ -29,10 +30,8 @@ export const verifyToken = (req, res, next) => {
       });
     }
 
-    // Verifikasi token
+    // Verifikasi JWT
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    // Simpan payload (misal id, email, role) ke req.user
     req.user = decoded;
 
     next();
