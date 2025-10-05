@@ -138,7 +138,7 @@ export const loginAdmin = async (req, res) => {
       last_login: previousLogin,
     };
 
-    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1h" });
+    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "7d" });
 
     res.json({
       success: true,
