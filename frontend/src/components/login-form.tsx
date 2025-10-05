@@ -51,7 +51,7 @@ export default function LoginForm() {
     },
   });
 
-  // Direct login function
+  // Direct login function, dengan error handling lebih baik
   async function login(email: string, password: string) {
     try {
       const response = await fetch(
@@ -62,13 +62,24 @@ export default function LoginForm() {
           body: JSON.stringify({ email, password }),
         }
       );
-      if (!response.ok) {
-        throw new Error("Login failed");
-      }
       const result = await response.json();
+
+      if (!response.ok) {
+        // Coba ambil pesan error dari response
+        throw new Error(result?.message || "Login gagal");
+      }
+      if (!result || !result.user || !result.token) {
+        throw new Error("Response tidak valid dari server");
+      }
+
+      // Simpan user & token ke localStorage
+      localStorage.setItem("token", result.token);
+      localStorage.setItem("user", JSON.stringify(result.user));
+
       return result;
-    } catch (error) {
-      throw error;
+    } catch (error: any) {
+      // Tangkap pesan error dari backend atau network
+      throw new Error(error?.message || "Terjadi kesalahan koneksi. Coba lagi.");
     }
   }
 
@@ -77,6 +88,7 @@ export default function LoginForm() {
     try {
       const result = await login(data.email, data.password);
 
+      // Validasi user
       if (!result || !result.user) {
         setErrorMessage("Login gagal. Silakan coba lagi.");
         toast.error("Login gagal ❌", {
@@ -99,9 +111,9 @@ export default function LoginForm() {
       }
     } catch (error: any) {
       console.error("❌ Error detail:", error);
-      setErrorMessage("Terjadi kesalahan koneksi. Coba lagi.");
+      setErrorMessage(error?.message || "Terjadi kesalahan koneksi. Coba lagi.");
       toast.error("Login gagal ❌", {
-        description: "Terjadi kesalahan koneksi. Coba lagi.",
+        description: error?.message || "Terjadi kesalahan koneksi. Coba lagi.",
         duration: 3000,
       });
     } finally {

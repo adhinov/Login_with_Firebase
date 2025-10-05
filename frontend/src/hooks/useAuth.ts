@@ -1,4 +1,3 @@
-// hooks/useAuth.ts
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -19,7 +18,7 @@ export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // 🔹 Ambil profil user dari backend
+  // Ambil profil user dari backend
   const fetchProfile = useCallback(async () => {
     try {
       const token = localStorage.getItem("token");
@@ -33,13 +32,19 @@ export function useAuth() {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      setUser(res.data.user);
-      // Simpan ke localStorage juga (opsional)
-      localStorage.setItem("user", JSON.stringify(res.data.user));
-    } catch (err) {
-      console.error("❌ Gagal ambil profil:", err);
+      if (res.data && res.data.user) {
+        setUser(res.data.user);
+        // Simpan ke localStorage juga (opsional)
+        localStorage.setItem("user", JSON.stringify(res.data.user));
+      } else {
+        setUser(null);
+        localStorage.removeItem("user");
+      }
+    } catch (err: any) {
       setUser(null);
       localStorage.removeItem("user");
+      // Optional: bisa return error, atau log
+      console.error("❌ Gagal ambil profil:", err?.response?.data?.message || err.message);
     } finally {
       setLoading(false);
     }
@@ -49,35 +54,62 @@ export function useAuth() {
     fetchProfile();
   }, [fetchProfile]);
 
-  // 🔹 Login
+  // Login - dengan error handling yang lebih baik
   const login = async (email: string, password: string) => {
-    const res = await axios.post(`${API_URL}/api/auth/login`, {
-      email,
-      password,
-    });
+    try {
+      const res = await axios.post(`${API_URL}/api/auth/login`, {
+        email,
+        password,
+      });
 
-    const { token, user } = res.data;
+      if (!res.data || !res.data.token || !res.data.user) {
+        throw new Error(res.data?.message || "Response tidak valid dari server");
+      }
 
-    // Simpan token & user ke localStorage
-    localStorage.setItem("token", token);
-    localStorage.setItem("user", JSON.stringify(user));
+      const { token, user } = res.data;
 
-    setUser(user);
+      // Simpan token & user ke localStorage
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(user));
 
-    return { token, user }; // ⬅️ sekarang konsisten dengan login-form.tsx
+      setUser(user);
+
+      return { token, user };
+    } catch (error: any) {
+      // Tangkap error dari backend (misal login gagal, server error)
+      let message = "Login gagal. Silakan coba lagi.";
+      // Jika backend mengirim pesan error, tampilkan
+      if (error.response && error.response.data && error.response.data.message) {
+        message = error.response.data.message;
+      } else if (error.message) {
+        message = error.message;
+      }
+      // Boleh throw error dengan custom message supaya bisa ditangkap di komponen login-form
+      throw new Error(message);
+    }
   };
 
-  // 🔹 Register
+  // Register - error handling juga bisa ditambah
   const register = async (email: string, password: string, username: string) => {
-    const res = await axios.post(`${API_URL}/api/auth/register`, {
-      email,
-      password,
-      username,
-    });
-    return res.data;
+    try {
+      const res = await axios.post(`${API_URL}/api/auth/register`, {
+        email,
+        password,
+        username,
+      });
+      return res.data;
+    } catch (error: any) {
+      let message = "Registrasi gagal. Silakan coba lagi.";
+      if (error.response && error.response.data && error.response.data.message) {
+        message = error.response.data.message;
+      } else if (error.message) {
+        message = error.message;
+      }
+      throw new Error(message);
+    }
   };
 
-  // 🔹 Logout
+  // Logout
   const logout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
