@@ -8,6 +8,9 @@ import {
   updateLastLogin,
 } from "../models/userModel.js";
 import { sendEmail } from "../utils/sendEmail.js";
+import { Resend } from 'resend';
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // ================= HELPER: mapping role_id → string =================
 const getRoleString = (role_id) => {
@@ -212,31 +215,34 @@ export const forgotPassword = async (req, res) => {
   const { email } = req.body;
 
   try {
-    // Gunakan format PostgreSQL ($1, bukan ?)
-    const result = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
-    const user = result.rows[0];
-    if (!user) return res.status(404).json({ message: "Email tidak terdaftar" });
+    // Cek user ada di DB
+    const userQuery = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    if (userQuery.rows.length === 0) {
+      return res.status(404).json({ message: 'Email tidak ditemukan' });
+    }
 
-    const token = jwt.sign(
-      { id: user.id, email: user.email },
-      process.env.JWT_SECRET,
-      { expiresIn: "15m" }
-    );
+    // Buat token reset
+    const token = jwt.sign({ email }, process.env.JWT_RESET_SECRET, { expiresIn: '15m' });
+    const resetLink = `${process.env.FRONTEND_URL}/reset-password/${token}`;
 
-    const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+    // Kirim email via Resend
+    const response = await resend.emails.send({
+      from: process.env.EMAIL_FROM,
+      to: email,
+      subject: 'Reset Password',
+      html: `
+        <p>Halo,</p>
+        <p>Klik tautan berikut untuk mereset password kamu:</p>
+        <a href="${resetLink}">${resetLink}</a>
+        <p>Link ini akan kedaluwarsa dalam 15 menit.</p>
+      `,
+    });
 
-    await sendEmail(
-      user.email,
-      "Reset Password - LoginFlow",
-      `<p>Klik link di bawah untuk mereset password Anda:</p>
-       <a href="${resetLink}">${resetLink}</a>
-       <p>Link ini berlaku selama 15 menit.</p>`
-    );
-
-    res.json({ success: true, message: "Link reset password telah dikirim ke email." });
+    console.log('✅ Email terkirim:', response);
+    res.status(200).json({ message: 'Email reset password berhasil dikirim' });
   } catch (error) {
-    console.error("❌ Forgot password error:", error);
-    res.status(500).json({ message: "Terjadi kesalahan server." });
+    console.error('❌ Forgot password error:', error);
+    res.status(500).json({ message: 'Gagal mengirim email reset password', error });
   }
 };
 
