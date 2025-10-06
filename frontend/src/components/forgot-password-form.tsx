@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import axios from "axios";
-import { Mail, Send } from "lucide-react";
+import { Mail, Send, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -28,7 +28,7 @@ import { toast } from "sonner";
 import Link from "next/link";
 
 const formSchema = z.object({
-  email: z.string().email({ message: "Invalid email address." }),
+  email: z.string().email({ message: "Masukkan alamat email yang valid." }),
 });
 
 type ForgotPasswordFormValues = z.infer<typeof formSchema>;
@@ -36,39 +36,43 @@ type ForgotPasswordFormValues = z.infer<typeof formSchema>;
 export function ForgotPasswordForm() {
   const form = useForm<ForgotPasswordFormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      email: "",
-    },
+    defaultValues: { email: "" },
   });
 
   async function onSubmit(data: ForgotPasswordFormValues) {
+    const toastId = toast.loading("Mengirim email reset password...");
     try {
       const res = await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/api/auth/forgot-password`,
         data
       );
 
-      toast.success(res.data.message || "Password reset link sent to your email.");
+      toast.dismiss(toastId);
+      toast.success(res.data.message || "Email terkirim! Silakan cek inbox Anda.");
       form.reset();
     } catch (error: any) {
-      console.error(error);
-      toast.error(
+      toast.dismiss(toastId);
+      console.error("❌ Forgot password error:", error);
+
+      const errorMessage =
         error.response?.data?.message ||
-          "An error occurred while sending the password reset email."
-      );
+        "Terjadi kesalahan saat mengirim email reset password.";
+
+      toast.error(errorMessage);
     }
   }
 
   return (
-    <Card className="w-full max-w-xs shadow-xl">
+    <Card className="w-full max-w-xs shadow-xl bg-card border border-border">
       <CardHeader>
         <CardTitle className="text-3xl font-bold text-center text-lime-300">
           Forgot Password
         </CardTitle>
         <CardDescription className="text-center text-xs">
-          Enter your email to receive a password reset link.
+          Masukkan email Anda untuk menerima tautan reset password.
         </CardDescription>
       </CardHeader>
+
       <CardContent className="pb-2">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -97,12 +101,26 @@ export function ForgotPasswordForm() {
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full py-6" disabled={form.formState.isSubmitting}>
-              <Send className="mr-2 h-5 w-5" /> Send Password Reset Link
+
+            <Button
+              type="submit"
+              className="w-full py-6"
+              disabled={form.formState.isSubmitting}
+            >
+              {form.formState.isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Sending...
+                </>
+              ) : (
+                <>
+                  <Send className="mr-2 h-5 w-5" /> Send Password Reset Link
+                </>
+              )}
             </Button>
           </form>
         </Form>
       </CardContent>
+
       <CardFooter className="flex-col items-center text-sm">
         <p className="text-muted-foreground mt-4">
           Remember your password?{" "}
