@@ -108,6 +108,7 @@
 }
 
 /* ✅ Hilangkan background putih autofill di dark mode */
+/* ✅ Samakan warna autofill dengan background card (dark navy) */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus,
@@ -117,8 +118,10 @@ textarea:-webkit-autofill:focus,
 select:-webkit-autofill,
 select:-webkit-autofill:hover,
 select:-webkit-autofill:focus {
-  -webkit-box-shadow: 0 0 0px 1000px #0f172a inset !important; /* Ganti sesuai warna background form kamu */
-  -webkit-text-fill-color: #e2e8f0 !important; /* Warna teks biar tetap terang */
+  -webkit-box-shadow: 0 0 0px 1000px #0f172a inset !important; /* warna bg card */
+  -webkit-text-fill-color: #e2e8f0 !important; /* warna teks agar tetap terang */
+  caret-color: #e2e8f0 !important; /* warna kursor */
   transition: background-color 5000s ease-in-out 0s;
 }
+
 
