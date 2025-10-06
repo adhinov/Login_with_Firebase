@@ -19,30 +19,31 @@ const getRoleString = (role_id) => {
   }
 };
 
-// ================= HELPER: konversi tanggal ke UTC+7 ISO =================
-const toJakartaISO = (date) => {
-  if (!date) return null;
-  const d = new Date(date);
-  const jakartaTime = new Date(d.getTime() + 7 * 60 * 60 * 1000);
-  return jakartaTime.toISOString();
-};
-
 // ================= REGISTER =================
 export const register = async (req, res) => {
   try {
     const { email, password, username, phone_number } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ success: false, message: "Email dan password wajib diisi" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Email dan password wajib diisi" });
     }
 
     const existingUser = await findUserByEmail(email);
     if (existingUser) {
-      return res.status(400).json({ success: false, message: "Email sudah terdaftar" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Email sudah terdaftar" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = await createUser(email, hashedPassword, username || null, phone_number || null);
+    const newUser = await createUser(
+      email,
+      hashedPassword,
+      username || null,
+      phone_number || null
+    );
 
     const payload = {
       id: newUser.id,
@@ -52,7 +53,9 @@ export const register = async (req, res) => {
       role_id: newUser.role_id,
     };
 
-    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1h" });
+    const token = jwt.sign(payload, process.env.JWT_SECRET, {
+      expiresIn: "1h",
+    });
 
     res.status(201).json({
       success: true,
@@ -71,20 +74,31 @@ export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
-      return res.status(400).json({ success: false, message: "Email dan password wajib diisi" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Email dan password wajib diisi" });
     }
 
     const user = await findUserByEmail(email);
     if (!user) {
-      return res.status(401).json({ success: false, message: "Email atau password salah" });
+      return res
+        .status(401)
+        .json({ success: false, message: "Email atau password salah" });
     }
 
     const isMatch = await bcrypt.compare(password, user.password || "");
     if (!isMatch) {
-      return res.status(401).json({ success: false, message: "Email atau password salah" });
+      return res
+        .status(401)
+        .json({ success: false, message: "Email atau password salah" });
     }
 
-    const previousLogin = toJakartaISO(user.last_login);
+    // Simpan waktu login sebelumnya (UTC ISO)
+    const previousLogin = user.last_login
+      ? new Date(user.last_login).toISOString()
+      : null;
+
+    // Update last_login ke NOW() (UTC)
     await updateLastLogin(user.id);
 
     const payload = {
@@ -96,7 +110,9 @@ export const login = async (req, res) => {
       last_login: previousLogin,
     };
 
-    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1h" });
+    const token = jwt.sign(payload, process.env.JWT_SECRET, {
+      expiresIn: "1h",
+    });
 
     res.json({
       success: true,
@@ -118,15 +134,23 @@ export const loginAdmin = async (req, res) => {
 
     const user = await findUserByEmail(email);
     if (!user || user.role_id !== 1) {
-      return res.status(403).json({ success: false, message: "Akses ditolak. Hanya admin yang bisa login." });
+      return res.status(403).json({
+        success: false,
+        message: "Akses ditolak. Hanya admin yang bisa login.",
+      });
     }
 
     const isMatch = await bcrypt.compare(password, user.password || "");
     if (!isMatch) {
-      return res.status(401).json({ success: false, message: "Email atau password salah" });
+      return res
+        .status(401)
+        .json({ success: false, message: "Email atau password salah" });
     }
 
-    const previousLogin = toJakartaISO(user.last_login);
+    const previousLogin = user.last_login
+      ? new Date(user.last_login).toISOString()
+      : null;
+
     await updateLastLogin(user.id);
 
     const payload = {
@@ -138,7 +162,9 @@ export const loginAdmin = async (req, res) => {
       last_login: previousLogin,
     };
 
-    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "7d" });
+    const token = jwt.sign(payload, process.env.JWT_SECRET, {
+      expiresIn: "7d",
+    });
 
     res.json({
       success: true,
@@ -164,12 +190,16 @@ export const getUserProfile = async (req, res) => {
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ success: false, message: "User tidak ditemukan" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User tidak ditemukan" });
     }
 
     const user = result.rows[0];
     user.role = getRoleString(user.role_id);
-    user.last_login = toJakartaISO(user.last_login);
+    user.last_login = user.last_login
+      ? new Date(user.last_login).toISOString()
+      : null;
 
     res.json({ success: true, user });
   } catch (error) {
