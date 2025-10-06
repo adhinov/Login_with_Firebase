@@ -18,16 +18,21 @@ interface User {
 // Formatter Asia/Jakarta UTC+7, dengan jam & menit
 const formatDateTimeJakarta = (dateString: string): string => {
   if (!dateString) return "-";
+
+  const utcDate = new Date(dateString);
+  
+  // Tambahkan offset +7 jam (WIB)
+  const jakartaOffsetMs = 7 * 60 * 60 * 1000;
+  const jakartaDate = new Date(utcDate.getTime() + jakartaOffsetMs);
+
   return new Intl.DateTimeFormat("id-ID", {
-    timeZone: "Asia/Jakarta",
     year: "numeric",
     month: "short",
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
     hourCycle: "h23",
-    timeZoneName: "short", // tampilkan WIB
-  }).format(new Date(dateString));
+  }).format(jakartaDate) + " WIB";
 };
 
 const formatDateOnlyJakarta = (dateString: string): string => {
