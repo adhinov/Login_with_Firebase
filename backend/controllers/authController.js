@@ -212,8 +212,9 @@ export const forgotPassword = async (req, res) => {
   const { email } = req.body;
 
   try {
-    const [rows] = await pool.query("SELECT * FROM users WHERE email = ?", [email]);
-    const user = rows[0];
+    // Gunakan format PostgreSQL ($1, bukan ?)
+    const result = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+    const user = result.rows[0];
     if (!user) return res.status(404).json({ message: "Email tidak terdaftar" });
 
     const token = jwt.sign(
