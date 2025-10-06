@@ -94,12 +94,10 @@ export const login = async (req, res) => {
         .json({ success: false, message: "Email atau password salah" });
     }
 
-    // Simpan waktu login sebelumnya (UTC ISO)
     const previousLogin = user.last_login
       ? new Date(user.last_login).toISOString()
       : null;
 
-    // Update last_login ke NOW() (UTC)
     await updateLastLogin(user.id);
 
     const payload = {
@@ -212,15 +210,19 @@ export const getUserProfile = async (req, res) => {
 // ================= FORGOT PASSWORD =================
 export const forgotPassword = async (req, res) => {
   const { email } = req.body;
-
   try {
-    const [rows] = await pool.query("SELECT * FROM users WHERE email = ?", [email]);
-    const user = rows[0];
-    if (!user) return res.status(404).json({ message: "Email tidak terdaftar" });
+    const result = await pool.query("SELECT * FROM users WHERE email = $1", [
+      email,
+    ]);
+    const user = result.rows[0];
+    if (!user)
+      return res
+        .status(404)
+        .json({ success: false, message: "Email tidak terdaftar" });
 
     const token = jwt.sign(
       { id: user.id, email: user.email },
-      process.env.JWT_SECRET,
+      process.env.JWT_RESET_SECRET,
       { expiresIn: "15m" }
     );
 
@@ -229,14 +231,44 @@ export const forgotPassword = async (req, res) => {
     await sendEmail(
       user.email,
       "Reset Password - LoginFlow",
-      `<p>Klik link di bawah untuk mereset password:</p>
+      `<p>Klik link di bawah untuk mereset password Anda:</p>
        <a href="${resetLink}">${resetLink}</a>
-       <p>Berlaku 15 menit.</p>`
+       <p>Link ini berlaku selama 15 menit.</p>`
     );
 
-    res.json({ success: true, message: "Link reset password telah dikirim ke email." });
+    res.json({
+      success: true,
+      message: "Link reset password telah dikirim ke email Anda.",
+    });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Terjadi kesalahan server." });
+    console.error("❌ Forgot password error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// ================= RESET PASSWORD =================
+export const resetPassword = async (req, res) => {
+  const { token } = req.params;
+  const { newPassword } = req.body;
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_RESET_SECRET);
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await pool.query("UPDATE users SET password = $1 WHERE id = $2", [
+      hashedPassword,
+      decoded.id,
+    ]);
+
+    res.json({
+      success: true,
+      message: "Password berhasil direset. Silakan login kembali.",
+    });
+  } catch (error) {
+    console.error("❌ Reset password error:", error);
+    res.status(400).json({
+      success: false,
+      message: "Token tidak valid atau telah kedaluwarsa.",
+    });
   }
 };
