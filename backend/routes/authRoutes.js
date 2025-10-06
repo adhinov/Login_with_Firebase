@@ -7,6 +7,7 @@ import {
   getUserProfile,
 } from "../controllers/authController.js";
 import { verifyToken } from "../middleware/verifyToken.js";
+import { forgotPassword, resetPassword } from "../controllers/authController.js";
 
 const router = express.Router();
 
@@ -23,5 +24,11 @@ router.post("/admin/login", loginAdmin);
 
 // Ambil profile user berdasarkan token JWT
 router.get("/me", verifyToken, getUserProfile);
+
+//forgot password
+router.post("/forgot-password", forgotPassword);
+
+//reset password
+router.post("/reset-password/:token", resetPassword);
 
 export default router;

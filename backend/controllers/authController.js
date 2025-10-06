@@ -7,6 +7,7 @@ import {
   createUser,
   updateLastLogin,
 } from "../models/userModel.js";
+import { sendEmail } from "../utils/sendEmail.js";
 
 // ================= HELPER: mapping role_id → string =================
 const getRoleString = (role_id) => {
@@ -205,5 +206,37 @@ export const getUserProfile = async (req, res) => {
   } catch (error) {
     console.error("❌ Get user profile error:", error.message);
     res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// ================= FORGOT PASSWORD =================
+export const forgotPassword = async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    const [rows] = await pool.query("SELECT * FROM users WHERE email = ?", [email]);
+    const user = rows[0];
+    if (!user) return res.status(404).json({ message: "Email tidak terdaftar" });
+
+    const token = jwt.sign(
+      { id: user.id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: "15m" }
+    );
+
+    const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+
+    await sendEmail(
+      user.email,
+      "Reset Password - LoginFlow",
+      `<p>Klik link di bawah untuk mereset password:</p>
+       <a href="${resetLink}">${resetLink}</a>
+       <p>Berlaku 15 menit.</p>`
+    );
+
+    res.json({ success: true, message: "Link reset password telah dikirim ke email." });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Terjadi kesalahan server." });
   }
 };
