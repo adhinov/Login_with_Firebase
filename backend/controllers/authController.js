@@ -210,19 +210,15 @@ export const getUserProfile = async (req, res) => {
 // ================= FORGOT PASSWORD =================
 export const forgotPassword = async (req, res) => {
   const { email } = req.body;
+
   try {
-    const result = await pool.query("SELECT * FROM users WHERE email = $1", [
-      email,
-    ]);
-    const user = result.rows[0];
-    if (!user)
-      return res
-        .status(404)
-        .json({ success: false, message: "Email tidak terdaftar" });
+    const [rows] = await pool.query("SELECT * FROM users WHERE email = ?", [email]);
+    const user = rows[0];
+    if (!user) return res.status(404).json({ message: "Email tidak terdaftar" });
 
     const token = jwt.sign(
       { id: user.id, email: user.email },
-      process.env.JWT_RESET_SECRET,
+      process.env.JWT_SECRET,
       { expiresIn: "15m" }
     );
 
@@ -236,13 +232,10 @@ export const forgotPassword = async (req, res) => {
        <p>Link ini berlaku selama 15 menit.</p>`
     );
 
-    res.json({
-      success: true,
-      message: "Link reset password telah dikirim ke email Anda.",
-    });
+    res.json({ success: true, message: "Link reset password telah dikirim ke email." });
   } catch (error) {
     console.error("❌ Forgot password error:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+    res.status(500).json({ message: "Terjadi kesalahan server." });
   }
 };
 
