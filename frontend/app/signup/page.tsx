@@ -1,3 +1,4 @@
+// src/app/signup/page.tsx
 import type { Metadata } from "next";
 import { Toaster } from "sonner";
 import SignupForm from "@/components/signup-form";

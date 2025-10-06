@@ -4,7 +4,7 @@ import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { Mail, Lock, User, UserPlus, Phone, Eye, EyeOff } from "lucide-react";
+import { Mail, Lock, User, UserPlus, Phone, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -44,7 +44,6 @@ type SignupFormValues = z.infer<typeof formSchema>;
 export default function SignupForm() {
   const [showPassword, setShowPassword] = React.useState(false);
   const router = useRouter();
-
   const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
   const form = useForm<SignupFormValues>({
@@ -73,18 +72,15 @@ export default function SignupForm() {
       const result = await res.json();
       if (!res.ok) throw new Error(result.message || "Signup failed");
 
-      // ✅ Toast sukses
-      toast.success("Registrasi Berhasil 🎉", {
-        description: "Akun Anda sudah dibuat. Silakan login.",
+      toast.success("Registration Successful 🎉", {
+        description: "Your account has been created. Please log in.",
         duration: 4200,
       });
 
-      // Redirect ke login
       setTimeout(() => router.push("/login"), 1500);
     } catch (error: any) {
-      // ❌ Toast gagal
-      toast.error("Signup Gagal ❌", {
-        description: error.message || "Terjadi kesalahan saat signup.",
+      toast.error("Signup Failed ❌", {
+        description: error.message || "An error occurred during signup.",
         duration: 4200,
       });
     }
@@ -111,19 +107,23 @@ export default function SignupForm() {
               render={({ field }) => (
                 <FormItem>
                   <div className="relative">
-                    <FormControl>
-                      <div className="relative">
-                        <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                        <Input
-                          {...field}
-                          className="pl-12 text-base peer"
-                          placeholder=" "
-                        />
-                        <FormLabel className="absolute text-base text-muted-foreground transform -translate-y-4 scale-75 top-2 z-10 bg-card px-2 left-9 peer-placeholder-shown:scale-100 peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4">
-                          Name
-                        </FormLabel>
-                      </div>
-                    </FormControl>
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
+                    <Input
+                      id="name"
+                      required
+                      autoComplete="name"
+                      {...field}
+                      className="pl-12 text-sm peer"
+                      placeholder=" "
+                    />
+                    <FormLabel
+                      htmlFor="name"
+                      className="absolute text-sm text-muted-foreground transform -translate-y-4 scale-75 top-2 z-10 bg-card px-2 left-9 
+                      peer-placeholder-shown:scale-100 peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 
+                      peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4"
+                    >
+                      Name
+                    </FormLabel>
                   </div>
                   <FormMessage />
                 </FormItem>
@@ -137,20 +137,24 @@ export default function SignupForm() {
               render={({ field }) => (
                 <FormItem>
                   <div className="relative">
-                    <FormControl>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                        <Input
-                          type="email"
-                          {...field}
-                          className="pl-12 text-base peer"
-                          placeholder=" "
-                        />
-                        <FormLabel className="absolute text-base text-muted-foreground transform -translate-y-4 scale-75 top-2 z-10 bg-card px-2 left-9 peer-placeholder-shown:scale-100 peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4">
-                          Email
-                        </FormLabel>
-                      </div>
-                    </FormControl>
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
+                    <Input
+                      id="email"
+                      type="email"
+                      required
+                      autoComplete="email"
+                      {...field}
+                      className="pl-12 text-sm peer"
+                      placeholder=" "
+                    />
+                    <FormLabel
+                      htmlFor="email"
+                      className="absolute text-sm text-muted-foreground transform -translate-y-4 scale-75 top-2 z-10 bg-card px-2 left-9 
+                      peer-placeholder-shown:scale-100 peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 
+                      peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4"
+                    >
+                      Email
+                    </FormLabel>
                   </div>
                   <FormMessage />
                 </FormItem>
@@ -164,20 +168,24 @@ export default function SignupForm() {
               render={({ field }) => (
                 <FormItem>
                   <div className="relative">
-                    <FormControl>
-                      <div className="relative">
-                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                        <Input
-                          type="tel"
-                          {...field}
-                          className="pl-12 text-base peer"
-                          placeholder=" "
-                        />
-                        <FormLabel className="absolute text-base text-muted-foreground transform -translate-y-4 scale-75 top-2 z-10 bg-card px-2 left-9 peer-placeholder-shown:scale-100 peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4">
-                          Phone Number
-                        </FormLabel>
-                      </div>
-                    </FormControl>
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
+                    <Input
+                      id="phone"
+                      type="tel"
+                      required
+                      autoComplete="tel"
+                      {...field}
+                      className="pl-12 text-sm peer"
+                      placeholder=" "
+                    />
+                    <FormLabel
+                      htmlFor="phone"
+                      className="absolute text-sm text-muted-foreground transform -translate-y-4 scale-75 top-2 z-10 bg-card px-2 left-9 
+                      peer-placeholder-shown:scale-100 peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 
+                      peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4"
+                    >
+                      Phone Number
+                    </FormLabel>
                   </div>
                   <FormMessage />
                 </FormItem>
@@ -191,34 +199,33 @@ export default function SignupForm() {
               render={({ field }) => (
                 <FormItem>
                   <div className="relative">
-                    <FormControl>
-                      <div className="relative">
-                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                        <Input
-                          type={showPassword ? "text" : "password"}
-                          {...field}
-                          className="pl-12 pr-10 text-base peer"
-                          placeholder=" "
-                        />
-                        <FormLabel className="absolute text-base text-muted-foreground transform -translate-y-4 scale-75 top-2 z-10 bg-card px-2 left-9 peer-placeholder-shown:scale-100 peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4">
-                          Password
-                        </FormLabel>
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword((prev) => !prev)}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground"
-                          aria-label={showPassword ? "Hide password" : "Show password"}
-                        >
-                          {showPassword ? (
-                            <EyeOff className="h-5 w-5" />
-                          ) : (
-                            <Eye className="h-5 w-5" />
-                          )}
-                        </button>
-                      </div>
-                    </FormControl>
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      required
+                      autoComplete="new-password"
+                      {...field}
+                      className="pl-12 pr-10 text-sm peer"
+                      placeholder=" "
+                    />
+                    <FormLabel
+                      htmlFor="password"
+                      className="absolute text-sm text-muted-foreground transform -translate-y-4 scale-75 top-2 z-10 bg-card px-2 left-9 
+                      peer-placeholder-shown:scale-100 peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 
+                      peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4"
+                    >
+                      Password
+                    </FormLabel>
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    </button>
                   </div>
-                  {/* 👉 Tambahan teks kecil */}
                   <p className="text-xs text-muted-foreground mt-1">
                     Password must be at least 8 characters.
                   </p>
@@ -230,16 +237,25 @@ export default function SignupForm() {
             {/* Submit */}
             <Button
               type="submit"
-              className="w-full text-lg py-6"
+              className="w-full text-lg py-6 flex items-center justify-center"
               disabled={form.formState.isSubmitting}
             >
-              <UserPlus className="mr-2 h-5 w-5" /> Sign Up
+              {form.formState.isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin text-lime-300" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <UserPlus className="mr-2 h-5 w-5" />
+                  Sign Up
+                </>
+              )}
             </Button>
           </form>
         </Form>
       </CardContent>
 
-      {/* Footer */}
       <CardFooter className="flex-col items-center text-sm">
         <p className="text-muted-foreground mt-4">
           Already have an account?{" "}

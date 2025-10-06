@@ -28,7 +28,7 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 
-// Zod schema for validation
+// ✅ Validasi form
 const formSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
   password: z.string().min(1, { message: "Password is required." }),
@@ -42,6 +42,8 @@ export default function LoginForm() {
   const [showPassword, setShowPassword] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
 
+  const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -51,36 +53,24 @@ export default function LoginForm() {
     },
   });
 
-  // Direct login function, dengan error handling lebih baik
+  // ✅ Login function dengan error handling
   async function login(email: string, password: string) {
-    try {
-      const response = await fetch(
-        "https://login-app-production-7f54.up.railway.app/api/auth/login",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password }),
-        }
-      );
-      const result = await response.json();
+    const response = await fetch(`${API_URL}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
 
-      if (!response.ok) {
-        // Coba ambil pesan error dari response
-        throw new Error(result?.message || "Login gagal");
-      }
-      if (!result || !result.user || !result.token) {
-        throw new Error("Response tidak valid dari server");
-      }
+    const result = await response.json();
+    if (!response.ok) throw new Error(result?.message || "Login failed");
 
-      // Simpan user & token ke localStorage
-      localStorage.setItem("token", result.token);
-      localStorage.setItem("user", JSON.stringify(result.user));
+    if (!result.user || !result.token)
+      throw new Error("Invalid response from server");
 
-      return result;
-    } catch (error: any) {
-      // Tangkap pesan error dari backend atau network
-      throw new Error(error?.message || "Terjadi kesalahan koneksi. Coba lagi.");
-    }
+    localStorage.setItem("token", result.token);
+    localStorage.setItem("user", JSON.stringify(result.user));
+
+    return result;
   }
 
   async function onSubmit(data: LoginFormValues) {
@@ -88,32 +78,20 @@ export default function LoginForm() {
     try {
       const result = await login(data.email, data.password);
 
-      // Validasi user
-      if (!result || !result.user) {
-        setErrorMessage("Login gagal. Silakan coba lagi.");
-        toast.error("Login gagal ❌", {
-          description: "Email atau password salah.",
-          duration: 3000,
-        });
-        return;
-      }
-
       toast.success(`Welcome back, ${result.user?.username || "User"}! 🎉`, {
-        description: "Login berhasil.",
+        description: "Login successful.",
         duration: 3000,
       });
 
-      // Routing sesuai role
       if (result.user?.role === "admin") {
         router.push("/adminDashboard");
       } else {
         router.push("/welcome");
       }
     } catch (error: any) {
-      console.error("❌ Error detail:", error);
-      setErrorMessage(error?.message || "Terjadi kesalahan koneksi. Coba lagi.");
-      toast.error("Login gagal ❌", {
-        description: error?.message || "Terjadi kesalahan koneksi. Coba lagi.",
+      setErrorMessage(error.message);
+      toast.error("Login failed ❌", {
+        description: error.message,
         duration: 3000,
       });
     } finally {
@@ -128,6 +106,7 @@ export default function LoginForm() {
           Login
         </CardTitle>
       </CardHeader>
+
       <CardContent className="pb-0">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -138,20 +117,24 @@ export default function LoginForm() {
               render={({ field }) => (
                 <FormItem>
                   <div className="relative">
-                    <FormControl>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                        <Input
-                          type="email"
-                          placeholder=" "
-                          {...field}
-                          className="pl-12 text-base peer"
-                        />
-                        <FormLabel className="absolute text-sm text-muted-foreground transform -translate-y-4 scale-75 top-2 z-10 bg-card px-2 left-9 peer-placeholder-shown:scale-100 peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4">
-                          Email
-                        </FormLabel>
-                      </div>
-                    </FormControl>
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
+                    <Input
+                      id="email"
+                      type="email"
+                      required
+                      autoComplete="email"
+                      placeholder=" "
+                      {...field}
+                      className="pl-12 text-sm peer"
+                    />
+                    <FormLabel
+                      htmlFor="email"
+                      className="absolute text-sm text-muted-foreground transform -translate-y-4 scale-75 top-2 z-10 bg-card px-2 left-9 
+                      peer-placeholder-shown:scale-100 peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 
+                      peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4"
+                    >
+                      Email
+                    </FormLabel>
                   </div>
                   <FormMessage />
                 </FormItem>
@@ -165,32 +148,36 @@ export default function LoginForm() {
               render={({ field }) => (
                 <FormItem>
                   <div className="relative">
-                    <FormControl>
-                      <div className="relative">
-                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                        <Input
-                          type={showPassword ? "text" : "password"}
-                          placeholder=" "
-                          {...field}
-                          className="pl-12 pr-10 text-base peer"
-                        />
-                        <FormLabel className="absolute text-sm text-muted-foreground transform -translate-y-4 scale-75 top-2 z-10 bg-card px-2 left-9 peer-placeholder-shown:scale-100 peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4">
-                          Password
-                        </FormLabel>
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword((prev) => !prev)}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground"
-                          aria-label={showPassword ? "Hide password" : "Show password"}
-                        >
-                          {showPassword ? (
-                            <EyeOff className="h-5 w-5" />
-                          ) : (
-                            <Eye className="h-5 w-5" />
-                          )}
-                        </button>
-                      </div>
-                    </FormControl>
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      required
+                      autoComplete="current-password"
+                      placeholder=" "
+                      {...field}
+                      className="pl-12 pr-10 text-sm peer"
+                    />
+                    <FormLabel
+                      htmlFor="password"
+                      className="absolute text-sm text-muted-foreground transform -translate-y-4 scale-75 top-2 z-10 bg-card px-2 left-9 
+                      peer-placeholder-shown:scale-100 peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 
+                      peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4"
+                    >
+                      Password
+                    </FormLabel>
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-5 w-5" />
+                      ) : (
+                        <Eye className="h-5 w-5" />
+                      )}
+                    </button>
                   </div>
                   <FormMessage />
                 </FormItem>
@@ -216,13 +203,12 @@ export default function LoginForm() {
                   </FormItem>
                 )}
               />
-
               <Button variant="link" size="sm" className="px-0 text-xs h-auto" asChild>
                 <Link href="/forgot-password">Forgot password?</Link>
               </Button>
             </div>
 
-            {/* Submit with Spinner */}
+            {/* Submit */}
             <Button
               type="submit"
               className="w-full text-lg py-6 mt-6 flex items-center justify-center"
@@ -230,7 +216,7 @@ export default function LoginForm() {
             >
               {form.formState.isSubmitting ? (
                 <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin text-lime-300" />
                   Loading...
                 </>
               ) : (
@@ -241,13 +227,13 @@ export default function LoginForm() {
               )}
             </Button>
 
-            {/* Error message global */}
             {errorMessage && (
               <p className="text-red-500 text-sm text-center mt-2">{errorMessage}</p>
             )}
           </form>
         </Form>
       </CardContent>
+
       <CardFooter className="flex-col items-center text-sm">
         <p className="text-muted-foreground mt-4">
           Don&apos;t have an account?{" "}
