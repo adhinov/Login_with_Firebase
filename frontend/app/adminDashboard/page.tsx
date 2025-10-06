@@ -18,7 +18,6 @@ interface User {
 // Formatter Asia/Jakarta UTC+7, dengan jam & menit
 const formatDateTimeJakarta = (dateString: string): string => {
   if (!dateString) return "-";
-  // Pastikan dateString adalah ISO UTC string (misal: "2025-10-06T09:48:42.607Z")
   return new Intl.DateTimeFormat("id-ID", {
     timeZone: "Asia/Jakarta",
     year: "numeric",
@@ -26,7 +25,8 @@ const formatDateTimeJakarta = (dateString: string): string => {
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
-    hour12: false,
+    hourCycle: "h23",
+    timeZoneName: "short", // tampilkan WIB
   }).format(new Date(dateString));
 };
 
