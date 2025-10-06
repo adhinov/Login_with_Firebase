@@ -15,16 +15,19 @@ interface User {
   last_login?: string | null;
 }
 
-// ✅ Formatter konsisten UTC+7 (WIB)
+// Formatter Asia/Jakarta UTC+7, dengan jam & menit
 const formatDateTime = (dateString: string): string => {
   if (!dateString) return "-";
-  return new Date(dateString).toLocaleString("id-ID", {
+  const date = new Date(dateString);
+  // Format waktu Jakarta
+  return date.toLocaleString("id-ID", {
     timeZone: "Asia/Jakarta",
-    day: "2-digit",
-    month: "short",
     year: "numeric",
+    month: "short",
+    day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
+    hour12: false,
   });
 };
 
