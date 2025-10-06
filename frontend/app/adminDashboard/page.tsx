@@ -16,11 +16,10 @@ interface User {
 }
 
 // Formatter Asia/Jakarta UTC+7, dengan jam & menit
-const formatDateTime = (dateString: string): string => {
+const formatDateTimeJakarta = (dateString: string): string => {
   if (!dateString) return "-";
-  const date = new Date(dateString);
-  // Format waktu Jakarta
-  return date.toLocaleString("id-ID", {
+  // Pastikan dateString adalah ISO UTC string (misal: "2025-10-06T09:48:42.607Z")
+  return new Intl.DateTimeFormat("id-ID", {
     timeZone: "Asia/Jakarta",
     year: "numeric",
     month: "short",
@@ -28,17 +27,17 @@ const formatDateTime = (dateString: string): string => {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
-  });
+  }).format(new Date(dateString));
 };
 
-const formatDateOnly = (dateString: string): string => {
+const formatDateOnlyJakarta = (dateString: string): string => {
   if (!dateString) return "-";
-  return new Date(dateString).toLocaleDateString("id-ID", {
+  return new Intl.DateTimeFormat("id-ID", {
     timeZone: "Asia/Jakarta",
     day: "2-digit",
     month: "short",
     year: "numeric",
-  });
+  }).format(new Date(dateString));
 };
 
 const API_URL =
@@ -53,6 +52,7 @@ export default function AdminDashboard() {
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
 
   useEffect(() => {
+    // Cek otorisasi admin
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     const userData = typeof window !== "undefined" ? localStorage.getItem("user") : null;
 
@@ -65,7 +65,8 @@ export default function AdminDashboard() {
         if (parsedUser.role === "admin") {
           isAdmin = true;
           if (parsedUser.last_login) {
-            lastLoginValue = formatDateTime(parsedUser.last_login);
+            // Format ke waktu Jakarta dari ISO UTC
+            lastLoginValue = formatDateTimeJakarta(parsedUser.last_login);
           }
         }
       } catch (err) {
@@ -187,7 +188,7 @@ export default function AdminDashboard() {
                     )}
                   </td>
                   <td className="px-2 py-1 border">
-                    {formatDateOnly(user.created_at)}
+                    {formatDateOnlyJakarta(user.created_at)}
                   </td>
                   <td className="px-2 py-1 border">
                     {user.phone_number || user.phone || "-"}
