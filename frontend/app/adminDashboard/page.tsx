@@ -12,6 +12,7 @@ interface User {
   created_at: string;
   phone_number?: string | null;
   phone?: string | null;
+  last_login?: string | null;
 }
 
 // ✅ Formatter konsisten UTC+7 (WIB)
@@ -37,6 +38,10 @@ const formatDateOnly = (dateString: string): string => {
   });
 };
 
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  "https://login-app-production-7f54.up.railway.app";
+
 export default function AdminDashboard() {
   const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
@@ -44,34 +49,38 @@ export default function AdminDashboard() {
   const [lastLogin, setLastLogin] = useState<string>("Belum ada data");
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL;
-
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const role = localStorage.getItem("role");
-    const userData = localStorage.getItem("user"); // payload user hasil login
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    const userData = typeof window !== "undefined" ? localStorage.getItem("user") : null;
 
-    if (!token || role !== "admin") {
-      setIsAuthorized(false);
-      router.replace("/login");
-      return;
-    }
+    let isAdmin = false;
+    let lastLoginValue = "Belum ada data";
 
-    setIsAuthorized(true);
-
-    // ✅ Ambil last_login dari user payload
     if (userData) {
       try {
         const parsedUser = JSON.parse(userData);
-        if (parsedUser.last_login) {
-          setLastLogin(formatDateTime(parsedUser.last_login));
+        if (parsedUser.role === "admin") {
+          isAdmin = true;
+          if (parsedUser.last_login) {
+            lastLoginValue = formatDateTime(parsedUser.last_login);
+          }
         }
       } catch (err) {
         console.error("❌ Gagal parse user dari localStorage", err);
       }
     }
 
-    // ✅ Fetch daftar user
+    // Jika tidak ada token atau bukan admin, redirect ke login
+    if (!token || !isAdmin) {
+      setIsAuthorized(false);
+      router.replace("/login");
+      return;
+    }
+
+    setIsAuthorized(true);
+    setLastLogin(lastLoginValue);
+
+    // Fetch daftar user
     const fetchUsers = async () => {
       try {
         const res = await fetch(`${API_URL}/api/users`, {
@@ -86,11 +95,10 @@ export default function AdminDashboard() {
     };
 
     fetchUsers();
-  }, [router, API_URL]);
+  }, [router]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
-    localStorage.removeItem("role");
     localStorage.removeItem("user");
     router.replace("/login");
   };
