@@ -17,14 +17,14 @@ const app = express();
 app.use(express.json());
 
 // ==================== CORS CONFIG ====================
-const allowedOrigins = process.env.CORS_ORIGIN
-  ? process.env.CORS_ORIGIN.split(",").map((o) => o.trim())
-  : ["*"]; // fallback kalau tidak ada ENV
+const allowedOrigins = process.env.FRONTEND_URL
+  ? process.env.FRONTEND_URL.split(",").map((o) => o.trim())
+  : ["*"];
 
 app.use(
   cors({
     origin: function (origin, callback) {
-      // request tanpa origin (mis. Postman) → tetap diizinkan
+      // request tanpa origin (misalnya Postman) → tetap diizinkan
       if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes("*")) {
         callback(null, true);
       } else {
@@ -48,6 +48,10 @@ app.get("/", (req, res) => {
     message: "Backend is running on Railway + Neon PostgreSQL 🚀",
     environment: process.env.NODE_ENV || "development",
     allowedOrigins,
+    frontend_urls: {
+      main: process.env.FRONTEND_URL || null,
+      firebase: process.env.FRONTEND_URL_FIREBASE || null,
+    },
     endpoints: {
       auth: "/api/auth",
       users: "/api/users",

@@ -7,8 +7,7 @@ import {
   createUser,
   updateLastLogin,
 } from "../models/userModel.js";
-import { sendEmail } from "../utils/sendEmail.js";
-import { Resend } from 'resend';
+import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -181,7 +180,7 @@ export const loginAdmin = async (req, res) => {
   }
 };
 
-// ================= GET USER PROFILE (/api/auth/me) =================
+// ================= GET USER PROFILE =================
 export const getUserProfile = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -215,34 +214,42 @@ export const forgotPassword = async (req, res) => {
   const { email } = req.body;
 
   try {
-    // Cek user ada di DB
-    const userQuery = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    const userQuery = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
     if (userQuery.rows.length === 0) {
-      return res.status(404).json({ message: 'Email tidak ditemukan' });
+      return res.status(404).json({ message: "Email tidak ditemukan" });
     }
 
-    // Buat token reset
-    const token = jwt.sign({ email }, process.env.JWT_RESET_SECRET, { expiresIn: '15m' });
-    const resetLink = `${process.env.FRONTEND_URL}/reset-password/${token}`;
+    const user = userQuery.rows[0];
 
-    // Kirim email via Resend
+    // Buat token reset password
+    const token = jwt.sign(
+      { id: user.id, email: user.email },
+      process.env.JWT_RESET_SECRET,
+      { expiresIn: "15m" }
+    );
+
+    // Ambil URL pertama dari FRONTEND_URL (jika ada beberapa)
+    const baseUrl = process.env.FRONTEND_URL.split(",")[0].trim();
+    const resetLink = `${baseUrl}/reset-password/${token}`;
+
+    // Kirim email
     const response = await resend.emails.send({
       from: process.env.EMAIL_FROM,
       to: email,
-      subject: 'Reset Password',
+      subject: "Reset Password",
       html: `
         <p>Halo,</p>
         <p>Klik tautan berikut untuk mereset password kamu:</p>
-        <a href="${resetLink}">${resetLink}</a>
+        <a href="${resetLink}" target="_blank">${resetLink}</a>
         <p>Link ini akan kedaluwarsa dalam 15 menit.</p>
       `,
     });
 
-    console.log('✅ Email terkirim:', response);
-    res.status(200).json({ message: 'Email reset password berhasil dikirim' });
+    console.log("✅ Email reset terkirim:", response);
+    res.json({ success: true, message: "Email reset password berhasil dikirim" });
   } catch (error) {
-    console.error('❌ Forgot password error:', error);
-    res.status(500).json({ message: 'Gagal mengirim email reset password', error });
+    console.error("❌ Forgot password error:", error);
+    res.status(500).json({ success: false, message: "Gagal mengirim email reset password" });
   }
 };
 
@@ -253,8 +260,8 @@ export const resetPassword = async (req, res) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_RESET_SECRET);
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
 
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
     await pool.query("UPDATE users SET password = $1 WHERE id = $2", [
       hashedPassword,
       decoded.id,
