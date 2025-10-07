@@ -24,14 +24,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" suppressHydrationWarning> {/* Tambahkan ini agar tidak warning hydration */}
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-background text-foreground`}
       >
-        {/* Semua page akan masuk di sini */}
         {children}
 
-        {/* Toaster global, cukup 1x di root */}
+        {/* Toaster global: pastikan muncul di semua route */}
         <Toaster />
       </body>
     </html>

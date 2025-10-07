@@ -24,8 +24,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { toast } from "sonner";
 import Link from "next/link";
+import { useToast } from "@/components/ui/use-toast";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Masukkan alamat email yang valid." }),
@@ -34,31 +34,40 @@ const formSchema = z.object({
 type ForgotPasswordFormValues = z.infer<typeof formSchema>;
 
 export function ForgotPasswordForm() {
+  const { toast } = useToast();
+
   const form = useForm<ForgotPasswordFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: { email: "" },
   });
 
   async function onSubmit(data: ForgotPasswordFormValues) {
-    const toastId = toast.loading("Mengirim email reset password...");
     try {
+      // axios otomatis membuat form.formState.isSubmitting = true bila ini async
       const res = await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/api/auth/forgot-password`,
         data
       );
 
-      toast.dismiss(toastId);
-      toast.success(res.data.message || "Email terkirim! Silakan cek inbox Anda.");
+      toast({
+        title: "Email terkirim!",
+        description:
+          res.data?.message ||
+          "Tautan reset password telah dikirim. Cek inbox atau folder spam Anda.",
+      });
+
       form.reset();
     } catch (error: any) {
-      toast.dismiss(toastId);
       console.error("❌ Forgot password error:", error);
 
       const errorMessage =
         error.response?.data?.message ||
         "Terjadi kesalahan saat mengirim email reset password.";
 
-      toast.error(errorMessage);
+      toast({
+        title: "Gagal mengirim email",
+        description: errorMessage,
+      });
     }
   }
 
@@ -109,7 +118,7 @@ export function ForgotPasswordForm() {
             >
               {form.formState.isSubmitting ? (
                 <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Sending...
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Mengirim...
                 </>
               ) : (
                 <>
