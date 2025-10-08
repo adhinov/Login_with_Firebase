@@ -27,7 +27,7 @@ router.get("/me", verifyToken, getUserProfile);
 // Lupa password
 router.post("/forgot-password", forgotPassword);
 
-// Reset password
-router.post("/reset-password/:token", resetPassword);
+// Reset password (gunakan body, bukan param)
+router.post("/reset-password", resetPassword);
 
 export default router;

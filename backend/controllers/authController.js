@@ -180,139 +180,104 @@ export const loginAdmin = async (req, res) => {
   }
 };
 
-// ================= GET USER PROFILE =================
-export const getUserProfile = async (req, res) => {
-  try {
-    const userId = req.user.id;
-
-    const result = await pool.query(
-      "SELECT id, email, username, role_id, last_login FROM users WHERE id = $1",
-      [userId]
-    );
-
-    if (result.rows.length === 0) {
-      return res
-        .status(404)
-        .json({ success: false, message: "User tidak ditemukan" });
-    }
-
-    const user = result.rows[0];
-    user.role = getRoleString(user.role_id);
-    user.last_login = user.last_login
-      ? new Date(user.last_login).toISOString()
-      : null;
-
-    res.json({ success: true, user });
-  } catch (error) {
-    console.error("❌ Get user profile error:", error.message);
-    res.status(500).json({ success: false, message: "Server error" });
-  }
-};
-
-// ================= FORGOT PASSWORD =================
+// ====================== FORGOT PASSWORD ======================
 export const forgotPassword = async (req, res) => {
   const { email } = req.body;
 
   try {
+    // cek user
     const userQuery = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
     if (userQuery.rows.length === 0) {
-      return res.status(404).json({ message: "Email tidak ditemukan" });
+      return res.status(404).json({ success: false, message: "Email tidak ditemukan." });
     }
 
     const user = userQuery.rows[0];
 
-    // Buat token reset password
+    // buat token (15 menit)
     const token = jwt.sign(
       { id: user.id, email: user.email },
       process.env.JWT_RESET_SECRET,
       { expiresIn: "15m" }
     );
 
-    // Gunakan domain kedua (Firebase app)
-    const frontendUrls = process.env.FRONTEND_URL.split(",").map(url => url.trim());
-    const baseUrl = frontendUrls[1] || frontendUrls[0]; // fallback kalau cuma 1 URL
-    const resetLink = `${baseUrl}/reset-password/${token}`;
+    // dapatkan baseUrl dari env FRONTEND_URL (bisa berisi beberapa, pisah dengan koma)
+    const rawUrls = (process.env.FRONTEND_URL || "").split(",").map(u => u.trim()).filter(Boolean);
+    const baseUrl = rawUrls[1] || rawUrls[0] || process.env.DEFAULT_FRONTEND_URL || "http://localhost:3000";
 
-    // Kirim email
+    // pake query param agar tidak perlu dynamic folder [token]
+    const resetLink = `${baseUrl}/reset-password?token=${encodeURIComponent(token)}`;
+
+    // kirim email via Resend
+    const fromEmail = process.env.FROM_EMAIL || process.env.EMAIL_FROM || "no-reply@example.com";
     const response = await resend.emails.send({
-      from: process.env.EMAIL_FROM,
+      from: fromEmail,
       to: email,
       subject: "Reset Password",
       html: `
         <p>Halo,</p>
         <p>Klik tautan berikut untuk mereset password kamu:</p>
-        <a href="${resetLink}" target="_blank">${resetLink}</a>
+        <p><a href="${resetLink}" target="_blank" rel="noopener noreferrer">${resetLink}</a></p>
         <p>Link ini akan kedaluwarsa dalam 15 menit.</p>
       `,
     });
 
-    console.log("✅ Email reset terkirim:", response);
-    res.json({ success: true, message: "Email reset password berhasil dikirim" });
+    console.log("✅ Email reset password terkirim:", response);
+    return res.status(200).json({ success: true, message: "Email reset password berhasil dikirim." });
   } catch (error) {
     console.error("❌ Forgot password error:", error);
-    res.status(500).json({ success: false, message: "Gagal mengirim email reset password" });
+    return res.status(500).json({
+      success: false,
+      message: "Terjadi kesalahan saat mengirim email reset password.",
+      // jangan kirim error detail ke client di production
+    });
   }
 };
 
-// ================= RESET PASSWORD =================
+// ====================== RESET PASSWORD ======================
+// NOTE: untuk pendekatan ini kita menerima { token, newPassword } di body.
+// Pastikan frontend memanggil POST /api/auth/reset-password dengan body tersebut.
 export const resetPassword = async (req, res) => {
-  const { token } = req.params;
-  const { newPassword } = req.body;
+  const { token, newPassword } = req.body;
 
   try {
-    // Pastikan token dan password baru dikirim
     if (!token || !newPassword) {
       return res.status(400).json({
         success: false,
-        message: "Token atau password baru tidak boleh kosong.",
+        message: "Token dan password baru wajib diisi.",
       });
     }
 
-    // Verifikasi token JWT
+    // verifikasi token
     let decoded;
     try {
       decoded = jwt.verify(token, process.env.JWT_RESET_SECRET);
     } catch (err) {
-      console.error("❌ Token reset invalid atau expired:", err.message);
+      console.error("❌ Token reset invalid/expired:", err.message);
       return res.status(400).json({
         success: false,
         message: "Token tidak valid atau telah kedaluwarsa.",
       });
     }
 
-    // Cari user berdasarkan ID dari token
-    const userResult = await pool.query("SELECT * FROM users WHERE id = $1", [decoded.id]);
-    const user = userResult.rows[0];
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "Pengguna tidak ditemukan.",
-      });
+    // cek user
+    const userResult = await pool.query("SELECT id FROM users WHERE id = $1", [decoded.id]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ success: false, message: "Pengguna tidak ditemukan." });
     }
 
-    // Hash password baru
+    // hash new password dan update
     const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await pool.query("UPDATE users SET password = $1 WHERE id = $2", [hashedPassword, decoded.id]);
 
-    // Update password di database
-    await pool.query("UPDATE users SET password = $1 WHERE id = $2", [
-      hashedPassword,
-      decoded.id,
-    ]);
-
-    console.log(`✅ Password user ID ${decoded.id} berhasil direset`);
-
-    // Kirim response sukses
-    return res.status(200).json({
-      success: true,
-      message: "Password berhasil direset. Silakan login kembali.",
-    });
+    console.log(`✅ Password user ID ${decoded.id} berhasil direset.`);
+    return res.status(200).json({ success: true, message: "Password berhasil direset. Silakan login kembali." });
   } catch (error) {
-    console.error("❌ Terjadi error saat reset password:", error);
+    console.error("❌ Reset password error:", error);
     return res.status(500).json({
       success: false,
       message: "Terjadi kesalahan pada server. Silakan coba lagi.",
     });
   }
 };
+
 
