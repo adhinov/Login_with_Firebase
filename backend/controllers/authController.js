@@ -180,12 +180,42 @@ export const loginAdmin = async (req, res) => {
   }
 };
 
+// ================= GET USER PROFILE (/api/auth/me) =================
+export const getUserProfile = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Token tidak valid" });
+    }
+
+    const result = await pool.query(
+      "SELECT id, email, username, role_id, created_at, last_login FROM users WHERE id = $1",
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: "User tidak ditemukan" });
+    }
+
+    const user = result.rows[0];
+    res.json({
+      success: true,
+      user: {
+        ...user,
+        role: getRoleString(user.role_id),
+      },
+    });
+  } catch (error) {
+    console.error("❌ Error getUserProfile:", error);
+    res.status(500).json({ success: false, message: "Gagal mengambil profil user" });
+  }
+};
+
 // ====================== FORGOT PASSWORD ======================
 export const forgotPassword = async (req, res) => {
   const { email } = req.body;
 
   try {
-    // cek user
     const userQuery = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
     if (userQuery.rows.length === 0) {
       return res.status(404).json({ success: false, message: "Email tidak ditemukan." });
@@ -193,21 +223,16 @@ export const forgotPassword = async (req, res) => {
 
     const user = userQuery.rows[0];
 
-    // buat token (15 menit)
     const token = jwt.sign(
       { id: user.id, email: user.email },
       process.env.JWT_RESET_SECRET,
       { expiresIn: "15m" }
     );
 
-    // dapatkan baseUrl dari env FRONTEND_URL (bisa berisi beberapa, pisah dengan koma)
     const rawUrls = (process.env.FRONTEND_URL || "").split(",").map(u => u.trim()).filter(Boolean);
-    const baseUrl = rawUrls[1] || rawUrls[0] || process.env.DEFAULT_FRONTEND_URL || "http://localhost:3000";
-
-    // pake query param agar tidak perlu dynamic folder [token]
+    const baseUrl = rawUrls[1] || rawUrls[0] || "http://localhost:3000";
     const resetLink = `${baseUrl}/reset-password?token=${encodeURIComponent(token)}`;
 
-    // kirim email via Resend
     const fromEmail = process.env.FROM_EMAIL || process.env.EMAIL_FROM || "no-reply@example.com";
     const response = await resend.emails.send({
       from: fromEmail,
@@ -216,7 +241,7 @@ export const forgotPassword = async (req, res) => {
       html: `
         <p>Halo,</p>
         <p>Klik tautan berikut untuk mereset password kamu:</p>
-        <p><a href="${resetLink}" target="_blank" rel="noopener noreferrer">${resetLink}</a></p>
+        <p><a href="${resetLink}" target="_blank">${resetLink}</a></p>
         <p>Link ini akan kedaluwarsa dalam 15 menit.</p>
       `,
     });
@@ -228,14 +253,11 @@ export const forgotPassword = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Terjadi kesalahan saat mengirim email reset password.",
-      // jangan kirim error detail ke client di production
     });
   }
 };
 
 // ====================== RESET PASSWORD ======================
-// NOTE: untuk pendekatan ini kita menerima { token, newPassword } di body.
-// Pastikan frontend memanggil POST /api/auth/reset-password dengan body tersebut.
 export const resetPassword = async (req, res) => {
   const { token, newPassword } = req.body;
 
@@ -247,7 +269,6 @@ export const resetPassword = async (req, res) => {
       });
     }
 
-    // verifikasi token
     let decoded;
     try {
       decoded = jwt.verify(token, process.env.JWT_RESET_SECRET);
@@ -259,13 +280,11 @@ export const resetPassword = async (req, res) => {
       });
     }
 
-    // cek user
     const userResult = await pool.query("SELECT id FROM users WHERE id = $1", [decoded.id]);
     if (userResult.rows.length === 0) {
       return res.status(404).json({ success: false, message: "Pengguna tidak ditemukan." });
     }
 
-    // hash new password dan update
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     await pool.query("UPDATE users SET password = $1 WHERE id = $2", [hashedPassword, decoded.id]);
 
@@ -279,5 +298,3 @@ export const resetPassword = async (req, res) => {
     });
   }
 };
-
-
