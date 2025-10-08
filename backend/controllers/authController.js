@@ -228,8 +228,9 @@ export const forgotPassword = async (req, res) => {
       { expiresIn: "15m" }
     );
 
-    // Ambil URL pertama dari FRONTEND_URL (jika ada beberapa)
-    const baseUrl = process.env.FRONTEND_URL.split(",")[0].trim();
+    // Gunakan domain kedua (Firebase app)
+    const frontendUrls = process.env.FRONTEND_URL.split(",").map(url => url.trim());
+    const baseUrl = frontendUrls[1] || frontendUrls[0]; // fallback kalau cuma 1 URL
     const resetLink = `${baseUrl}/reset-password/${token}`;
 
     // Kirim email
@@ -259,23 +260,59 @@ export const resetPassword = async (req, res) => {
   const { newPassword } = req.body;
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_RESET_SECRET);
+    // Pastikan token dan password baru dikirim
+    if (!token || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Token atau password baru tidak boleh kosong.",
+      });
+    }
 
+    // Verifikasi token JWT
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_RESET_SECRET);
+    } catch (err) {
+      console.error("❌ Token reset invalid atau expired:", err.message);
+      return res.status(400).json({
+        success: false,
+        message: "Token tidak valid atau telah kedaluwarsa.",
+      });
+    }
+
+    // Cari user berdasarkan ID dari token
+    const userResult = await pool.query("SELECT * FROM users WHERE id = $1", [decoded.id]);
+    const user = userResult.rows[0];
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Pengguna tidak ditemukan.",
+      });
+    }
+
+    // Hash password baru
     const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update password di database
     await pool.query("UPDATE users SET password = $1 WHERE id = $2", [
       hashedPassword,
       decoded.id,
     ]);
 
-    res.json({
+    console.log(`✅ Password user ID ${decoded.id} berhasil direset`);
+
+    // Kirim response sukses
+    return res.status(200).json({
       success: true,
       message: "Password berhasil direset. Silakan login kembali.",
     });
   } catch (error) {
-    console.error("❌ Reset password error:", error);
-    res.status(400).json({
+    console.error("❌ Terjadi error saat reset password:", error);
+    return res.status(500).json({
       success: false,
-      message: "Token tidak valid atau telah kedaluwarsa.",
+      message: "Terjadi kesalahan pada server. Silakan coba lagi.",
     });
   }
 };
+
