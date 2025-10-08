@@ -19,7 +19,7 @@ export default function ResetPasswordPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const LockIcon = FaLock as React.ElementType; // ✅ fix tipe icon
+  const LockIcon = FaLock as React.ElementType;
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,9 +43,10 @@ export default function ResetPasswordPage() {
     try {
       setLoading(true);
 
+      // ✅ Perbaikan URL + field body
       const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/reset-password`,
-        { token, password }
+        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/reset-password/${token}`,
+        { newPassword: password }
       );
 
       toast({
@@ -105,11 +106,7 @@ export default function ResetPasswordPage() {
             />
           </div>
 
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={loading}
-          >
+          <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Memproses..." : "Reset Password"}
           </Button>
         </form>
