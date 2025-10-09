@@ -1,19 +1,13 @@
+// app/forgot-password/page.tsx
 "use client";
 
-import ResetPasswordForm from "@/components/reset-password";
-import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
+import ForgotPasswordContent from "../../src/components/forgot-password-form";
 
-export default function ResetPasswordPage() {
-  const searchParams = useSearchParams();
-  const token = searchParams.get("token") || "";
-
-  if (!token) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <p className="text-red-500">Invalid or missing reset token.</p>
-      </div>
-    );
-  }
-
-  return <ResetPasswordForm token={token} />;
+export default function ForgotPasswordPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ForgotPasswordContent token={""} />
+    </Suspense>
+  );
 }
