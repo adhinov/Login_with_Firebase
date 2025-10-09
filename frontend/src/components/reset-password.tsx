@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import axios from "axios";
-import { Lock, KeyRound } from "lucide-react";
+import { Lock, KeyRound, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -31,13 +31,11 @@ import Link from "next/link";
 // ✅ Schema validasi password
 const formSchema = z
   .object({
-    password: z
-      .string()
-      .min(6, { message: "Password must be at least 6 characters." }),
+    password: z.string().min(8, { message: "Password minimal 8 karakter." }),
     confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords do not match.",
+    message: "Password tidak cocok.",
     path: ["confirmPassword"],
   });
 
@@ -50,6 +48,8 @@ interface ResetPasswordProps {
 export default function ResetPassword({ token }: ResetPasswordProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const form = useForm<ResetPasswordFormValues>({
     resolver: zodResolver(formSchema),
@@ -59,33 +59,36 @@ export default function ResetPassword({ token }: ResetPasswordProps) {
     },
   });
 
-  // ✅ Fungsi submit revisi
+  // ✅ Fungsi submit
   async function onSubmit(values: ResetPasswordFormValues) {
     if (!token) {
-      toast.error("Invalid or missing reset token.");
+      toast.error("Token reset tidak valid atau hilang.");
       return;
     }
 
     try {
       setLoading(true);
 
-      // 🔄 Sesuaikan dengan backend JWT (token di body)
-      const res = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/reset-password`,
-        {
-          token,
-          newPassword: values.password,
-        }
-      );
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/reset-password`, {
+        token,
+        newPassword: values.password,
+      });
 
-      toast.success(res.data.message || "Password reset successful!");
-      setTimeout(() => router.push("/login"), 2000);
+      toast.success("Reset Password Berhasil 🎉", {
+        description: "Silakan login kembali dengan password baru.",
+        duration: 4000,
+      });
+
+      setTimeout(() => {
+        router.push("/login");
+      }, 2500);
     } catch (error: any) {
-      console.error(error);
-      toast.error(
-        error.response?.data?.message ||
-          "Failed to reset password. Please try again."
-      );
+      console.error("Reset password error:", error);
+      toast.error("Gagal Reset Password ❌", {
+        description:
+          error.response?.data?.message ||
+          "Terjadi kesalahan, coba lagi nanti.",
+      });
     } finally {
       setLoading(false);
     }
@@ -106,7 +109,7 @@ export default function ResetPassword({ token }: ResetPasswordProps) {
         <CardContent className="pb-2">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              {/* New Password */}
+              {/* Password Baru */}
               <FormField
                 control={form.control}
                 name="password"
@@ -117,11 +120,23 @@ export default function ResetPassword({ token }: ResetPasswordProps) {
                         <div className="relative">
                           <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                           <Input
-                            type="password"
+                            type={showPassword ? "text" : "password"}
                             placeholder=" "
                             {...field}
-                            className="pl-12 text-base peer"
+                            className="pl-12 pr-10 text-base peer"
                           />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                            tabIndex={-1}
+                          >
+                            {showPassword ? (
+                              <EyeOff className="h-5 w-5" />
+                            ) : (
+                              <Eye className="h-5 w-5" />
+                            )}
+                          </button>
                           <FormLabel className="absolute text-base text-muted-foreground duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-card px-2 left-9 peer-focus:px-2 peer-focus:text-primary peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4 pointer-events-none">
                             New Password
                           </FormLabel>
@@ -133,7 +148,7 @@ export default function ResetPassword({ token }: ResetPasswordProps) {
                 )}
               />
 
-              {/* Confirm Password */}
+              {/* Konfirmasi Password */}
               <FormField
                 control={form.control}
                 name="confirmPassword"
@@ -144,17 +159,32 @@ export default function ResetPassword({ token }: ResetPasswordProps) {
                         <div className="relative">
                           <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                           <Input
-                            type="password"
+                            type={showConfirm ? "text" : "password"}
                             placeholder=" "
                             {...field}
-                            className="pl-12 text-base peer"
+                            className="pl-12 pr-10 text-base peer"
                           />
+                          <button
+                            type="button"
+                            onClick={() => setShowConfirm(!showConfirm)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                            tabIndex={-1}
+                          >
+                            {showConfirm ? (
+                              <EyeOff className="h-5 w-5" />
+                            ) : (
+                              <Eye className="h-5 w-5" />
+                            )}
+                          </button>
                           <FormLabel className="absolute text-base text-muted-foreground duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-card px-2 left-9 peer-focus:px-2 peer-focus:text-primary peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4 pointer-events-none">
                             Confirm Password
                           </FormLabel>
                         </div>
                       </FormControl>
                     </div>
+                    <p className="text-xs text-muted-foreground mt-1 text-center">
+                      Password must be at least 8 characters
+                    </p>
                     <FormMessage />
                   </FormItem>
                 )}
