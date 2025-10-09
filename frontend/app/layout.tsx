@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import ClientLayout from "@/components/ClientLayout"; // client wrapper
+import ClientLayout from "@/components/ClientLayout";
+import { Toaster } from "sonner"; // ✅ gunakan dari sonner, bukan react-hot-toast
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -25,8 +26,18 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
         <ClientLayout>{children}</ClientLayout>
+
+        {/* ✅ Toaster global untuk semua halaman, termasuk reset password */}
+        <Toaster
+          position="top-center"
+          expand={true}
+          richColors
+          duration={4000} // sedikit lebih lama agar terlihat
+        />
       </body>
     </html>
   );
