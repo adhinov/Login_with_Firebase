@@ -1,9 +1,19 @@
 "use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
-import ResetPasswordForm from "../../src/components/reset-password";
+import ResetPasswordForm from "@/components/reset-password"; // pastikan path sesuai
+import { Suspense } from "react";
 
-export default function ResetPasswordPage() {
+export default function ResetPasswordPageWrapper() {
+  // Dibungkus dengan Suspense agar useSearchParams tidak error
+  return (
+    <Suspense fallback={<div className="flex justify-center items-center h-screen">Loading...</div>}>
+      <ResetPasswordPage />
+    </Suspense>
+  );
+}
+
+function ResetPasswordPage() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
   const router = useRouter();
