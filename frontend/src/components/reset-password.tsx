@@ -72,8 +72,16 @@ export default function ResetPassword({ token }: ResetPasswordProps) {
         newPassword: values.password,
       });
 
-      // ✅ Redirect ke login dengan query flag
-      router.push("/login?reset=success");
+      // ✅ Tampilkan toast sukses dulu
+      toast.success("Berhasil reset password 🎉", {
+        description: "Kamu akan diarahkan ke halaman login...",
+        duration: 3000, // tampil 3 detik
+      });
+
+      // ✅ Delay sebelum redirect ke login
+      setTimeout(() => {
+        router.push("/login?reset=success");
+      }, 3000);
     } catch (error: any) {
       console.error("Reset password error:", error);
       toast.error("Gagal Reset Password ❌", {
