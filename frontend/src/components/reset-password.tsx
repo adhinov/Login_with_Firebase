@@ -28,7 +28,6 @@ import { toast } from "sonner";
 import { useState } from "react";
 import Link from "next/link";
 
-// ✅ Schema validasi password
 const formSchema = z
   .object({
     password: z.string().min(8, { message: "Password minimal 8 karakter." }),
@@ -59,7 +58,6 @@ export default function ResetPassword({ token }: ResetPasswordProps) {
     },
   });
 
-  // ✅ Fungsi submit
   async function onSubmit(values: ResetPasswordFormValues) {
     if (!token) {
       toast.error("Token reset tidak valid atau hilang.");
@@ -74,14 +72,8 @@ export default function ResetPassword({ token }: ResetPasswordProps) {
         newPassword: values.password,
       });
 
-      toast.success("Reset Password Berhasil 🎉", {
-        description: "Silakan login kembali dengan password baru.",
-        duration: 4000,
-      });
-
-      setTimeout(() => {
-        router.push("/login");
-      }, 2500);
+      // ✅ Redirect ke login dengan query flag
+      router.push("/login?reset=success");
     } catch (error: any) {
       console.error("Reset password error:", error);
       toast.error("Gagal Reset Password ❌", {

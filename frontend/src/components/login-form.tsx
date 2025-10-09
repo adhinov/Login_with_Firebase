@@ -40,6 +40,7 @@ type LoginFormValues = z.infer<typeof formSchema>;
 export default function LoginForm() {
   const router = useRouter();
   const [showPassword, setShowPassword] = React.useState(false);
+  const [loading, setLoading] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -53,7 +54,7 @@ export default function LoginForm() {
     },
   });
 
-  // ✅ Login function dengan error handling lebih kuat
+  // ✅ Fungsi login
   async function login(email: string, password: string) {
     if (!API_URL) {
       throw new Error("API base URL is not configured (NEXT_PUBLIC_API_URL).");
@@ -61,24 +62,13 @@ export default function LoginForm() {
 
     const url = `${API_URL.replace(/\/$/, "")}/api/auth/login`;
 
-    let response: Response;
-    try {
-      response = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-    } catch (err: any) {
-      // network error
-      throw new Error(err?.message || "Network error while trying to login.");
-    }
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
 
-    let result: any;
-    try {
-      result = await response.json();
-    } catch {
-      throw new Error("Invalid response from server.");
-    }
+    const result = await response.json();
 
     if (!response.ok) {
       throw new Error(result?.message || "Login failed");
@@ -88,37 +78,40 @@ export default function LoginForm() {
       throw new Error("Invalid response from server.");
     }
 
-    // NOTE: consider using httpOnly cookie from backend for better security
     localStorage.setItem("token", result.token);
     localStorage.setItem("user", JSON.stringify(result.user));
 
     return result;
   }
 
+  // ✅ Submit handler
   async function onSubmit(data: LoginFormValues) {
     setErrorMessage(null);
+    setLoading(true);
+
     try {
       const result = await login(data.email, data.password);
 
-      toast.success(`Welcome back, ${result.user?.username || "User"}! 🎉`, {
-        description: "Login successful.",
-        duration: 3000,
+      toast.success(`Selamat datang, ${result.user?.username || "User"} 🎉`, {
+        description: "Login berhasil! Anda akan diarahkan ke halaman utama.",
+        duration: 2500,
       });
 
-      // Pastikan route ini sesuai struktur app kamu (case & path)
-      if (result.user?.role === "admin") {
-        router.push("/adminDashboard");
-      } else {
-        router.push("/welcome");
-      }
+      setTimeout(() => {
+        if (result.user?.role === "admin") {
+          router.push("/adminDashboard");
+        } else {
+          router.push("/welcome");
+        }
+      }, 1800);
     } catch (error: any) {
       setErrorMessage(error?.message ?? "Login failed");
-      toast.error("Login failed ❌", {
-        description: error?.message ?? "Login failed",
-        duration: 3000,
+      toast.error("Login gagal ❌", {
+        description: error?.message ?? "Periksa kembali email dan password Anda.",
+        duration: 2500,
       });
     } finally {
-      // bersihkan password field
+      setLoading(false);
       form.resetField("password");
     }
   }
@@ -196,7 +189,11 @@ export default function LoginForm() {
                       className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground"
                       aria-label={showPassword ? "Hide password" : "Show password"}
                     >
-                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                      {showPassword ? (
+                        <EyeOff className="h-5 w-5" />
+                      ) : (
+                        <Eye className="h-5 w-5" />
+                      )}
                     </button>
                   </div>
                   <FormMessage />
@@ -217,11 +214,18 @@ export default function LoginForm() {
                         onCheckedChange={(v) => field.onChange(Boolean(v))}
                       />
                     </FormControl>
-                    <FormLabel className="font-normal text-xs">Remember me</FormLabel>
+                    <FormLabel className="font-normal text-xs">
+                      Remember me
+                    </FormLabel>
                   </FormItem>
                 )}
               />
-              <Button variant="link" size="sm" className="px-0 text-xs h-auto" asChild>
+              <Button
+                variant="link"
+                size="sm"
+                className="px-0 text-xs h-auto"
+                asChild
+              >
                 <Link href="/forgot-password">Forgot password?</Link>
               </Button>
             </div>
@@ -230,12 +234,12 @@ export default function LoginForm() {
             <Button
               type="submit"
               className="w-full text-lg py-6 mt-6 flex items-center justify-center"
-              disabled={form.formState.isSubmitting}
+              disabled={loading}
             >
-              {form.formState.isSubmitting ? (
+              {loading ? (
                 <>
                   <Loader2 className="mr-2 h-5 w-5 animate-spin text-lime-300" />
-                  Loading...
+                  Processing...
                 </>
               ) : (
                 <>
@@ -246,7 +250,10 @@ export default function LoginForm() {
             </Button>
 
             {errorMessage && (
-              <p className="text-red-500 text-sm text-center mt-2" aria-live="polite">
+              <p
+                className="text-red-500 text-sm text-center mt-2"
+                aria-live="polite"
+              >
                 {errorMessage}
               </p>
             )}
