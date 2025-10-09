@@ -53,20 +53,42 @@ export default function LoginForm() {
     },
   });
 
-  // ✅ Login function dengan error handling
+  // ✅ Login function dengan error handling lebih kuat
   async function login(email: string, password: string) {
-    const response = await fetch(`${API_URL}/api/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
+    if (!API_URL) {
+      throw new Error("API base URL is not configured (NEXT_PUBLIC_API_URL).");
+    }
 
-    const result = await response.json();
-    if (!response.ok) throw new Error(result?.message || "Login failed");
+    const url = `${API_URL.replace(/\/$/, "")}/api/auth/login`;
 
-    if (!result.user || !result.token)
-      throw new Error("Invalid response from server");
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+    } catch (err: any) {
+      // network error
+      throw new Error(err?.message || "Network error while trying to login.");
+    }
 
+    let result: any;
+    try {
+      result = await response.json();
+    } catch {
+      throw new Error("Invalid response from server.");
+    }
+
+    if (!response.ok) {
+      throw new Error(result?.message || "Login failed");
+    }
+
+    if (!result.user || !result.token) {
+      throw new Error("Invalid response from server.");
+    }
+
+    // NOTE: consider using httpOnly cookie from backend for better security
     localStorage.setItem("token", result.token);
     localStorage.setItem("user", JSON.stringify(result.user));
 
@@ -83,18 +105,20 @@ export default function LoginForm() {
         duration: 3000,
       });
 
+      // Pastikan route ini sesuai struktur app kamu (case & path)
       if (result.user?.role === "admin") {
         router.push("/adminDashboard");
       } else {
         router.push("/welcome");
       }
     } catch (error: any) {
-      setErrorMessage(error.message);
+      setErrorMessage(error?.message ?? "Login failed");
       toast.error("Login failed ❌", {
-        description: error.message,
+        description: error?.message ?? "Login failed",
         duration: 3000,
       });
     } finally {
+      // bersihkan password field
       form.resetField("password");
     }
   }
@@ -172,11 +196,7 @@ export default function LoginForm() {
                       className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground"
                       aria-label={showPassword ? "Hide password" : "Show password"}
                     >
-                      {showPassword ? (
-                        <EyeOff className="h-5 w-5" />
-                      ) : (
-                        <Eye className="h-5 w-5" />
-                      )}
+                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                     </button>
                   </div>
                   <FormMessage />
@@ -193,13 +213,11 @@ export default function LoginForm() {
                   <FormItem className="flex flex-row items-start space-x-2 space-y-0">
                     <FormControl>
                       <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
+                        checked={!!field.value}
+                        onCheckedChange={(v) => field.onChange(Boolean(v))}
                       />
                     </FormControl>
-                    <FormLabel className="font-normal text-xs">
-                      Remember me
-                    </FormLabel>
+                    <FormLabel className="font-normal text-xs">Remember me</FormLabel>
                   </FormItem>
                 )}
               />
@@ -228,7 +246,9 @@ export default function LoginForm() {
             </Button>
 
             {errorMessage && (
-              <p className="text-red-500 text-sm text-center mt-2">{errorMessage}</p>
+              <p className="text-red-500 text-sm text-center mt-2" aria-live="polite">
+                {errorMessage}
+              </p>
             )}
           </form>
         </Form>
