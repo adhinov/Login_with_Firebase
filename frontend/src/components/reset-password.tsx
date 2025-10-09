@@ -28,10 +28,12 @@ import { toast } from "sonner";
 import { useState } from "react";
 import Link from "next/link";
 
-// ✅ Skema validasi form
+// ✅ Schema validasi password
 const formSchema = z
   .object({
-    password: z.string().min(6, { message: "Password must be at least 6 characters." }),
+    password: z
+      .string()
+      .min(6, { message: "Password must be at least 6 characters." }),
     confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {
@@ -41,7 +43,6 @@ const formSchema = z
 
 type ResetPasswordFormValues = z.infer<typeof formSchema>;
 
-// ✅ Props untuk menerima token dari page.tsx
 interface ResetPasswordProps {
   token: string;
 }
@@ -58,7 +59,7 @@ export default function ResetPassword({ token }: ResetPasswordProps) {
     },
   });
 
-  // ✅ Fungsi submit
+  // ✅ Fungsi submit revisi
   async function onSubmit(values: ResetPasswordFormValues) {
     if (!token) {
       toast.error("Invalid or missing reset token.");
@@ -67,9 +68,14 @@ export default function ResetPassword({ token }: ResetPasswordProps) {
 
     try {
       setLoading(true);
+
+      // 🔄 Sesuaikan dengan backend JWT (token di body)
       const res = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/reset-password/${token}`,
-        { password: values.password }
+        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/reset-password`,
+        {
+          token,
+          newPassword: values.password,
+        }
       );
 
       toast.success(res.data.message || "Password reset successful!");
@@ -77,7 +83,8 @@ export default function ResetPassword({ token }: ResetPasswordProps) {
     } catch (error: any) {
       console.error(error);
       toast.error(
-        error.response?.data?.message || "Failed to reset password. Try again."
+        error.response?.data?.message ||
+          "Failed to reset password. Please try again."
       );
     } finally {
       setLoading(false);
@@ -99,6 +106,7 @@ export default function ResetPassword({ token }: ResetPasswordProps) {
         <CardContent className="pb-2">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              {/* New Password */}
               <FormField
                 control={form.control}
                 name="password"
@@ -125,6 +133,7 @@ export default function ResetPassword({ token }: ResetPasswordProps) {
                 )}
               />
 
+              {/* Confirm Password */}
               <FormField
                 control={form.control}
                 name="confirmPassword"
