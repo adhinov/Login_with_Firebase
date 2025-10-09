@@ -223,26 +223,55 @@ export const forgotPassword = async (req, res) => {
 
     const user = userQuery.rows[0];
 
+    // 🔐 Buat token reset 15 menit
     const token = jwt.sign(
       { id: user.id, email: user.email },
       process.env.JWT_RESET_SECRET,
       { expiresIn: "15m" }
     );
 
+    // 🌐 Ambil URL frontend dari environment (bisa lebih dari satu)
     const rawUrls = (process.env.FRONTEND_URL || "").split(",").map(u => u.trim()).filter(Boolean);
-    const baseUrl = rawUrls[1] || rawUrls[0] || "http://localhost:3000";
+    const baseUrl = rawUrls[1] || rawUrls[0] || "https://login-with-firebase-sandy.vercel.app";
+
+    // 🔗 Buat link reset password lengkap
     const resetLink = `${baseUrl}/reset-password?token=${encodeURIComponent(token)}`;
 
-    const fromEmail = process.env.FROM_EMAIL || process.env.EMAIL_FROM || "no-reply@example.com";
+    // ✉️ Email pengirim
+    const fromEmail = process.env.FROM_EMAIL || "Support <no-reply@yourdomain.com>";
+
+    // 📧 Kirim email
     const response = await resend.emails.send({
       from: fromEmail,
       to: email,
       subject: "Reset Password",
       html: `
-        <p>Halo,</p>
-        <p>Klik tautan berikut untuk mereset password kamu:</p>
-        <p><a href="${resetLink}" target="_blank">${resetLink}</a></p>
-        <p>Link ini akan kedaluwarsa dalam 15 menit.</p>
+        <div style="font-family: Arial, sans-serif; color: #333;">
+          <p>Halo,</p>
+          <p>Klik tombol di bawah ini untuk mereset password kamu:</p>
+          <p>
+            <a href="${resetLink}" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              style="
+                display: inline-block;
+                background-color: #4f46e5;
+                color: white;
+                padding: 10px 16px;
+                text-decoration: none;
+                border-radius: 6px;
+              ">
+              Reset Password
+            </a>
+          </p>
+          <p style="font-size: 14px; color: #666;">
+            Jika tombol di atas tidak berfungsi, salin dan tempel tautan berikut ke browser kamu:
+          </p>
+          <p style="font-size: 14px; word-break: break-all;">
+            <a href="${resetLink}" target="_blank" rel="noopener noreferrer">${resetLink}</a>
+          </p>
+          <p style="font-size: 13px; color: #999;">Link ini akan kedaluwarsa dalam 15 menit.</p>
+        </div>
       `,
     });
 
