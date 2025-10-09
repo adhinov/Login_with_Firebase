@@ -28,7 +28,7 @@ import Link from "next/link";
 
 // Skema validasi form email
 const formSchema = z.object({
-  email: z.string().email({ message: "Please enter a valid email address." }),
+  email: z.string().email({ message: "Masukkan alamat email yang valid." }),
 });
 
 type ForgotPasswordFormValues = z.infer<typeof formSchema>;
@@ -50,14 +50,16 @@ export default function ForgotPasswordForm() {
         `${process.env.NEXT_PUBLIC_API_URL}/api/auth/forgot-password`,
         { email: values.email }
       );
+
       toast.success(
         res.data.message ||
-        "If that email is registered, you will receive a password reset link."
+          "Email reset password berhasil dikirim. Silahkan cek inbox pada email anda."
       );
     } catch (error: any) {
       console.error(error);
       toast.error(
-        error.response?.data?.message || "Failed to send reset email. Try again."
+        error.response?.data?.message ||
+          "Gagal mengirim email reset password. Coba lagi nanti."
       );
     } finally {
       setLoading(false);
@@ -65,41 +67,68 @@ export default function ForgotPasswordForm() {
   }
 
   return (
-    <div className="flex justify-center items-center min-h-screen bg-background">
+    <div className="flex justify-center items-center min-h-screen bg-[#0b1120]">
       <Toaster richColors position="top-center" />
-      <Card className="w-full max-w-xs shadow-xl">
+      <Card className="w-full max-w-xs shadow-xl border border-gray-700 bg-[#111827]">
         <CardHeader>
-          <CardTitle className="text-3xl font-bold text-center text-lime-300">
+          <CardTitle className="text-3xl font-bold text-center text-lime-400">
             Forgot Password
           </CardTitle>
-          <CardDescription className="text-center text-xs">
+          <CardDescription className="text-center text-gray-400 text-xs">
             Enter your email address to receive a reset link.
           </CardDescription>
         </CardHeader>
+
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <FormField
                 control={form.control}
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel className="text-sm text-gray-300">Email</FormLabel>
                     <FormControl>
-                      <Input
-                        type="email"
-                        placeholder="your@email.com"
-                        {...field}
-                        disabled={loading}
-                      />
+                      <div className="relative">
+                        <Input
+                          id="forgot-email"
+                          type="email"
+                          placeholder="your@email.com"
+                          {...field}
+                          disabled={loading}
+                          className="peer bg-transparent border-b-2 border-gray-600 text-white placeholder-transparent focus:outline-none focus:border-lime-400 transition-colors duration-300"
+                          aria-label="Email"
+                        />
+                        <label
+                          htmlFor="forgot-email"
+                          className="absolute left-0 -top-3.5 text-gray-400 text-sm transition-all 
+                            peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-500 
+                            peer-placeholder-shown:top-2 peer-focus:-top-3.5 peer-focus:text-lime-400 peer-focus:text-sm pointer-events-none"
+                        >
+                          Email
+                        </label>
+
+                        {/* Animated underline (pure CSS/inline style) */}
+                        <div
+                          className="absolute bottom-0 left-0 h-[2px] bg-lime-400 origin-left"
+                          style={{
+                            transform: field.value ? "scaleX(1)" : "scaleX(0)",
+                            transformOrigin: "left",
+                            transition: "transform 280ms ease",
+                            width: "100%",
+                          }}
+                          aria-hidden
+                        />
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
               <Button
                 type="submit"
-                className="w-full"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-full"
                 disabled={loading || form.formState.isSubmitting}
               >
                 {loading ? "Processing..." : "Send Reset Link"}
@@ -107,10 +136,15 @@ export default function ForgotPasswordForm() {
             </form>
           </Form>
         </CardContent>
-        <CardFooter className="flex-col items-center text-sm">
-          <p className="text-muted-foreground mt-4">
+
+        <CardFooter className="flex-col items-center text-sm text-gray-400">
+          <p className="mt-2">
             Back to{" "}
-            <Button variant="link" className="p-0 h-auto text-primary" asChild>
+            <Button
+              variant="link"
+              className="p-0 h-auto text-blue-400 hover:underline"
+              asChild
+            >
               <Link href="/login">Login</Link>
             </Button>
           </p>
