@@ -1,4 +1,3 @@
-// components/forgot-password-form.tsx
 "use client";
 
 import { useState } from "react";
@@ -27,7 +26,7 @@ import { toast } from "sonner";
 import Link from "next/link";
 import { Mail } from "lucide-react";
 
-// Skema validasi email
+// Validasi email
 const formSchema = z.object({
   email: z.string().email({ message: "Masukkan alamat email yang valid." }),
 });
@@ -52,10 +51,8 @@ export default function ForgotPasswordForm() {
 
       toast.success(
         res.data.message ||
-          "Email reset password berhasil dikirim. Silahkan cek inbox pada email anda."
+          "Email reset password berhasil dikirim. Silahkan cek inbox email anda."
       );
-
-      form.reset(); // bersihkan field setelah sukses
     } catch (error: any) {
       console.error(error);
       toast.error(
@@ -81,67 +78,59 @@ export default function ForgotPasswordForm() {
 
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
               <FormField
                 control={form.control}
                 name="email"
-                render={({ field }) => {
-                  const hasValue = !!field.value;
-                  return (
-                    <FormItem>
-                      <FormControl>
-                        <div className="relative flex items-center">
-                          {/* ikon amplop, posisinya sedikit ke kanan (left-3) sehingga tidak mepet */}
-                          <Mail
-                            className={`absolute left-3 top-1/2 -translate-y-1/2 transition-colors
-                              ${hasValue ? "text-lime-400" : "text-gray-400"} 
-                              group-focus-within:text-lime-400`}
-                            size={18}
-                          />
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <div className="relative flex items-center">
+                        {/* Ikon amplop */}
+                        <Mail className="absolute left-3 text-gray-400 peer-focus:text-lime-400 transition-colors duration-300" />
 
-                          {/* Input: gunakan placeholder=" " supaya floating label bekerja */}
-                          <Input
-                            id="forgot-email"
-                            type="email"
-                            placeholder=" "
-                            {...field}
-                            disabled={loading}
-                            className="peer pl-12 bg-transparent border-b-2 border-gray-600 text-white placeholder-transparent focus:outline-none focus:border-lime-400 transition-colors duration-300 w-full"
-                            aria-label="Email"
-                          />
+                        {/* Input email */}
+                        <Input
+                          id="forgot-email"
+                          type="email"
+                          placeholder="Email"
+                          {...field}
+                          disabled={loading}
+                          className="peer pl-10 pr-3 py-3 bg-transparent border-b-2 border-gray-600 text-white focus:outline-none focus:border-lime-400 transition-colors duration-300 w-full"
+                        />
 
-                          {/* floating label */}
-                          <label
-                            htmlFor="forgot-email"
-                            className="absolute left-12 -top-3.5 text-gray-400 text-sm transition-all
-                              peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-500
-                              peer-placeholder-shown:top-2 peer-focus:-top-3.5 peer-focus:text-lime-400 peer-focus:text-sm pointer-events-none"
-                          >
-                            Email
-                          </label>
+                        {/* Label mengambang */}
+                        <label
+                          htmlFor="forgot-email"
+                          className="absolute left-10 -top-3.5 text-gray-400 text-sm transition-all
+                            peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-500
+                            peer-placeholder-shown:top-2 peer-focus:-top-3.5 peer-focus:text-lime-400 peer-focus:text-sm pointer-events-none"
+                        >
+                          Email
+                        </label>
 
-                          {/* underline animation (pure CSS transform) */}
-                          <div
-                            className="absolute bottom-0 left-0 h-[2px] bg-lime-400 origin-left"
-                            style={{
-                              transform: field.value ? "scaleX(1)" : "scaleX(0)",
-                              transformOrigin: "left",
-                              transition: "transform 280ms ease",
-                              width: "100%",
-                            }}
-                            aria-hidden
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  );
-                }}
+                        {/* Animated underline */}
+                        <div
+                          className="absolute bottom-0 left-0 h-[2px] bg-lime-400 origin-left"
+                          style={{
+                            transform: field.value ? "scaleX(1)" : "scaleX(0)",
+                            transformOrigin: "left",
+                            transition: "transform 280ms ease",
+                            width: "100%",
+                          }}
+                          aria-hidden
+                        />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
 
+              {/* Tombol utama */}
               <Button
                 type="submit"
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-full"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-full py-3 text-base shadow-md transition-all duration-300"
                 disabled={loading || form.formState.isSubmitting}
               >
                 {loading ? "Processing..." : "Send Reset Link"}
