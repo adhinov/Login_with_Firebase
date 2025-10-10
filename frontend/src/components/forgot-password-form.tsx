@@ -25,9 +25,8 @@ import {
 } from "@/components/ui/card";
 import { toast } from "sonner";
 import Link from "next/link";
-import { Mail } from "lucide-react"; // ← pakai lucide-react (sudah di projectmu)
+import { Mail } from "lucide-react";
 
-// Skema validasi email
 const formSchema = z.object({
   email: z.string().email({ message: "Masukkan alamat email yang valid." }),
 });
@@ -49,7 +48,6 @@ export default function ForgotPasswordForm() {
         `${process.env.NEXT_PUBLIC_API_URL}/api/auth/forgot-password`,
         { email: values.email }
       );
-
       toast.success(
         res.data.message ||
           "Email reset password berhasil dikirim. Silahkan cek inbox pada email anda."
@@ -87,20 +85,20 @@ export default function ForgotPasswordForm() {
                   <FormItem>
                     <FormControl>
                       <div className="relative flex items-center">
-                        {/* ikon amplop */}
-                        <Mail className="absolute left-2 text-gray-400 peer-focus:text-lime-400 transition-colors" />
+                        {/* Icon amplop */}
+                        <Mail className="absolute left-3 text-gray-400 peer-focus:text-lime-400 transition-colors" />
                         <Input
                           id="forgot-email"
                           type="email"
                           placeholder="your@email.com"
                           {...field}
                           disabled={loading}
-                          className="peer pl-9 bg-transparent border-b-2 border-gray-600 text-white placeholder-transparent focus:outline-none focus:border-lime-400 transition-colors duration-300 w-full"
+                          className="peer pl-10 bg-transparent border-b-2 border-gray-600 text-white placeholder-transparent focus:outline-none focus:border-lime-400 transition-colors duration-300 w-full"
                           aria-label="Email"
                         />
                         <label
                           htmlFor="forgot-email"
-                          className="absolute left-9 -top-3.5 text-gray-400 text-sm transition-all 
+                          className="absolute left-10 -top-3.5 text-gray-400 text-sm transition-all 
                             peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-500 
                             peer-placeholder-shown:top-2 peer-focus:-top-3.5 peer-focus:text-lime-400 peer-focus:text-sm pointer-events-none"
                         >
