@@ -1,4 +1,3 @@
-// controllers/authController.js
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import pool from "../config/db.js";
@@ -7,9 +6,7 @@ import {
   createUser,
   updateLastLogin,
 } from "../models/userModel.js";
-import { Resend } from "resend";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
+import axios from "axios"; // 🔥 gunakan axios untuk Brevo API
 
 // ================= HELPER: mapping role_id → string =================
 const getRoleString = (role_id) => {
@@ -180,7 +177,7 @@ export const loginAdmin = async (req, res) => {
   }
 };
 
-// ================= GET USER PROFILE (/api/auth/me) =================
+// ================= GET USER PROFILE =================
 export const getUserProfile = async (req, res) => {
   try {
     const userId = req.user?.id;
@@ -211,91 +208,79 @@ export const getUserProfile = async (req, res) => {
   }
 };
 
-// ====================== FORGOT PASSWORD ======================
+// ====================== FORGOT PASSWORD (Brevo) ======================
 export const forgotPassword = async (req, res) => {
   const { email } = req.body;
 
   try {
-    // 🔍 Cek apakah email ada di database
     const userQuery = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
     if (userQuery.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        message: "Email tidak ditemukan. Pastikan email yang dimasukkan sudah terdaftar.",
+        message: "Email tidak ditemukan. Pastikan email sudah terdaftar.",
       });
     }
 
     const user = userQuery.rows[0];
 
-    // 🔐 Buat token reset (kedaluwarsa 15 menit)
+    // 🔐 Buat token reset (15 menit)
     const token = jwt.sign(
       { id: user.id, email: user.email },
       process.env.JWT_RESET_SECRET,
       { expiresIn: "15m" }
     );
 
-    // 🌐 Ambil URL frontend dari environment (bisa 1 atau beberapa domain)
+    // 🌐 Ambil base URL dari env
     const rawUrls = (process.env.FRONTEND_URL || "")
       .split(",")
       .map((u) => u.trim())
       .filter(Boolean);
-
     const baseUrl =
       rawUrls[1] || rawUrls[0] || "https://login-with-firebase-sandy.vercel.app";
 
-    // 🔗 Buat link reset password
     const resetLink = `${baseUrl}/reset-password?token=${encodeURIComponent(token)}`;
 
-    // ✉️ Kirim email reset password (global)
-    const fromEmail = process.env.FROM_EMAIL || "Login App <noreply@login-app.com>";
-
-    const response = await resend.emails.send({
-      from: fromEmail,
-      to: email,
-      subject: "Reset Password - Login App",
-      html: `
-        <div style="font-family: Arial, sans-serif; color: #333; max-width: 480px; margin: 0 auto; border: 1px solid #eee; border-radius: 10px; padding: 20px;">
-          <h2 style="color: #4f46e5; text-align: center;">Reset Password Akun Anda</h2>
+    // ✉️ Konfigurasi email via Brevo API
+    const response = await axios.post(
+      "https://api.brevo.com/v3/smtp/email",
+      {
+        sender: {
+          name: "Login App",
+          email: process.env.FROM_EMAIL || "noreply@login-app.com",
+        },
+        to: [{ email }],
+        subject: "Reset Password - Login App",
+        htmlContent: `
+          <h2 style="color:#4f46e5;">Reset Password Akun Anda</h2>
           <p>Halo ${user.username || "User"},</p>
-          <p>Kami menerima permintaan untuk mereset password akun Anda di <strong>Login App</strong>.</p>
-          <p>Silakan klik tombol di bawah ini untuk melanjutkan proses reset password:</p>
-          <div style="text-align: center; margin: 20px 0;">
-            <a href="${resetLink}" target="_blank" rel="noopener noreferrer"
-              style="display: inline-block; background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
-              Reset Password
-            </a>
-          </div>
-          <p style="font-size: 14px; color: #555;">
-            Jika tombol di atas tidak berfungsi, salin dan tempel tautan berikut ke browser Anda:
-          </p>
-          <p style="font-size: 13px; word-break: break-all; color: #666;">
-            <a href="${resetLink}" target="_blank" rel="noopener noreferrer">${resetLink}</a>
-          </p>
-          <hr style="margin: 24px 0; border: none; border-top: 1px solid #eee;" />
-          <p style="font-size: 13px; color: #999; text-align: center;">
-            Link ini akan kedaluwarsa dalam 15 menit.<br />
-            Jika Anda tidak meminta reset password, abaikan email ini.
-          </p>
-          <p style="font-size: 13px; color: #aaa; text-align: center;">
-            &copy; ${new Date().getFullYear()} Login App. All rights reserved.
-          </p>
-        </div>
-      `,
-    });
+          <p>Kami menerima permintaan untuk mereset password akun Anda.</p>
+          <a href="${resetLink}" 
+             style="display:inline-block;padding:12px 20px;background:#4f46e5;color:white;
+             border-radius:6px;text-decoration:none;">Reset Password</a>
+          <p style="margin-top:16px;">Tautan ini berlaku selama 15 menit.</p>
+        `,
+      },
+      {
+        headers: {
+          "api-key": process.env.BREVO_API_KEY,
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
-    console.log(`✅ Email reset password terkirim ke: ${email}`, response);
+    console.log(`✅ Email reset password dikirim ke: ${email}`, response.data);
 
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
       message:
-        "Email reset password berhasil dikirim. Silakan cek inbox atau folder spam pada email Anda.",
+        "Email reset password berhasil dikirim. Silakan cek inbox atau folder spam Anda.",
     });
   } catch (error) {
-    console.error("❌ Forgot password error:", error);
-    return res.status(500).json({
+    console.error("❌ Forgot password error (Brevo):", error.response?.data || error.message);
+    res.status(500).json({
       success: false,
       message:
-        "Terjadi kesalahan saat mengirim email reset password. Silakan coba lagi beberapa saat.",
+        "Terjadi kesalahan saat mengirim email reset password. Silakan coba lagi nanti.",
     });
   }
 };
@@ -332,25 +317,22 @@ export const resetPassword = async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-
     await pool.query("UPDATE users SET password = $1 WHERE id = $2", [
       hashedPassword,
       decoded.id,
     ]);
 
-    console.log(`✅ Password user ID ${decoded.id} (${userResult.rows[0].email}) berhasil direset.`);
+    console.log(`✅ Password user ID ${decoded.id} berhasil direset.`);
 
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
-      message: "Password berhasil direset. Silakan login kembali dengan password baru.",
+      message: "Password berhasil direset. Silakan login kembali.",
     });
   } catch (error) {
     console.error("❌ Reset password error:", error);
-    return res.status(500).json({
+    res.status(500).json({
       success: false,
-      message: "Terjadi kesalahan pada server. Silakan coba lagi.",
+      message: "Terjadi kesalahan pada server.",
     });
   }
 };
-
-
