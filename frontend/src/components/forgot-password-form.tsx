@@ -1,31 +1,32 @@
 "use client";
 
-import { useState } from "react";
+import * as React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import axios from "axios";
+import Link from "next/link";
+import { toast } from "sonner";
+import { Mail, Loader2, Send } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
   FormField,
   FormItem,
+  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { toast } from "sonner";
-import Link from "next/link";
-import { Mail, Loader2 } from "lucide-react";
 
+// ✅ Validasi
 const formSchema = z.object({
   email: z.string().email({ message: "Masukkan alamat email yang valid." }),
 });
@@ -33,7 +34,7 @@ const formSchema = z.object({
 type ForgotPasswordFormValues = z.infer<typeof formSchema>;
 
 export default function ForgotPasswordForm() {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = React.useState(false);
 
   const form = useForm<ForgotPasswordFormValues>({
     resolver: zodResolver(formSchema),
@@ -47,10 +48,9 @@ export default function ForgotPasswordForm() {
         `${process.env.NEXT_PUBLIC_API_URL}/api/auth/forgot-password`,
         { email: values.email }
       );
-
       toast.success(
         res.data.message ||
-          "Email reset password berhasil dikirim. Silahkan cek inbox email anda."
+          "Email reset password berhasil dikirim. Silakan cek inbox Anda."
       );
     } catch (error: any) {
       console.error(error);
@@ -64,89 +64,77 @@ export default function ForgotPasswordForm() {
   }
 
   return (
-    <div className="flex justify-center items-center min-h-screen bg-[#0b1120]">
-      <Card className="w-full max-w-[350px] shadow-xl border border-gray-700 bg-[#111827]">
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold text-center text-lime-400">
-            Forgot Password
-          </CardTitle>
-          <CardDescription className="text-center text-gray-400 text-xs">
-            Enter your email to receive a reset link.
-          </CardDescription>
-        </CardHeader>
+    <Card className="w-full max-w-[20rem] shadow-xl">
+      <CardHeader>
+        <CardTitle className="text-3xl font-bold text-center text-lime-300">
+          Forgot Password
+        </CardTitle>
+      </CardHeader>
 
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormControl>
-                      <div className="relative">
-                        {/* Input */}
-                        <Input
-                          id="email"
-                          type="email"
-                          placeholder=" "
-                          {...field}
-                          disabled={loading}
-                          className="peer w-full pl-9 pr-3 py-2.5 bg-transparent border-b border-gray-600 text-white focus:outline-none focus:border-lime-400 text-sm transition-colors duration-300"
-                        />
+      <CardContent className="pb-0">
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {/* Email field */}
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder=" "
+                      required
+                      autoComplete="email"
+                      {...field}
+                      className="pl-12 text-sm peer"
+                    />
+                    <FormLabel
+                      htmlFor="email"
+                      className="absolute text-sm text-muted-foreground transform -translate-y-4 scale-75 top-2 z-10 bg-card px-2 left-9
+                      peer-placeholder-shown:scale-100 peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2
+                      peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4"
+                    >
+                      Email
+                    </FormLabel>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-                        {/* Ikon */}
-                        <Mail className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400 peer-focus:text-lime-400 transition-colors duration-300" />
-
-                        {/* Label mengambang */}
-                        <label
-                          htmlFor="email"
-                          className="absolute left-9 top-2.5 text-gray-400 text-sm transition-all duration-300 peer-placeholder-shown:top-2.5 peer-placeholder-shown:text-gray-400 peer-placeholder-shown:text-sm peer-focus:top-[-8px] peer-focus:text-xs peer-focus:text-lime-400 bg-[#111827] px-1"
-                        >
-                          Email
-                        </label>
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Tombol submit */}
-              <Button
-                type="submit"
-                className="w-full text-sm py-2.5 mt-4 flex items-center justify-center"
-                disabled={loading}
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin text-lime-300" />
-                    Sending...
-                  </>
-                ) : (
-                  <>
-                    <Mail className="mr-2 h-4 w-4" />
-                    Send Reset Link
-                  </>
-                )}
-              </Button>
-            </form>
-          </Form>
-        </CardContent>
-
-        <CardFooter className="flex-col items-center text-xs text-gray-400">
-          <p className="mt-2">
-            Back to{" "}
+            {/* Tombol Submit */}
             <Button
-              variant="link"
-              className="p-0 h-auto text-blue-400 hover:underline text-xs"
-              asChild
+              type="submit"
+              className="w-full text-lg py-6 mt-6 flex items-center justify-center"
+              disabled={loading}
             >
-              <Link href="/login">Login</Link>
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin text-lime-300" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Send className="mr-2 h-5 w-5" />
+                  Send Reset Link
+                </>
+              )}
             </Button>
-          </p>
-        </CardFooter>
-      </Card>
-    </div>
+          </form>
+        </Form>
+      </CardContent>
+
+      <CardFooter className="flex-col items-center text-sm">
+        <p className="text-muted-foreground mt-4">
+          Back to{" "}
+          <Button variant="link" className="p-0 h-auto text-primary" asChild>
+            <Link href="/login">Login</Link>
+          </Button>
+        </p>
+      </CardFooter>
+    </Card>
   );
 }
