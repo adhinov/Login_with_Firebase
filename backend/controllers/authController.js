@@ -212,10 +212,6 @@ export const getUserProfile = async (req, res) => {
 };
 
 // ====================== FORGOT PASSWORD ======================
-import jwt from "jsonwebtoken";
-import pool from "../config/db.js";
-import resend from "../services/resendClient.js"; // ⬅️ import Resend singleton
-
 export const forgotPassword = async (req, res) => {
   const { email } = req.body;
 
@@ -250,12 +246,12 @@ export const forgotPassword = async (req, res) => {
     // 🔗 Buat link reset password
     const resetLink = `${baseUrl}/reset-password?token=${encodeURIComponent(token)}`;
 
-    // ✉️ Kirim email reset password global dari domain login-app.com
+    // ✉️ Kirim email reset password (global)
     const fromEmail = process.env.FROM_EMAIL || "Login App <noreply@login-app.com>";
 
     const response = await resend.emails.send({
       from: fromEmail,
-      to: email, // dinamis sesuai user
+      to: email,
       subject: "Reset Password - Login App",
       html: `
         <div style="font-family: Arial, sans-serif; color: #333; max-width: 480px; margin: 0 auto; border: 1px solid #eee; border-radius: 10px; padding: 20px;">
@@ -265,15 +261,7 @@ export const forgotPassword = async (req, res) => {
           <p>Silakan klik tombol di bawah ini untuk melanjutkan proses reset password:</p>
           <div style="text-align: center; margin: 20px 0;">
             <a href="${resetLink}" target="_blank" rel="noopener noreferrer"
-              style="
-                display: inline-block;
-                background-color: #4f46e5;
-                color: white;
-                padding: 12px 24px;
-                text-decoration: none;
-                border-radius: 6px;
-                font-weight: bold;
-              ">
+              style="display: inline-block; background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
               Reset Password
             </a>
           </div>
@@ -297,7 +285,6 @@ export const forgotPassword = async (req, res) => {
 
     console.log(`✅ Email reset password terkirim ke: ${email}`, response);
 
-    // 🟢 Pesan sukses untuk toast frontend
     return res.status(200).json({
       success: true,
       message:
@@ -314,15 +301,10 @@ export const forgotPassword = async (req, res) => {
 };
 
 // ====================== RESET PASSWORD ======================
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
-import pool from "../config/db.js";
-
 export const resetPassword = async (req, res) => {
   const { token, newPassword } = req.body;
 
   try {
-    // 🔎 Validasi input
     if (!token || !newPassword) {
       return res.status(400).json({
         success: false,
@@ -330,7 +312,6 @@ export const resetPassword = async (req, res) => {
       });
     }
 
-    // 🔐 Verifikasi token reset (JWT)
     let decoded;
     try {
       decoded = jwt.verify(token, process.env.JWT_RESET_SECRET);
@@ -342,7 +323,6 @@ export const resetPassword = async (req, res) => {
       });
     }
 
-    // 🔍 Pastikan user masih ada di database
     const userResult = await pool.query("SELECT id, email FROM users WHERE id = $1", [decoded.id]);
     if (userResult.rows.length === 0) {
       return res.status(404).json({
@@ -351,10 +331,8 @@ export const resetPassword = async (req, res) => {
       });
     }
 
-    // 🔒 Hash password baru
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-    // 💾 Update password ke database
     await pool.query("UPDATE users SET password = $1 WHERE id = $2", [
       hashedPassword,
       decoded.id,
@@ -362,7 +340,6 @@ export const resetPassword = async (req, res) => {
 
     console.log(`✅ Password user ID ${decoded.id} (${userResult.rows[0].email}) berhasil direset.`);
 
-    // 🟢 Respon sukses untuk toast notifikasi frontend
     return res.status(200).json({
       success: true,
       message: "Password berhasil direset. Silakan login kembali dengan password baru.",
@@ -375,4 +352,5 @@ export const resetPassword = async (req, res) => {
     });
   }
 };
+
 
