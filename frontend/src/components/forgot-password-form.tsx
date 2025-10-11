@@ -26,7 +26,6 @@ import { toast } from "sonner";
 import Link from "next/link";
 import { Mail, Loader2 } from "lucide-react";
 
-// Validasi email
 const formSchema = z.object({
   email: z.string().email({ message: "Masukkan alamat email yang valid." }),
 });
@@ -66,12 +65,12 @@ export default function ForgotPasswordForm() {
 
   return (
     <div className="flex justify-center items-center min-h-screen bg-[#0b1120]">
-      <Card className="w-full max-w-xs shadow-xl border border-gray-700 bg-[#111827]">
+      <Card className="w-full max-w-sm shadow-xl border border-gray-700 bg-[#111827]">
         <CardHeader>
           <CardTitle className="text-3xl font-bold text-center text-lime-400">
             Forgot Password
           </CardTitle>
-          <CardDescription className="text-center text-gray-400 text-xs">
+          <CardDescription className="text-center text-gray-400 text-sm">
             Enter your email address to receive a reset link.
           </CardDescription>
         </CardHeader>
@@ -96,29 +95,7 @@ export default function ForgotPasswordForm() {
                           placeholder="Email"
                           {...field}
                           disabled={loading}
-                          className="peer pl-10 pr-3 py-3 bg-transparent border-b-2 border-gray-600 text-white focus:outline-none focus:border-lime-400 transition-colors duration-300 w-full"
-                        />
-
-                        {/* Label mengambang */}
-                        <label
-                          htmlFor="forgot-email"
-                          className="absolute left-10 -top-3.5 text-gray-400 text-sm transition-all
-                            peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-500
-                            peer-placeholder-shown:top-2 peer-focus:-top-3.5 peer-focus:text-lime-400 peer-focus:text-sm pointer-events-none"
-                        >
-                          Email
-                        </label>
-
-                        {/* Animated underline */}
-                        <div
-                          className="absolute bottom-0 left-0 h-[2px] bg-lime-400 origin-left"
-                          style={{
-                            transform: field.value ? "scaleX(1)" : "scaleX(0)",
-                            transformOrigin: "left",
-                            transition: "transform 280ms ease",
-                            width: "100%",
-                          }}
-                          aria-hidden
+                          className="pl-10 pr-3 py-3 bg-transparent border-b border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:border-lime-400 w-full text-base transition-colors duration-300"
                         />
                       </div>
                     </FormControl>
@@ -130,7 +107,7 @@ export default function ForgotPasswordForm() {
               {/* Tombol utama */}
               <Button
                 type="submit"
-                className="w-full text-lg py-6 mt-6 flex items-center justify-center"
+                className="w-full text-lg py-6 mt-4 flex items-center justify-center"
                 disabled={loading}
               >
                 {loading ? (
