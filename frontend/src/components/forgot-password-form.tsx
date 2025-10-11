@@ -84,19 +84,27 @@ export default function ForgotPasswordForm() {
                 render={({ field }) => (
                   <FormItem>
                     <FormControl>
-                      <div className="relative flex items-center">
-                        {/* Ikon amplop */}
-                        <Mail className="absolute left-3 text-gray-400 peer-focus:text-lime-400 transition-colors duration-300" />
-
-                        {/* Input email */}
+                      <div className="relative">
+                        {/* Input */}
                         <Input
-                          id="forgot-email"
+                          id="email"
                           type="email"
-                          placeholder="Email"
+                          placeholder=" "
                           {...field}
                           disabled={loading}
-                          className="pl-10 pr-3 py-3 bg-transparent border-b border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:border-lime-400 w-full text-base transition-colors duration-300"
+                          className="peer w-full pl-10 pr-3 py-3 bg-transparent border-b border-gray-600 text-white focus:outline-none focus:border-lime-400 text-base transition-colors duration-300"
                         />
+
+                        {/* Ikon */}
+                        <Mail className="absolute left-3 top-3 text-gray-400 peer-focus:text-lime-400 transition-colors duration-300" />
+
+                        {/* Label mengambang */}
+                        <label
+                          htmlFor="email"
+                          className="absolute left-10 top-3 text-gray-400 text-base transition-all duration-300 peer-placeholder-shown:top-3 peer-placeholder-shown:text-gray-400 peer-placeholder-shown:text-base peer-focus:top-[-10px] peer-focus:text-sm peer-focus:text-lime-400 bg-[#111827] px-1"
+                        >
+                          Email
+                        </label>
                       </div>
                     </FormControl>
                     <FormMessage />
@@ -104,7 +112,7 @@ export default function ForgotPasswordForm() {
                 )}
               />
 
-              {/* Tombol utama */}
+              {/* Tombol submit */}
               <Button
                 type="submit"
                 className="w-full text-lg py-6 mt-4 flex items-center justify-center"
