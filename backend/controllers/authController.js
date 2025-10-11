@@ -216,39 +216,46 @@ export const forgotPassword = async (req, res) => {
   const { email } = req.body;
 
   try {
+    // 🔍 Cek apakah email ada di database
     const userQuery = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
     if (userQuery.rows.length === 0) {
-      return res.status(404).json({ success: false, message: "Email tidak ditemukan." });
+      return res.status(404).json({
+        success: false,
+        message: "Email tidak ditemukan. Pastikan email yang dimasukkan sudah terdaftar.",
+      });
     }
 
     const user = userQuery.rows[0];
 
-    // 🔐 Buat token reset 15 menit
+    // 🔐 Buat token reset (kedaluwarsa 15 menit)
     const token = jwt.sign(
       { id: user.id, email: user.email },
       process.env.JWT_RESET_SECRET,
       { expiresIn: "15m" }
     );
 
-    // 🌐 Ambil URL frontend dari environment (bisa lebih dari satu)
-    const rawUrls = (process.env.FRONTEND_URL || "").split(",").map(u => u.trim()).filter(Boolean);
+    // 🌐 Ambil URL frontend dari environment
+    const rawUrls = (process.env.FRONTEND_URL || "")
+      .split(",")
+      .map((u) => u.trim())
+      .filter(Boolean);
     const baseUrl = rawUrls[1] || rawUrls[0] || "https://login-with-firebase-sandy.vercel.app";
 
-    // 🔗 Buat link reset password lengkap
+    // 🔗 Buat link reset password
     const resetLink = `${baseUrl}/reset-password?token=${encodeURIComponent(token)}`;
 
-    // ✉️ Email pengirim
+    // ✉️ Kirim email reset password
     const fromEmail = process.env.FROM_EMAIL || "Support <no-reply@yourdomain.com>";
 
-    // 📧 Kirim email
     const response = await resend.emails.send({
       from: fromEmail,
       to: email,
       subject: "Reset Password",
       html: `
         <div style="font-family: Arial, sans-serif; color: #333;">
-          <p>Halo,</p>
-          <p>Klik tombol di bawah ini untuk mereset password kamu:</p>
+          <p>Halo ${user.username || ""},</p>
+          <p>Kami menerima permintaan untuk mereset password akun Anda.</p>
+          <p>Klik tombol di bawah ini untuk melanjutkan proses reset password:</p>
           <p>
             <a href="${resetLink}" 
               target="_blank" 
@@ -270,18 +277,27 @@ export const forgotPassword = async (req, res) => {
           <p style="font-size: 14px; word-break: break-all;">
             <a href="${resetLink}" target="_blank" rel="noopener noreferrer">${resetLink}</a>
           </p>
-          <p style="font-size: 13px; color: #999;">Link ini akan kedaluwarsa dalam 15 menit.</p>
+          <p style="font-size: 13px; color: #999;">
+            Tautan ini akan kedaluwarsa dalam 15 menit.
+          </p>
         </div>
       `,
     });
 
     console.log("✅ Email reset password terkirim:", response);
-    return res.status(200).json({ success: true, message: "Email reset password berhasil dikirim." });
+
+    // 🟢 Pesan lebih lengkap agar toast di frontend lebih informatif
+    return res.status(200).json({
+      success: true,
+      message:
+        "Email reset password berhasil dikirim. Silakan cek inbox pada email Anda.",
+    });
   } catch (error) {
     console.error("❌ Forgot password error:", error);
     return res.status(500).json({
       success: false,
-      message: "Terjadi kesalahan saat mengirim email reset password.",
+      message:
+        "Terjadi kesalahan saat mengirim email reset password. Silakan coba lagi beberapa saat.",
     });
   }
 };
