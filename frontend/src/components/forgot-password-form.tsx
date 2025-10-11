@@ -12,6 +12,7 @@ import {
   Card,
   CardContent,
   CardHeader,
+  CardDescription,
   CardTitle,
   CardFooter,
 } from "@/components/ui/card";
@@ -69,6 +70,9 @@ export default function ForgotPasswordForm() {
         <CardTitle className="text-3xl font-bold text-center text-lime-300">
           Forgot Password
         </CardTitle>
+        <CardDescription className="text-center text-xs">
+          Enter your Email to receive reset password via email inbox
+        </CardDescription>
       </CardHeader>
 
       <CardContent className="pb-0">
