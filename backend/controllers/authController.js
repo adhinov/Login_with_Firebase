@@ -6,7 +6,7 @@ import {
   createUser,
   updateLastLogin,
 } from "../models/userModel.js";
-import axios from "axios"; // 🔥 gunakan axios untuk Brevo API
+import axios from "axios"; // 🔥 untuk Brevo API
 
 // ================= HELPER: mapping role_id → string =================
 const getRoleString = (role_id) => {
@@ -25,16 +25,18 @@ export const register = async (req, res) => {
     const { email, password, username, phone_number } = req.body;
 
     if (!email || !password) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Email dan password wajib diisi" });
+      return res.status(400).json({
+        success: false,
+        message: "Email dan password wajib diisi",
+      });
     }
 
     const existingUser = await findUserByEmail(email);
     if (existingUser) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Email sudah terdaftar" });
+      return res.status(400).json({
+        success: false,
+        message: "Email sudah terdaftar",
+      });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -73,6 +75,7 @@ export const register = async (req, res) => {
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
+
     if (!email || !password) {
       return res
         .status(400)
@@ -182,7 +185,9 @@ export const getUserProfile = async (req, res) => {
   try {
     const userId = req.user?.id;
     if (!userId) {
-      return res.status(401).json({ success: false, message: "Token tidak valid" });
+      return res
+        .status(401)
+        .json({ success: false, message: "Token tidak valid" });
     }
 
     const result = await pool.query(
@@ -191,7 +196,9 @@ export const getUserProfile = async (req, res) => {
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ success: false, message: "User tidak ditemukan" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User tidak ditemukan" });
     }
 
     const user = result.rows[0];
@@ -204,11 +211,13 @@ export const getUserProfile = async (req, res) => {
     });
   } catch (error) {
     console.error("❌ Error getUserProfile:", error);
-    res.status(500).json({ success: false, message: "Gagal mengambil profil user" });
+    res
+      .status(500)
+      .json({ success: false, message: "Gagal mengambil profil user" });
   }
 };
 
-// ====================== FORGOT PASSWORD (Brevo) ======================
+// ====================== FORGOT PASSWORD (Brevo API) ======================
 export const forgotPassword = async (req, res) => {
   const { email } = req.body;
 
@@ -230,17 +239,10 @@ export const forgotPassword = async (req, res) => {
       { expiresIn: "15m" }
     );
 
-    // 🌐 Ambil base URL dari env
-    const rawUrls = (process.env.FRONTEND_URL || "")
-      .split(",")
-      .map((u) => u.trim())
-      .filter(Boolean);
-    const baseUrl =
-      rawUrls[1] || rawUrls[0] || "https://login-with-firebase-sandy.vercel.app";
+    // 🌐 URL frontend reset
+    const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${encodeURIComponent(token)}`;
 
-    const resetLink = `${baseUrl}/reset-password?token=${encodeURIComponent(token)}`;
-
-    // ✉️ Konfigurasi email via Brevo API
+    // ✉️ Kirim email via Brevo API
     const response = await axios.post(
       "https://api.brevo.com/v3/smtp/email",
       {
@@ -251,13 +253,15 @@ export const forgotPassword = async (req, res) => {
         to: [{ email }],
         subject: "Reset Password - Login App",
         htmlContent: `
-          <h2 style="color:#4f46e5;">Reset Password Akun Anda</h2>
-          <p>Halo ${user.username || "User"},</p>
-          <p>Kami menerima permintaan untuk mereset password akun Anda.</p>
-          <a href="${resetLink}" 
-             style="display:inline-block;padding:12px 20px;background:#4f46e5;color:white;
-             border-radius:6px;text-decoration:none;">Reset Password</a>
-          <p style="margin-top:16px;">Tautan ini berlaku selama 15 menit.</p>
+          <div style="font-family:Arial,sans-serif;line-height:1.6;">
+            <h2 style="color:#4f46e5;">Reset Password Akun Anda</h2>
+            <p>Halo ${user.username || "User"},</p>
+            <p>Kami menerima permintaan untuk mereset password akun Anda.</p>
+            <a href="${resetLink}" 
+               style="display:inline-block;padding:12px 20px;background:#4f46e5;color:white;
+               border-radius:6px;text-decoration:none;">Reset Password</a>
+            <p style="margin-top:16px;">Tautan ini berlaku selama 15 menit.</p>
+          </div>
         `,
       },
       {
