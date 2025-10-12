@@ -6,7 +6,7 @@ import {
   createUser,
   updateLastLogin,
 } from "../models/userModel.js";
-import nodemailer from "nodemailer"; // ✅ Ganti axios → nodemailer
+import nodemailer from "nodemailer"; // ✅ Brevo SMTP
 
 // ================= HELPER: mapping role_id → string =================
 const getRoleString = (role_id) => {
@@ -253,9 +253,9 @@ export const forgotPassword = async (req, res) => {
       },
     });
 
-    // 📩 Kirim email
+    // 📩 Kirim email reset password
     await transporter.sendMail({
-      from: `"${process.env.FROM_NAME || "Login App"}" <${process.env.FROM_EMAIL}>`,
+      from: `"Login App" <${process.env.FROM_EMAIL}>`,
       to: email,
       subject: "Reset Password - Login App",
       html: `
