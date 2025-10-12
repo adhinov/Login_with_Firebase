@@ -6,7 +6,7 @@ import {
   createUser,
   updateLastLogin,
 } from "../models/userModel.js";
-import axios from "axios"; // 🔥 untuk Brevo API
+import nodemailer from "nodemailer"; // ✅ Ganti axios → nodemailer
 
 // ================= HELPER: mapping role_id → string =================
 const getRoleString = (role_id) => {
@@ -217,7 +217,7 @@ export const getUserProfile = async (req, res) => {
   }
 };
 
-// ====================== FORGOT PASSWORD (Brevo API) ======================
+// ====================== FORGOT PASSWORD (SMTP Brevo) ======================
 export const forgotPassword = async (req, res) => {
   const { email } = req.body;
 
@@ -242,37 +242,36 @@ export const forgotPassword = async (req, res) => {
     // 🌐 URL frontend reset
     const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${encodeURIComponent(token)}`;
 
-    // ✉️ Kirim email via Brevo API
-    const response = await axios.post(
-      "https://api.brevo.com/v3/smtp/email",
-      {
-        sender: {
-          name: "Login App",
-          email: process.env.FROM_EMAIL || "noreply@login-app.com",
-        },
-        to: [{ email }],
-        subject: "Reset Password - Login App",
-        htmlContent: `
-          <div style="font-family:Arial,sans-serif;line-height:1.6;">
-            <h2 style="color:#4f46e5;">Reset Password Akun Anda</h2>
-            <p>Halo ${user.username || "User"},</p>
-            <p>Kami menerima permintaan untuk mereset password akun Anda.</p>
-            <a href="${resetLink}" 
-               style="display:inline-block;padding:12px 20px;background:#4f46e5;color:white;
-               border-radius:6px;text-decoration:none;">Reset Password</a>
-            <p style="margin-top:16px;">Tautan ini berlaku selama 15 menit.</p>
-          </div>
-        `,
+    // ✉️ Transporter SMTP Brevo
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT),
+      secure: false,
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
       },
-      {
-        headers: {
-          "api-key": process.env.BREVO_API_KEY,
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    });
 
-    console.log(`✅ Email reset password dikirim ke: ${email}`, response.data);
+    // 📩 Kirim email
+    await transporter.sendMail({
+      from: `"${process.env.FROM_NAME || "Login App"}" <${process.env.FROM_EMAIL}>`,
+      to: email,
+      subject: "Reset Password - Login App",
+      html: `
+        <div style="font-family:Arial,sans-serif;line-height:1.6;">
+          <h2 style="color:#4f46e5;">Reset Password Akun Anda</h2>
+          <p>Halo ${user.username || "User"},</p>
+          <p>Kami menerima permintaan untuk mereset password akun Anda.</p>
+          <a href="${resetLink}" 
+             style="display:inline-block;padding:12px 20px;background:#4f46e5;color:white;
+             border-radius:6px;text-decoration:none;">Reset Password</a>
+          <p style="margin-top:16px;">Tautan ini berlaku selama 15 menit.</p>
+        </div>
+      `,
+    });
+
+    console.log(`✅ Email reset password dikirim ke: ${email}`);
 
     res.status(200).json({
       success: true,
@@ -280,7 +279,7 @@ export const forgotPassword = async (req, res) => {
         "Email reset password berhasil dikirim. Silakan cek inbox atau folder spam Anda.",
     });
   } catch (error) {
-    console.error("❌ Forgot password error (Brevo):", error.response?.data || error.message);
+    console.error("❌ Forgot password error (SMTP Brevo):", error.message);
     res.status(500).json({
       success: false,
       message:
