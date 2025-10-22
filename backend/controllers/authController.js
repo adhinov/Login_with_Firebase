@@ -218,10 +218,6 @@ export const getUserProfile = async (req, res) => {
 };
 
 // ====================== FORGOT PASSWORD (Resend API) ======================
-import jwt from "jsonwebtoken";
-import pool from "../config/db.js";
-import { Resend } from "resend";
-
 export const forgotPassword = async (req, res) => {
   const { email } = req.body;
 
