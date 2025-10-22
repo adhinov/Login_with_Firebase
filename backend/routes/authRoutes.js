@@ -12,6 +12,22 @@ import { verifyToken } from "../middleware/verifyToken.js";
 
 const router = express.Router();
 
+// 🧩 Cek koneksi route
+router.get("/", (req, res) => {
+  res.json({
+    status: "✅ Auth routes aktif",
+    message: "Koneksi ke /api/auth berhasil",
+    endpoints: [
+      "POST /register",
+      "POST /login",
+      "POST /admin/login",
+      "POST /forgot-password",
+      "POST /reset-password",
+      "GET /me",
+    ],
+  });
+});
+
 // Register user baru
 router.post("/register", register);
 

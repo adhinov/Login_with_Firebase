@@ -218,12 +218,41 @@ export const getUserProfile = async (req, res) => {
 };
 
 // ====================== FORGOT PASSWORD (SMTP Brevo) ======================
+import jwt from "jsonwebtoken";
+import nodemailer from "nodemailer";
+import pool from "../config/db.js"; // pastikan ini sesuai dengan lokasi file koneksi DB
+
 export const forgotPassword = async (req, res) => {
   const { email } = req.body;
 
+  console.log("📨 [ForgotPassword] Request diterima:", email);
+
   try {
+    // 🧩 Cek environment variables
+    const requiredEnv = [
+      "JWT_RESET_SECRET",
+      "FRONTEND_URL",
+      "SMTP_HOST",
+      "SMTP_PORT",
+      "SMTP_USER",
+      "SMTP_PASS",
+      "FROM_EMAIL",
+    ];
+
+    for (const key of requiredEnv) {
+      if (!process.env[key]) {
+        console.error(`❌ Missing environment variable: ${key}`);
+        return res.status(500).json({
+          success: false,
+          message: `Server error: environment variable ${key} belum diatur.`,
+        });
+      }
+    }
+
+    // 🔍 Cek apakah email terdaftar
     const userQuery = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
     if (userQuery.rows.length === 0) {
+      console.warn(`⚠️ Email tidak ditemukan: ${email}`);
       return res.status(404).json({
         success: false,
         message: "Email tidak ditemukan. Pastikan email sudah terdaftar.",
@@ -239,10 +268,10 @@ export const forgotPassword = async (req, res) => {
       { expiresIn: "15m" }
     );
 
-    // 🌐 URL frontend reset
+    // 🌐 Buat tautan reset password (frontend)
     const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${encodeURIComponent(token)}`;
 
-    // ✉️ Transporter SMTP Brevo
+    // ✉️ Konfigurasi transporter SMTP Brevo
     const transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port: Number(process.env.SMTP_PORT),
@@ -253,8 +282,12 @@ export const forgotPassword = async (req, res) => {
       },
     });
 
+    // 🧪 Uji koneksi SMTP (optional, tapi berguna untuk debug)
+    await transporter.verify();
+    console.log("✅ SMTP transporter siap digunakan.");
+
     // 📩 Kirim email reset password
-    await transporter.sendMail({
+    const mailOptions = {
       from: `"Login App" <${process.env.FROM_EMAIL}>`,
       to: email,
       subject: "Reset Password - Login App",
@@ -269,9 +302,11 @@ export const forgotPassword = async (req, res) => {
           <p style="margin-top:16px;">Tautan ini berlaku selama 15 menit.</p>
         </div>
       `,
-    });
+    };
 
-    console.log(`✅ Email reset password dikirim ke: ${email}`);
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`✅ Email reset password terkirim ke: ${email}`);
+    console.log("📧 Brevo Response:", info.messageId || info.response);
 
     res.status(200).json({
       success: true,
@@ -284,6 +319,7 @@ export const forgotPassword = async (req, res) => {
       success: false,
       message:
         "Terjadi kesalahan saat mengirim email reset password. Silakan coba lagi nanti.",
+      error: error.message,
     });
   }
 };
