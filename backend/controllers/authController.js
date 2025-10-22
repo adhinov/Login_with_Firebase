@@ -218,10 +218,6 @@ export const getUserProfile = async (req, res) => {
 };
 
 // ====================== FORGOT PASSWORD (SMTP Brevo) ======================
-import jwt from "jsonwebtoken";
-import nodemailer from "nodemailer";
-import pool from "../config/db.js"; // pastikan ini sesuai dengan lokasi file koneksi DB
-
 export const forgotPassword = async (req, res) => {
   const { email } = req.body;
 
