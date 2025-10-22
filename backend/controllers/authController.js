@@ -217,24 +217,24 @@ export const getUserProfile = async (req, res) => {
   }
 };
 
-// ====================== FORGOT PASSWORD (SMTP Brevo) ======================
+// ====================== FORGOT PASSWORD (Resend API) ======================
+import jwt from "jsonwebtoken";
+import pool from "../config/db.js";
+import { Resend } from "resend";
+
 export const forgotPassword = async (req, res) => {
   const { email } = req.body;
 
   console.log("📨 [ForgotPassword] Request diterima:", email);
 
   try {
-    // 🧩 Cek environment variables
+    // 🧩 Pastikan environment sudah lengkap
     const requiredEnv = [
       "JWT_RESET_SECRET",
       "FRONTEND_URL",
-      "SMTP_HOST",
-      "SMTP_PORT",
-      "SMTP_USER",
-      "SMTP_PASS",
+      "RESEND_API_KEY",
       "FROM_EMAIL",
     ];
-
     for (const key of requiredEnv) {
       if (!process.env[key]) {
         console.error(`❌ Missing environment variable: ${key}`);
@@ -267,24 +267,11 @@ export const forgotPassword = async (req, res) => {
     // 🌐 Buat tautan reset password (frontend)
     const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${encodeURIComponent(token)}`;
 
-    // ✉️ Konfigurasi transporter SMTP Brevo
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT),
-      secure: false,
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
+    // ✉️ Kirim email pakai Resend
+    const resend = new Resend(process.env.RESEND_API_KEY);
 
-    // 🧪 Uji koneksi SMTP (optional, tapi berguna untuk debug)
-    await transporter.verify();
-    console.log("✅ SMTP transporter siap digunakan.");
-
-    // 📩 Kirim email reset password
-    const mailOptions = {
-      from: `"Login App" <${process.env.FROM_EMAIL}>`,
+    const { data, error } = await resend.emails.send({
+      from: `${process.env.FROM_NAME || "Login App"} <${process.env.FROM_EMAIL}>`,
       to: email,
       subject: "Reset Password - Login App",
       html: `
@@ -296,13 +283,18 @@ export const forgotPassword = async (req, res) => {
              style="display:inline-block;padding:12px 20px;background:#4f46e5;color:white;
              border-radius:6px;text-decoration:none;">Reset Password</a>
           <p style="margin-top:16px;">Tautan ini berlaku selama 15 menit.</p>
+          <p>Jika Anda tidak meminta reset password, abaikan email ini.</p>
         </div>
       `,
-    };
+    });
 
-    const info = await transporter.sendMail(mailOptions);
+    if (error) {
+      console.error("❌ Resend Error:", error);
+      throw new Error(error.message);
+    }
+
     console.log(`✅ Email reset password terkirim ke: ${email}`);
-    console.log("📧 Brevo Response:", info.messageId || info.response);
+    console.log("📧 Resend Response:", data?.id || "No ID returned");
 
     res.status(200).json({
       success: true,
@@ -310,7 +302,7 @@ export const forgotPassword = async (req, res) => {
         "Email reset password berhasil dikirim. Silakan cek inbox atau folder spam Anda.",
     });
   } catch (error) {
-    console.error("❌ Forgot password error (SMTP Brevo):", error.message);
+    console.error("❌ Forgot password error (Resend):", error.message);
     res.status(500).json({
       success: false,
       message:
