@@ -235,7 +235,7 @@ export const forgotPassword = async (req, res) => {
 
     // 2️⃣ Buat token reset password
     const token = jwt.sign({ email }, process.env.JWT_SECRET, { expiresIn: "15m" });
-    const resetLink = `${process.env.FRONTEND_URL}/reset-password/${token}`;
+    const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
 
     // 3️⃣ Kirim email via Resend
     try {
@@ -257,7 +257,7 @@ export const forgotPassword = async (req, res) => {
       }
 
       console.log("✅ Email reset password terkirim:", data);
-      return res.status(200).json({ message: "Email reset password berhasil dikirim." });
+      return res.status(200).json({ message: "Link reset password sukses terkirim, silahkan cek inbox Anda" });
     } catch (emailError) {
       console.error("❌ Gagal mengirim email:", emailError);
       return res.status(500).json({ message: "Terjadi kesalahan saat mengirim email." });
