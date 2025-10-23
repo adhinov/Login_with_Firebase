@@ -1,3 +1,4 @@
+// frontend/app/reset-password/pages.tsx
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
