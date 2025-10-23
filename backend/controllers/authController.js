@@ -6,6 +6,7 @@ import {
   createUser,
   updateLastLogin,
 } from "../models/userModel.js";
+import { Resend } from "resend";
 import nodemailer from "nodemailer"; // ✅ Brevo SMTP
 
 // ================= HELPER: mapping role_id → string =================
