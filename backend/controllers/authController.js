@@ -226,28 +226,38 @@ export const forgotPassword = async (req, res) => {
   try {
     console.log("📨 [ForgotPassword] Request diterima:", email);
 
-    // 1️⃣ Cek apakah user ada
+    // 1️⃣ Cek apakah user ada di database
     const userQuery = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
     if (userQuery.rows.length === 0) {
       console.log("⚠️ Email tidak terdaftar:", email);
       return res.status(404).json({ message: "Email tidak terdaftar." });
     }
 
-    // 2️⃣ Buat token reset password
-    const token = jwt.sign({ email }, process.env.JWT_SECRET, { expiresIn: "15m" });
-    const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+    const user = userQuery.rows[0];
 
-    // 3️⃣ Kirim email via Resend
+    // 2️⃣ Buat token reset password (berlaku 15 menit)
+    const resetToken = jwt.sign(
+      { email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: "15m" }
+    );
+
+    // 3️⃣ Buat link reset password (sesuai frontend Next.js)
+    const resetLink = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+
+    // 4️⃣ Kirim email via Resend
     try {
       const { data, error } = await resend.emails.send({
-        from: process.env.FROM_EMAIL,
+        from: `${process.env.FROM_NAME} <${process.env.FROM_EMAIL}>`,
         to: email,
         subject: "Reset Password - Login with Firebase",
         html: `
           <p>Halo,</p>
-          <p>Klik link berikut untuk mereset password Anda:</p>
-          <p><a href="${resetLink}">${resetLink}</a></p>
-          <p>Link ini berlaku selama 15 menit.</p>
+          <p>Kami menerima permintaan untuk mereset password akun Anda.</p>
+          <p>Klik tautan berikut untuk mereset password Anda:</p>
+          <p><a href="${resetLink}" target="_blank">${resetLink}</a></p>
+          <p><b>Catatan:</b> Link ini hanya berlaku selama 15 menit.</p>
+          <p>Jika Anda tidak meminta reset password, abaikan email ini.</p>
         `,
       });
 
@@ -257,7 +267,9 @@ export const forgotPassword = async (req, res) => {
       }
 
       console.log("✅ Email reset password terkirim:", data);
-      return res.status(200).json({ message: "Link reset password sukses terkirim, silahkan cek inbox Anda" });
+      return res
+        .status(200)
+        .json({ message: "Link reset password telah dikirim ke email Anda." });
     } catch (emailError) {
       console.error("❌ Gagal mengirim email:", emailError);
       return res.status(500).json({ message: "Terjadi kesalahan saat mengirim email." });
