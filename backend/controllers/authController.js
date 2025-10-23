@@ -7,7 +7,8 @@ import {
   updateLastLogin,
 } from "../models/userModel.js";
 import { Resend } from "resend";
-import nodemailer from "nodemailer"; // ✅ Brevo SMTP
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // ================= HELPER: mapping role_id → string =================
 const getRoleString = (role_id) => {
@@ -218,94 +219,52 @@ export const getUserProfile = async (req, res) => {
   }
 };
 
-// ====================== FORGOT PASSWORD (Resend API) ======================
+// ====================== FORGOT PASSWORD ======================
 export const forgotPassword = async (req, res) => {
   const { email } = req.body;
 
-  console.log("📨 [ForgotPassword] Request diterima:", email);
-
   try {
-    // 🧩 Pastikan environment sudah lengkap
-    const requiredEnv = [
-      "JWT_RESET_SECRET",
-      "FRONTEND_URL",
-      "RESEND_API_KEY",
-      "FROM_EMAIL",
-    ];
-    for (const key of requiredEnv) {
-      if (!process.env[key]) {
-        console.error(`❌ Missing environment variable: ${key}`);
-        return res.status(500).json({
-          success: false,
-          message: `Server error: environment variable ${key} belum diatur.`,
-        });
-      }
-    }
+    console.log("📨 [ForgotPassword] Request diterima:", email);
 
-    // 🔍 Cek apakah email terdaftar
+    // 1️⃣ Cek apakah user ada
     const userQuery = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
     if (userQuery.rows.length === 0) {
-      console.warn(`⚠️ Email tidak ditemukan: ${email}`);
-      return res.status(404).json({
-        success: false,
-        message: "Email tidak ditemukan. Pastikan email sudah terdaftar.",
+      console.log("⚠️ Email tidak terdaftar:", email);
+      return res.status(404).json({ message: "Email tidak terdaftar." });
+    }
+
+    // 2️⃣ Buat token reset password
+    const token = jwt.sign({ email }, process.env.JWT_SECRET, { expiresIn: "15m" });
+    const resetLink = `${process.env.FRONTEND_URL}/reset-password/${token}`;
+
+    // 3️⃣ Kirim email via Resend
+    try {
+      const { data, error } = await resend.emails.send({
+        from: process.env.FROM_EMAIL,
+        to: email,
+        subject: "Reset Password - Login with Firebase",
+        html: `
+          <p>Halo,</p>
+          <p>Klik link berikut untuk mereset password Anda:</p>
+          <p><a href="${resetLink}">${resetLink}</a></p>
+          <p>Link ini berlaku selama 15 menit.</p>
+        `,
       });
+
+      if (error) {
+        console.error("❌ Resend error:", error);
+        return res.status(500).json({ message: "Gagal mengirim email reset password." });
+      }
+
+      console.log("✅ Email reset password terkirim:", data);
+      return res.status(200).json({ message: "Email reset password berhasil dikirim." });
+    } catch (emailError) {
+      console.error("❌ Gagal mengirim email:", emailError);
+      return res.status(500).json({ message: "Terjadi kesalahan saat mengirim email." });
     }
-
-    const user = userQuery.rows[0];
-
-    // 🔐 Buat token reset (15 menit)
-    const token = jwt.sign(
-      { id: user.id, email: user.email },
-      process.env.JWT_RESET_SECRET,
-      { expiresIn: "15m" }
-    );
-
-    // 🌐 Buat tautan reset password (frontend)
-    const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${encodeURIComponent(token)}`;
-
-    // ✉️ Kirim email pakai Resend
-    const resend = new Resend(process.env.RESEND_API_KEY);
-
-    const { data, error } = await resend.emails.send({
-      from: `${process.env.FROM_NAME || "Login App"} <${process.env.FROM_EMAIL}>`,
-      to: email,
-      subject: "Reset Password - Login App",
-      html: `
-        <div style="font-family:Arial,sans-serif;line-height:1.6;">
-          <h2 style="color:#4f46e5;">Reset Password Akun Anda</h2>
-          <p>Halo ${user.username || "User"},</p>
-          <p>Kami menerima permintaan untuk mereset password akun Anda.</p>
-          <a href="${resetLink}" 
-             style="display:inline-block;padding:12px 20px;background:#4f46e5;color:white;
-             border-radius:6px;text-decoration:none;">Reset Password</a>
-          <p style="margin-top:16px;">Tautan ini berlaku selama 15 menit.</p>
-          <p>Jika Anda tidak meminta reset password, abaikan email ini.</p>
-        </div>
-      `,
-    });
-
-    if (error) {
-      console.error("❌ Resend Error:", error);
-      throw new Error(error.message);
-    }
-
-    console.log(`✅ Email reset password terkirim ke: ${email}`);
-    console.log("📧 Resend Response:", data?.id || "No ID returned");
-
-    res.status(200).json({
-      success: true,
-      message:
-        "Email reset password berhasil dikirim. Silakan cek inbox atau folder spam Anda.",
-    });
-  } catch (error) {
-    console.error("❌ Forgot password error (Resend):", error.message);
-    res.status(500).json({
-      success: false,
-      message:
-        "Terjadi kesalahan saat mengirim email reset password. Silakan coba lagi nanti.",
-      error: error.message,
-    });
+  } catch (err) {
+    console.error("❌ Forgot password error:", err);
+    return res.status(500).json({ message: "Terjadi kesalahan pada server." });
   }
 };
 
