@@ -1,11 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import axios from "axios";
-
-// Mengganti import axios menjadi import global fetch API
-// Karena axios tidak tersedia di React Immersive Environment secara default.
-// Jika ini dijalankan di lingkungan Next.js normal, axios akan berfungsi.
+// Import axios diganti dengan fetch API karena lingkungan React Immersive
+// tidak menyediakan axios secara default.
 
 interface User {
   id: number;
@@ -20,7 +17,6 @@ interface User {
 const formatToJakarta = (dateString: string) => {
   if (!dateString) return "-";
   const date = new Date(dateString);
-  // Pastikan untuk menangani format yang valid
   if (isNaN(date.getTime())) return "-"; 
 
   return new Intl.DateTimeFormat("id-ID", {
@@ -40,22 +36,24 @@ const fetchUsersData = async () => {
     
     // Fallback data jika API tidak tersedia (untuk demo)
     if (apiUrl === '/api/mock-users') {
-        console.warn("Using mock data for demonstration. Set NEXT_PUBLIC_API_URL for real data.");
+        console.warn("Menggunakan data tiruan (mock) untuk demonstrasi.");
         return [
             { id: 1, email: "admin@mail.com", username: "Administrator", role: "admin", created_at: new Date(Date.now() - 86400000).toISOString(), phone_number: "081234567890" },
             { id: 2, email: "user1@mail.com", username: "Budi Santoso", role: "user", created_at: new Date(Date.now() - 3600000 * 25).toISOString() },
             { id: 3, email: "anggota@mail.com", username: "Anggi Pratama", role: "user", created_at: new Date(Date.now() - 3600000 * 50).toISOString(), phone_number: "085678901234" },
+            { id: 4, email: "test_panjang@email.com", username: "Pengguna dengan Username Panjang Sekali", role: "user", created_at: new Date(Date.now() - 3600000 * 70).toISOString(), phone_number: "089999999999" },
+            { id: 5, email: "user5@mail.com", username: "Lima", role: "user", created_at: new Date(Date.now() - 3600000 * 100).toISOString() },
         ];
     }
     
     try {
         const response = await fetch(apiUrl);
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            throw new Error(`Kesalahan HTTP! Status: ${response.status}`);
         }
         return await response.json() as User[];
     } catch (err) {
-        console.error("Error fetching users:", err);
+        console.error("Kesalahan saat mengambil pengguna:", err);
         return [];
     }
 };
@@ -74,9 +72,8 @@ export default function AdminDashboard() {
   useEffect(() => {
     fetchUsers();
 
-    // Simulasi pengambilan lastLogin dari localStorage
-    // Hanya menggunakan string mock karena localStorage tidak persisten di Immersive
-    const loginTime = "2025-10-23T06:33:00.000Z"; // Mock date from image
+    // Simulasi pengambilan lastLogin
+    const loginTime = "2025-10-23T06:33:00.000Z"; 
     if (loginTime) setLastLogin(formatToJakarta(loginTime));
   }, []);
 
@@ -92,11 +89,11 @@ export default function AdminDashboard() {
   );
 
   return (
-    // Kontainer utama menggunakan padding di semua sisi
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center py-8 px-4 text-gray-800 font-sans">
+    // Kontainer utama: Dibuat w-full dan overflow-x-hidden untuk mencegah scroll halaman
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center py-8 text-gray-800 font-sans w-full overflow-x-hidden">
       
-      {/* Header - Tetap Tidak Tergeser */}
-      <div className="text-center mb-6 w-full max-w-5xl">
+      {/* Header - Tetap Tidak Tergeser dan menggunakan padding horizontal di sini */}
+      <div className="text-center mb-6 w-full max-w-5xl px-4">
         <h1 className="text-3xl font-extrabold mb-2 text-gray-900">
           Dashboard Admin
         </h1>
@@ -108,7 +105,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Kontainer Utama Dashboard */}
-      <div className="bg-white shadow-2xl rounded-2xl w-full max-w-5xl md:p-8 p-4 border border-gray-200">
+      <div className="bg-white shadow-2xl rounded-2xl w-[96%] max-w-5xl md:p-8 p-4 border border-gray-200">
         <h2 className="text-xl font-bold mb-4 text-gray-800">Daftar Pengguna</h2>
 
         {/* Search - Tetap Tidak Tergeser */}
@@ -122,9 +119,7 @@ export default function AdminDashboard() {
           />
         </div>
 
-        {/* 🚨 Tabel Container - HANYA INI YANG BISA DIGESER */}
-        {/* Menggunakan kelas overflow-x-auto, yang akan membuat scrollbar
-            horizontal muncul HANYA JIKA konten di dalamnya (tabel) melebihi lebar kontainer. */}
+        {/* 🚨 Tabel Container - HANYA INI YANG BISA DIGESER (overflow-x-auto) */}
         <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-inner">
           <table className="min-w-full border-collapse text-sm text-left">
             <thead>
