@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 // Import next/navigation dihapus untuk mengatasi masalah kompilasi.
-// import { toast } from "sonner"; // Dinonaktifkan untuk demonstrasi Immersive
 
 interface User {
   id: number;
@@ -64,10 +63,8 @@ const useMockAuthAndFetch = () => {
     const [lastLogin, setLastLogin] = useState<string>("Belum ada data");
     const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
 
-    // Fungsi pengganti router.replace
     const redirect = (path: string) => {
         if (typeof window !== 'undefined') {
-             // Menggunakan window.location.replace sebagai pengganti router.replace
             window.location.replace(path);
         } else {
             console.log(`Simulating redirect to ${path}`);
@@ -75,13 +72,11 @@ const useMockAuthAndFetch = () => {
     };
 
     useEffect(() => {
-        // --- Simulasi Otorisasi & Fetch Data ---
-        const MOCK_IS_ADMIN = true; // Anggap berhasil login sebagai admin
+        const MOCK_IS_ADMIN = true; 
         const MOCK_LAST_LOGIN = new Date().toISOString(); 
         
         if (!MOCK_IS_ADMIN) {
             setIsAuthorized(false);
-            // redirect("/login"); // Ini seharusnya diaktifkan di Next.js real
             return;
         }
 
@@ -89,12 +84,10 @@ const useMockAuthAndFetch = () => {
         setLastLogin(formatDateTimeJakarta(MOCK_LAST_LOGIN));
 
         const fetchMockUsers = async () => {
-             // Menggunakan data mock/fallback untuk Immersive
             const data = [
                 { id: 1, email: "admin@mail.com", username: "Administrator", role: "admin", created_at: new Date(Date.now() - 86400000).toISOString(), phone_number: "081234567890" },
                 { id: 2, email: "user1@mail.com", username: "Budi Santoso", role: "user", created_at: new Date(Date.now() - 3600000 * 25).toISOString() },
                 { id: 3, email: "anggota@mail.com", username: "Anggi Pratama", role: "user", created_at: new Date(Date.now() - 3600000 * 50).toISOString(), phone_number: "085678901234" },
-                // Data dengan username sangat panjang untuk menguji overflow
                 { id: 4, email: "test_panjang@email.com", username: "Pengguna dengan Username Panjang Sekali dan Tidak Ada Spasi", role: "user", created_at: new Date(Date.now() - 3600000 * 70).toISOString(), phone_number: "089999999999" },
                 { id: 5, email: "user5@mail.com", username: "Lima", role: "user", created_at: new Date(Date.now() - 3600000 * 100).toISOString() },
             ];
@@ -109,18 +102,14 @@ const useMockAuthAndFetch = () => {
 
 
 export default function AdminDashboard() {
-  // Menggunakan fungsi mock untuk lingkungan Immersive
   const { users, lastLogin, isAuthorized, fetchUsers, redirect } = useMockAuthAndFetch(); 
-  
   const [searchTerm, setSearchTerm] = useState<string>("");
 
   const handleLogout = () => {
-    // Memanggil fungsi redirect yang sudah diperbaiki
     redirect("/login"); 
   };
 
   const handleRefresh = () => {
-    // Karena ini adalah komponen 'use client', window.location.reload() aman
     fetchUsers(); 
   };
 
@@ -139,12 +128,17 @@ export default function AdminDashboard() {
   }
 
   return (
-    // 1. KONTEN UTAMA (MAIN):
-    // KUNCI 1: overflow-x-hidden mencegah SCROLL BAR pada level halaman.
-    <main className="min-h-screen flex flex-col items-center bg-gray-100 p-4 md:p-8 w-full overflow-x-hidden">
+    // 1. KONTEN UTAMA (MAIN): 
+    // Menggunakan PADDING VERTIKAL (py-4) saja untuk mobile, PADDING HORIZONTAL (px-0) Dihilangkan.
+    // Padding penuh (md:p-8) diterapkan pada layar tablet ke atas.
+    <main className="min-h-screen flex flex-col items-center bg-gray-100 py-4 px-0 md:p-8 w-full overflow-x-hidden">
         
-      {/* 2. CONTAINER KARTU: Menggunakan lebar maksimum yang aman */}
-      <div className="bg-white rounded-xl shadow-2xl p-4 md:p-8 w-full max-w-6xl mx-auto">
+      {/* 2. CONTAINER KARTU: 
+          - KUNCI: w-full memastikan lebar 100% pada ponsel.
+          - KUNCI: lg:max-w-6xl membatasi lebar hanya pada layar desktop/besar.
+          - KUNCI: px-4 pada ponsel dan md:p-8 pada desktop.
+      */}
+      <div className="bg-white rounded-xl shadow-2xl w-full mx-auto px-4 py-4 md:p-8 lg:max-w-6xl">
         
         {/* Konten Non-Scrolling (Judul, Pencarian, Tombol) */}
         <h1 className="text-3xl font-extrabold text-gray-900 mb-2">
@@ -164,17 +158,16 @@ export default function AdminDashboard() {
             placeholder="Cari pengguna (Email/Username)..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="border rounded-xl px-4 py-2 w-full md:w-80 bg-white text-gray-800 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+            // w-full pada input
+            className="border rounded-xl px-4 py-2 w-full bg-white text-gray-800 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
           />
         </div>
 
-        {/* 3. KONTENER TABEL DENGAN SCROLL (HANYA DIV INI YANG BERGESER) */}
-        {/* KUNCI 2: overflow-x-auto memungkinkan scrollbar muncul HANYA di DIV ini. */}
+        {/* 3. KONTENER TABEL DENGAN SCROLL */}
         <div className="overflow-x-auto w-full max-w-full border border-gray-200 rounded-lg shadow-inner">
           <table className="min-w-full border-collapse text-gray-800 text-sm">
             <thead className="bg-gray-700 text-white">
               <tr className="text-left uppercase text-xs tracking-wider">
-                {/* KUNCI 3: min-w-[X] memastikan lebar kolom yang cukup, memaksa tabel melebihi lebar layar pada perangkat mobile */}
                 <th className="px-4 py-3 border whitespace-nowrap min-w-[50px] text-center">ID</th>
                 <th className="px-4 py-3 border whitespace-nowrap min-w-[200px]">Email</th>
                 <th className="px-4 py-3 border whitespace-nowrap min-w-[150px]">Username</th>
