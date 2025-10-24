@@ -129,41 +129,52 @@ export default function AdminDashboard() {
 
   return (
     // 1. KONTEN UTAMA (MAIN): 
-    // Menggunakan PADDING VERTIKAL (py-4) saja untuk mobile, PADDING HORIZONTAL (px-0) Dihilangkan.
-    // Padding penuh (md:p-8) diterapkan pada layar tablet ke atas.
+    // py-4 (vertikal padding 16px), px-0 (horizontal padding 0) untuk mobile.
+    // Ini memastikan seluruh area main tidak membuat scroll horizontal.
     <main className="min-h-screen flex flex-col items-center bg-gray-100 py-4 px-0 md:p-8 w-full overflow-x-hidden">
         
-      {/* 2. CONTAINER KARTU: 
-          - KUNCI: w-full memastikan lebar 100% pada ponsel.
-          - KUNCI: lg:max-w-6xl membatasi lebar hanya pada layar desktop/besar.
-          - KUNCI: px-4 pada ponsel dan md:p-8 pada desktop.
+      {/* 2. CONTAINER KARTU (WHITE CARD): 
+          - KUNCI: px-0 untuk mobile (card menempel ke sisi layar).
+          - KUNCI: rounded-none untuk mobile (card lurus ke sisi layar), dan lg:rounded-xl untuk desktop.
+          - md:p-8 dan lg:max-w-6xl memastikan tampilan tetap elegan di desktop.
       */}
-      <div className="bg-white rounded-xl shadow-2xl w-full mx-auto px-4 py-4 md:p-8 lg:max-w-6xl">
+      <div className="bg-white shadow-2xl w-full mx-auto px-0 py-4 rounded-none md:p-8 lg:max-w-6xl lg:rounded-xl">
         
-        {/* Konten Non-Scrolling (Judul, Pencarian, Tombol) */}
-        <h1 className="text-3xl font-extrabold text-gray-900 mb-2">
-          Admin Dashboard
-        </h1>
-        <p className="text-gray-600 mb-6 border-b pb-4">
-          <span className="font-semibold">Last Login (Anda):</span> {lastLogin}
-        </p>
+        {/* === WRAPPER UNTUK KONTEN NON-TABEL (Mendapatkan Padding Internal) === */}
+        {/* Wrapper ini memberi jarak (px-4) antara konten dan sisi card yang sekarang menempel ke layar ponsel */}
+        <div className="px-4 md:px-0">
+          
+            {/* Judul & Last Login */}
+            <h1 className="text-3xl font-extrabold text-gray-900 mb-2">
+              Admin Dashboard
+            </h1>
+            <p className="text-gray-600 mb-6 border-b pb-4">
+              <span className="font-semibold">Last Login (Anda):</span> {lastLogin}
+            </p>
 
-        <h2 className="text-xl font-bold mb-4 text-gray-800">
-          Data Pengguna ({filteredUsers.length})
-        </h2>
+            {/* Daftar Pengguna */}
+            <h2 className="text-xl font-bold mb-4 text-gray-800">
+              Data Pengguna ({filteredUsers.length})
+            </h2>
 
-        <div className="flex items-center justify-between mb-6">
-          <input
-            type="text"
-            placeholder="Cari pengguna (Email/Username)..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            // w-full pada input
-            className="border rounded-xl px-4 py-2 w-full bg-white text-gray-800 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
-          />
+            {/* Pencarian */}
+            <div className="flex items-center justify-between mb-6">
+              <input
+                type="text"
+                placeholder="Cari pengguna (Email/Username)..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                // w-full pada input
+                className="border rounded-xl px-4 py-2 w-full bg-white text-gray-800 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+              />
+            </div>
+            
         </div>
+        {/* === END WRAPPER UNTUK KONTEN NON-TABEL === */}
 
-        {/* 3. KONTENER TABEL DENGAN SCROLL */}
+
+        {/* 3. KONTENER TABEL DENGAN SCROLL (Kontainer ini sengaja dibuat w-full di luar wrapper padding) */}
+        {/* Ini memastikan scrollbar tabel berada di lebar 100% card putih. */}
         <div className="overflow-x-auto w-full max-w-full border border-gray-200 rounded-lg shadow-inner">
           <table className="min-w-full border-collapse text-gray-800 text-sm">
             <thead className="bg-gray-700 text-white">
@@ -218,8 +229,8 @@ export default function AdminDashboard() {
           </table>
         </div>
 
-        {/* Footer/Aksi (Tetap Tidak Tergeser) */}
-        <div className="flex flex-col md:flex-row justify-between items-center mt-6 pt-4 border-t border-gray-200 gap-3">
+        {/* Footer/Aksi (Tetap Tidak Tergeser) - Diberi padding horizontal internal (px-4) */}
+        <div className="px-4 md:px-0 flex flex-col md:flex-row justify-between items-center mt-6 pt-4 border-t border-gray-200 gap-3">
           <p className="text-gray-700 font-medium text-base">
             Total Pengguna: <span className="font-bold text-gray-900">{filteredUsers.length}</span>
           </p>
