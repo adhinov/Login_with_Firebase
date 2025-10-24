@@ -164,17 +164,17 @@ export default function AdminDashboard() {
 
   return (
     // 1. KONTEN UTAMA (MAIN): 
-    // Menggunakan px-0 (padding horizontal 0) untuk mobile. py-4 (padding vertikal) tetap ada.
-    // md:p-8 untuk tampilan desktop yang lebih berjarak.
+    // px-0 untuk mobile, p-8 untuk desktop
     <main className="min-h-screen flex flex-col items-center justify-start bg-gray-200 py-4 px-0 md:p-8">
       
       {/* 2. CONTAINER KARTU PUTIH: 
-          - KUNCI: w-full memastikan card 100% lebar layar.
-          - KUNCI: rounded-none pada mobile agar menempel di sisi layar.
-          - p-4 diganti ke p-0 agar kita bisa kontrol padding internal per elemen.
-          - md:p-8 dan lg:max-w-6xl dipertahankan untuk desktop.
+          - w-full memastikan card 100% lebar layar di ponsel.
+          - rounded-none pada mobile agar menempel di sisi layar.
+          - KUNCI: md:max-w-4xl (untuk ukuran tablet) dan lg:max-w-5xl (untuk ukuran desktop) 
+                   digunakan untuk membatasi lebar card di layar besar.
+          - mx-auto memastikan card terpusat di layar besar.
       */}
-      <div className="bg-white w-full shadow-lg rounded-none md:rounded-xl md:p-8 lg:max-w-6xl">
+      <div className="bg-white w-full shadow-lg rounded-none md:rounded-xl md:p-8 md:max-w-4xl lg:max-w-5xl mx-auto">
         
         {/* WRAPPER KONTEN (untuk memberi padding horizontal pada semua item non-tabel) */}
         <div className="px-4 py-4 md:p-0">
@@ -205,6 +205,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* 3. KONTENER TABEL DENGAN SCROLL (Tidak diberi padding horizontal) */}
+        {/* Tabel tetap 100% lebar dari card, dan scrollable jika isinya terlalu lebar. */}
         <div className="overflow-x-auto w-full max-w-full">
           <table className="min-w-full border-collapse border border-gray-200 text-gray-800 text-xs">
             <thead className="bg-gray-700 text-white">
