@@ -53,6 +53,7 @@ const formatDateOnlyJakarta = (dateString?: string | null): string => {
   }
 };
 
+// Konstanta API dipertahankan untuk referensi
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL ||
   "/api/mock-users"; // Default untuk demonstrasi
@@ -93,7 +94,8 @@ const useMockAuthAndFetch = () => {
                 { id: 1, email: "admin@mail.com", username: "Administrator", role: "admin", created_at: new Date(Date.now() - 86400000).toISOString(), phone_number: "081234567890" },
                 { id: 2, email: "user1@mail.com", username: "Budi Santoso", role: "user", created_at: new Date(Date.now() - 3600000 * 25).toISOString() },
                 { id: 3, email: "anggota@mail.com", username: "Anggi Pratama", role: "user", created_at: new Date(Date.now() - 3600000 * 50).toISOString(), phone_number: "085678901234" },
-                { id: 4, email: "test_panjang@email.com", username: "Pengguna dengan Username Panjang Sekali", role: "user", created_at: new Date(Date.now() - 3600000 * 70).toISOString(), phone_number: "089999999999" },
+                // Data dengan username sangat panjang untuk menguji overflow
+                { id: 4, email: "test_panjang@email.com", username: "Pengguna dengan Username Panjang Sekali dan Tidak Ada Spasi", role: "user", created_at: new Date(Date.now() - 3600000 * 70).toISOString(), phone_number: "089999999999" },
                 { id: 5, email: "user5@mail.com", username: "Lima", role: "user", created_at: new Date(Date.now() - 3600000 * 100).toISOString() },
             ];
             setUsers(data);
@@ -114,7 +116,6 @@ export default function AdminDashboard() {
 
   const handleLogout = () => {
     // Memanggil fungsi redirect yang sudah diperbaiki
-    // Di Next.js, ini akan menghapus item dan redirect
     redirect("/login"); 
   };
 
@@ -138,13 +139,14 @@ export default function AdminDashboard() {
   }
 
   return (
-    // 1. KONTEN UTAMA: w-full dan overflow-x-hidden untuk MENCEGAH SCROLL HALAMAN
+    // 1. KONTEN UTAMA (MAIN):
+    // KUNCI 1: overflow-x-hidden mencegah SCROLL BAR pada level halaman.
     <main className="min-h-screen flex flex-col items-center bg-gray-100 p-4 md:p-8 w-full overflow-x-hidden">
         
-      {/* 2. KONTEN KARTU: Menggunakan lebar yang lebih responsif dan padding konsisten */}
+      {/* 2. CONTAINER KARTU: Menggunakan lebar maksimum yang aman */}
       <div className="bg-white rounded-xl shadow-2xl p-4 md:p-8 w-full max-w-6xl mx-auto">
         
-        {/* Judul & Last Login (Tetap Tidak Tergeser) */}
+        {/* Konten Non-Scrolling (Judul, Pencarian, Tombol) */}
         <h1 className="text-3xl font-extrabold text-gray-900 mb-2">
           Admin Dashboard
         </h1>
@@ -152,12 +154,10 @@ export default function AdminDashboard() {
           <span className="font-semibold">Last Login (Anda):</span> {lastLogin}
         </p>
 
-        {/* Daftar Pengguna */}
         <h2 className="text-xl font-bold mb-4 text-gray-800">
           Data Pengguna ({filteredUsers.length})
         </h2>
 
-        {/* Pencarian (Tetap Tidak Tergeser) */}
         <div className="flex items-center justify-between mb-6">
           <input
             type="text"
@@ -168,13 +168,13 @@ export default function AdminDashboard() {
           />
         </div>
 
-        {/* 3. KONTENER TABEL DENGAN SCROLL (HANYA INI YANG BERGESER) */}
-        {/* Kontainer ini memiliki overflow-x-auto, dan min-w-full memastikan scrollbar muncul dengan benar */}
-        <div className="overflow-x-auto border border-gray-200 rounded-lg shadow-inner">
+        {/* 3. KONTENER TABEL DENGAN SCROLL (HANYA DIV INI YANG BERGESER) */}
+        {/* KUNCI 2: overflow-x-auto memungkinkan scrollbar muncul HANYA di DIV ini. */}
+        <div className="overflow-x-auto w-full max-w-full border border-gray-200 rounded-lg shadow-inner">
           <table className="min-w-full border-collapse text-gray-800 text-sm">
             <thead className="bg-gray-700 text-white">
               <tr className="text-left uppercase text-xs tracking-wider">
-                {/* min-w-[X] memastikan setiap kolom memiliki lebar minimum yang cukup */}
+                {/* KUNCI 3: min-w-[X] memastikan lebar kolom yang cukup, memaksa tabel melebihi lebar layar pada perangkat mobile */}
                 <th className="px-4 py-3 border whitespace-nowrap min-w-[50px] text-center">ID</th>
                 <th className="px-4 py-3 border whitespace-nowrap min-w-[200px]">Email</th>
                 <th className="px-4 py-3 border whitespace-nowrap min-w-[150px]">Username</th>
@@ -193,8 +193,8 @@ export default function AdminDashboard() {
                     }`}
                   >
                     <td className="px-4 py-3 border text-center font-medium">{user.id}</td>
-                    <td className="px-4 py-3 border text-gray-700">{user.email}</td>
-                    <td className="px-4 py-3 border text-gray-700">{user.username}</td>
+                    <td className="px-4 py-3 border text-gray-700 break-words max-w-[200px]">{user.email}</td>
+                    <td className="px-4 py-3 border text-gray-700 break-words max-w-[150px]">{user.username}</td>
                     <td className="px-4 py-3 border text-center">
                       {user.role === "admin" ? (
                         <span className="bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-md">
