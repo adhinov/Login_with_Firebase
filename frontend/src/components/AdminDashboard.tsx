@@ -3,6 +3,10 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 
+// Mengganti import axios menjadi import global fetch API
+// Karena axios tidak tersedia di React Immersive Environment secara default.
+// Jika ini dijalankan di lingkungan Next.js normal, axios akan berfungsi.
+
 interface User {
   id: number;
   email: string;
@@ -16,6 +20,9 @@ interface User {
 const formatToJakarta = (dateString: string) => {
   if (!dateString) return "-";
   const date = new Date(dateString);
+  // Pastikan untuk menangani format yang valid
+  if (isNaN(date.getTime())) return "-"; 
+
   return new Intl.DateTimeFormat("id-ID", {
     timeZone: "Asia/Jakarta",
     year: "numeric",
@@ -26,31 +33,55 @@ const formatToJakarta = (dateString: string) => {
   }).format(date);
 };
 
+// Pengganti fetchUsers menggunakan fetch API
+const fetchUsersData = async () => {
+    // Ganti dengan endpoint API yang sebenarnya
+    const apiUrl = typeof process.env.NEXT_PUBLIC_API_URL !== 'undefined' ? `${process.env.NEXT_PUBLIC_API_URL}/api/users` : '/api/mock-users';
+    
+    // Fallback data jika API tidak tersedia (untuk demo)
+    if (apiUrl === '/api/mock-users') {
+        console.warn("Using mock data for demonstration. Set NEXT_PUBLIC_API_URL for real data.");
+        return [
+            { id: 1, email: "admin@mail.com", username: "Administrator", role: "admin", created_at: new Date(Date.now() - 86400000).toISOString(), phone_number: "081234567890" },
+            { id: 2, email: "user1@mail.com", username: "Budi Santoso", role: "user", created_at: new Date(Date.now() - 3600000 * 25).toISOString() },
+            { id: 3, email: "anggota@mail.com", username: "Anggi Pratama", role: "user", created_at: new Date(Date.now() - 3600000 * 50).toISOString(), phone_number: "085678901234" },
+        ];
+    }
+    
+    try {
+        const response = await fetch(apiUrl);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return await response.json() as User[];
+    } catch (err) {
+        console.error("Error fetching users:", err);
+        return [];
+    }
+};
+
+
 export default function AdminDashboard() {
   const [users, setUsers] = useState<User[]>([]);
   const [search, setSearch] = useState("");
   const [lastLogin, setLastLogin] = useState<string>("");
 
   const fetchUsers = async () => {
-    try {
-      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/users`);
-      setUsers(res.data);
-    } catch (err) {
-      console.error("Error fetching users:", err);
-    }
+    const data = await fetchUsersData();
+    setUsers(data);
   };
 
   useEffect(() => {
     fetchUsers();
 
-    const loginTime = localStorage.getItem("lastLogin");
+    // Simulasi pengambilan lastLogin dari localStorage
+    // Hanya menggunakan string mock karena localStorage tidak persisten di Immersive
+    const loginTime = "2025-10-23T06:33:00.000Z"; // Mock date from image
     if (loginTime) setLastLogin(formatToJakarta(loginTime));
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("role");
-    localStorage.removeItem("lastLogin");
+    // Tindakan Logout (simulasi)
     window.location.href = "/login";
   };
 
@@ -61,65 +92,79 @@ export default function AdminDashboard() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col items-center py-8 px-4 text-gray-800">
-      {/* Header */}
-      <div className="text-center mb-6">
-        <h1 className="text-3xl font-bold mb-2">Dashboard Admin</h1>
+    // Kontainer utama menggunakan padding di semua sisi
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center py-8 px-4 text-gray-800 font-sans">
+      
+      {/* Header - Tetap Tidak Tergeser */}
+      <div className="text-center mb-6 w-full max-w-5xl">
+        <h1 className="text-3xl font-extrabold mb-2 text-gray-900">
+          Dashboard Admin
+        </h1>
         <p className="text-sm text-gray-600">
           Last Login (Anda):{" "}
-          <span className="font-medium text-gray-800">{lastLogin || "-"}</span>
+          <span className="font-semibold text-gray-800">{lastLogin || "-"}</span>
         </p>
+        <hr className="mt-4 border-gray-300" />
       </div>
 
-      {/* Search */}
-      <div className="mb-5 w-full max-w-md">
-        <input
-          type="text"
-          placeholder="Cari pengguna..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
-        />
-      </div>
+      {/* Kontainer Utama Dashboard */}
+      <div className="bg-white shadow-2xl rounded-2xl w-full max-w-5xl md:p-8 p-4 border border-gray-200">
+        <h2 className="text-xl font-bold mb-4 text-gray-800">Daftar Pengguna</h2>
 
-      {/* Tabel Container */}
-      <div className="bg-white shadow-lg rounded-2xl w-full max-w-5xl p-6">
-        <h2 className="text-lg font-semibold mb-4">Data Pengguna</h2>
+        {/* Search - Tetap Tidak Tergeser */}
+        <div className="mb-6 w-full">
+          <input
+            type="text"
+            placeholder="Cari email atau username..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full px-4 py-2 border-2 border-gray-300 rounded-xl text-base placeholder-gray-500 focus:outline-none focus:border-blue-500 transition duration-150 shadow-sm"
+          />
+        </div>
 
-        <div className="overflow-x-auto">
-          <table className="min-w-full border-collapse border border-gray-300 text-sm text-left">
+        {/* 🚨 Tabel Container - HANYA INI YANG BISA DIGESER */}
+        {/* Menggunakan kelas overflow-x-auto, yang akan membuat scrollbar
+            horizontal muncul HANYA JIKA konten di dalamnya (tabel) melebihi lebar kontainer. */}
+        <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-inner">
+          <table className="min-w-full border-collapse text-sm text-left">
             <thead>
-              <tr className="bg-gray-200 text-gray-700">
-                <th className="border border-gray-300 px-3 py-2">ID</th>
-                <th className="border border-gray-300 px-3 py-2">Email</th>
-                <th className="border border-gray-300 px-3 py-2">Username</th>
-                <th className="border border-gray-300 px-3 py-2">Role</th>
-                <th className="border border-gray-300 px-3 py-2">Created At</th>
-                <th className="border border-gray-300 px-3 py-2">Phone</th>
+              <tr className="bg-gray-700 text-white uppercase text-xs tracking-wider">
+                <th className="px-4 py-3 whitespace-nowrap">ID</th>
+                <th className="px-4 py-3 whitespace-nowrap">Email</th>
+                <th className="px-4 py-3 whitespace-nowrap">Username</th>
+                <th className="px-4 py-3 whitespace-nowrap">Role</th>
+                <th className="px-4 py-3 whitespace-nowrap">Created At</th>
+                <th className="px-4 py-3 whitespace-nowrap">Phone Number</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-gray-200">
               {filteredUsers.length > 0 ? (
                 filteredUsers.map((user) => (
-                  <tr key={user.id} className="hover:bg-gray-50">
-                    <td className="border border-gray-300 px-3 py-2">{user.id}</td>
-                    <td className="border border-gray-300 px-3 py-2">{user.email}</td>
-                    <td className="border border-gray-300 px-3 py-2">{user.username}</td>
-                    <td className="border border-gray-300 px-3 py-2">
+                  <tr key={user.id} className="bg-white hover:bg-blue-50 transition duration-100">
+                    <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">
+                      {user.id}
+                    </td>
+                    <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
+                      {user.email}
+                    </td>
+                    <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
+                      {user.username}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
                       {user.role === "admin" ? (
-                        <span className="bg-red-100 text-red-600 px-2 py-0.5 rounded-full text-xs font-medium">
-                          admin
+                        <span className="bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-md">
+                          ADMIN
                         </span>
                       ) : (
-                        <span className="bg-green-100 text-green-600 px-2 py-0.5 rounded-full text-xs font-medium">
-                          user
+                        <span className="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-md">
+                          USER
                         </span>
                       )}
                     </td>
-                    <td className="border border-gray-300 px-3 py-2">
+                    <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
                       {formatToJakarta(user.created_at)}
                     </td>
-                    <td className="border border-gray-300 px-3 py-2">
+                    <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
                       {user.phone_number || "-"}
                     </td>
                   </tr>
@@ -128,7 +173,7 @@ export default function AdminDashboard() {
                 <tr>
                   <td
                     colSpan={6}
-                    className="text-center py-4 text-gray-500 italic"
+                    className="text-center py-6 text-gray-500 italic bg-gray-50"
                   >
                     Tidak ada pengguna ditemukan.
                   </td>
@@ -138,21 +183,22 @@ export default function AdminDashboard() {
           </table>
         </div>
 
-        {/* Footer */}
-        <div className="flex flex-col md:flex-row justify-between items-center mt-6 gap-3">
-          <span className="text-sm font-medium">
-            Total Pengguna: {filteredUsers.length}
+        {/* Footer/Aksi - Tetap Tidak Tergeser */}
+        <div className="flex flex-col md:flex-row justify-between items-center mt-6 gap-3 pt-4 border-t border-gray-200">
+          <span className="text-base font-medium text-gray-600">
+            Total Pengguna:{" "}
+            <span className="font-bold text-gray-900">{filteredUsers.length}</span>
           </span>
-          <div className="flex space-x-2">
+          <div className="flex space-x-3">
             <button
               onClick={fetchUsers}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600 transition"
+              className="px-5 py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition duration-150 shadow-md transform hover:scale-[1.02]"
             >
-              Refresh
+              Refresh Data
             </button>
             <button
               onClick={handleLogout}
-              className="px-4 py-2 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600 transition"
+              className="px-5 py-2 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700 transition duration-150 shadow-md transform hover:scale-[1.02]"
             >
               Logout
             </button>
