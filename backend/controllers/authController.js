@@ -222,62 +222,65 @@ export const getUserProfile = async (req, res) => {
 // ====================== FORGOT PASSWORD ======================
 export const forgotPassword = async (req, res) => {
   const { email } = req.body;
+  console.log("📨 [ForgotPassword] Request diterima:", email);
 
   try {
-    console.log("📨 [ForgotPassword] Request diterima:", email);
-
-    // 1️⃣ Cek apakah user ada di database
-    const userQuery = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+    // 1️⃣ Cek apakah email terdaftar
+    const userQuery = await pool.query("SELECT id, email FROM users WHERE email = $1", [email]);
     if (userQuery.rows.length === 0) {
-      console.log("⚠️ Email tidak terdaftar:", email);
-      return res.status(404).json({ message: "Email tidak terdaftar." });
+      return res.status(404).json({
+        success: false,
+        message: "Email tidak ditemukan di database.",
+      });
     }
 
     const user = userQuery.rows[0];
 
     // 2️⃣ Buat token reset password (berlaku 15 menit)
-    const resetToken = jwt.sign(
-      { email: user.email },
-      process.env.JWT_SECRET,
-      { expiresIn: "15m" }
-    );
+    const resetToken = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_RESET_SECRET, {
+      expiresIn: "15m",
+    });
 
-    // 3️⃣ Buat link reset password (PAKAI QUERY PARAMETER SESUAI FRONTEND)
+    // 3️⃣ Buat link reset password (pakai query param)
     const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
 
-    // 4️⃣ Kirim email via Resend
-    try {
-      const { data, error } = await resend.emails.send({
-        from: `${process.env.FROM_NAME} <${process.env.FROM_EMAIL}>`,
-        to: email,
-        subject: "Reset Password - Login with Firebase",
-        html: `
-          <p>Halo,</p>
-          <p>Kami menerima permintaan untuk mereset password akun Anda.</p>
-          <p>Klik tautan berikut untuk mereset password Anda:</p>
-          <p><a href="${resetLink}" target="_blank">${resetLink}</a></p>
-          <p><b>Catatan:</b> Link ini hanya berlaku selama 15 menit.</p>
-          <p>Jika Anda tidak meminta reset password, abaikan email ini.</p>
-        `,
-      });
+    // 4️⃣ Konfigurasi Gmail SMTP
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
 
-      if (error) {
-        console.error("❌ Resend error:", error);
-        return res.status(500).json({ message: "Gagal mengirim email reset password." });
-      }
+    // 5️⃣ Kirim email
+    const mailOptions = {
+      from: `"Login App Support" <${process.env.EMAIL_USER}>`,
+      to: user.email,
+      subject: "Reset Password - Login App",
+      html: `
+        <p>Halo,</p>
+        <p>Klik tautan di bawah ini untuk mengatur ulang password Anda:</p>
+        <a href="${resetLink}" target="_blank">${resetLink}</a>
+        <p><i>Link ini hanya berlaku selama 15 menit.</i></p>
+        <p>Salam,<br/>Tim Login App</p>
+      `,
+    };
 
-      console.log("✅ Email reset password terkirim:", data);
-      return res
-        .status(200)
-        .json({ message: "Silahkan cek inbox email Anda, link reset sudah terkirim" });
+    await transporter.sendMail(mailOptions);
 
-    } catch (emailError) {
-      console.error("❌ Gagal mengirim email:", emailError);
-      return res.status(500).json({ message: "Terjadi kesalahan saat mengirim email." });
-    }
-  } catch (err) {
-    console.error("❌ Forgot password error:", err);
-    return res.status(500).json({ message: "Terjadi kesalahan pada server." });
+    console.log(`✅ Email reset terkirim ke: ${user.email}`);
+    res.status(200).json({
+      success: true,
+      message: "Email reset password berhasil dikirim. Silakan cek inbox Anda.",
+    });
+  } catch (error) {
+    console.error("❌ Forgot password error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Gagal mengirim email reset password.",
+      error: error.message,
+    });
   }
 };
 
