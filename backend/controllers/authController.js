@@ -242,8 +242,8 @@ export const forgotPassword = async (req, res) => {
       { expiresIn: "15m" }
     );
 
-    // 3️⃣ Buat link reset password (sesuai frontend Next.js)
-    const resetLink = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+    // 3️⃣ Buat link reset password (PAKAI QUERY PARAMETER SESUAI FRONTEND)
+    const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
 
     // 4️⃣ Kirim email via Resend
     try {
@@ -270,6 +270,7 @@ export const forgotPassword = async (req, res) => {
       return res
         .status(200)
         .json({ message: "Link reset password telah dikirim ke email Anda." });
+
     } catch (emailError) {
       console.error("❌ Gagal mengirim email:", emailError);
       return res.status(500).json({ message: "Terjadi kesalahan saat mengirim email." });
