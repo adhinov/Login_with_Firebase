@@ -7,6 +7,7 @@ import {
   updateLastLogin,
 } from "../models/userModel.js";
 import { Resend } from "resend";
+import nodemailer from "nodemailer";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
