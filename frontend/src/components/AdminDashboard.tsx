@@ -129,19 +129,15 @@ export default function AdminDashboard() {
 
   return (
     // 1. KONTEN UTAMA (MAIN): 
-    // py-4 (vertikal padding 16px), px-0 (horizontal padding 0) untuk mobile.
-    // Ini memastikan seluruh area main tidak membuat scroll horizontal.
     <main className="min-h-screen flex flex-col items-center bg-gray-100 py-4 px-0 md:p-8 w-full overflow-x-hidden">
         
       {/* 2. CONTAINER KARTU (WHITE CARD): 
-          - KUNCI: px-0 untuk mobile (card menempel ke sisi layar).
-          - KUNCI: rounded-none untuk mobile (card lurus ke sisi layar), dan lg:rounded-xl untuk desktop.
-          - md:p-8 dan lg:max-w-6xl memastikan tampilan tetap elegan di desktop.
+          - KUNCI PERBAIKAN: Mengganti lg:max-w-6xl menjadi lg:max-w-3xl.
+          - lg:max-w-3xl (maksimal 768px) memastikan card terpusat dan ringkas di desktop.
       */}
-      <div className="bg-white shadow-2xl w-full mx-auto px-0 py-4 rounded-none md:p-8 lg:max-w-6xl lg:rounded-xl">
+      <div className="bg-white shadow-2xl w-full mx-auto px-0 py-4 rounded-none md:p-8 lg:max-w-3xl lg:rounded-xl">
         
         {/* === WRAPPER UNTUK KONTEN NON-TABEL (Mendapatkan Padding Internal) === */}
-        {/* Wrapper ini memberi jarak (px-4) antara konten dan sisi card yang sekarang menempel ke layar ponsel */}
         <div className="px-4 md:px-0">
           
             {/* Judul & Last Login */}
@@ -164,7 +160,6 @@ export default function AdminDashboard() {
                 placeholder="Cari pengguna (Email/Username)..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                // w-full pada input
                 className="border rounded-xl px-4 py-2 w-full bg-white text-gray-800 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
               />
             </div>
@@ -173,8 +168,7 @@ export default function AdminDashboard() {
         {/* === END WRAPPER UNTUK KONTEN NON-TABEL === */}
 
 
-        {/* 3. KONTENER TABEL DENGAN SCROLL (Kontainer ini sengaja dibuat w-full di luar wrapper padding) */}
-        {/* Ini memastikan scrollbar tabel berada di lebar 100% card putih. */}
+        {/* 3. KONTENER TABEL DENGAN SCROLL */}
         <div className="overflow-x-auto w-full max-w-full border border-gray-200 rounded-lg shadow-inner">
           <table className="min-w-full border-collapse text-gray-800 text-sm">
             <thead className="bg-gray-700 text-white">
@@ -229,7 +223,7 @@ export default function AdminDashboard() {
           </table>
         </div>
 
-        {/* Footer/Aksi (Tetap Tidak Tergeser) - Diberi padding horizontal internal (px-4) */}
+        {/* Footer/Aksi (Diberi padding horizontal internal px-4) */}
         <div className="px-4 md:px-0 flex flex-col md:flex-row justify-between items-center mt-6 pt-4 border-t border-gray-200 gap-3">
           <p className="text-gray-700 font-medium text-base">
             Total Pengguna: <span className="font-bold text-gray-900">{filteredUsers.length}</span>
