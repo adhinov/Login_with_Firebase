@@ -293,9 +293,10 @@ export const resetPassword = async (req, res) => {
       });
     }
 
+    // ✅ Verifikasi token (gunakan secret yang sama seperti saat buat token)
     let decoded;
     try {
-      decoded = jwt.verify(token, process.env.JWT_RESET_SECRET);
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
     } catch (err) {
       console.error("❌ Token reset invalid/expired:", err.message);
       return res.status(400).json({
@@ -304,7 +305,8 @@ export const resetPassword = async (req, res) => {
       });
     }
 
-    const userResult = await pool.query("SELECT id, email FROM users WHERE id = $1", [decoded.id]);
+    // ✅ Cari user berdasarkan email dari token
+    const userResult = await pool.query("SELECT id, email FROM users WHERE email = $1", [decoded.email]);
     if (userResult.rows.length === 0) {
       return res.status(404).json({
         success: false,
@@ -312,13 +314,14 @@ export const resetPassword = async (req, res) => {
       });
     }
 
+    // ✅ Hash password baru
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-    await pool.query("UPDATE users SET password = $1 WHERE id = $2", [
+    await pool.query("UPDATE users SET password = $1 WHERE email = $2", [
       hashedPassword,
-      decoded.id,
+      decoded.email,
     ]);
 
-    console.log(`✅ Password user ID ${decoded.id} berhasil direset.`);
+    console.log(`✅ Password untuk ${decoded.email} berhasil direset.`);
 
     res.status(200).json({
       success: true,
@@ -332,3 +335,4 @@ export const resetPassword = async (req, res) => {
     });
   }
 };
+
