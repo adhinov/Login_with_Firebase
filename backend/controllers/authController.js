@@ -269,7 +269,7 @@ export const forgotPassword = async (req, res) => {
       console.log("✅ Email reset password terkirim:", data);
       return res
         .status(200)
-        .json({ message: "Link reset password telah dikirim ke email Anda." });
+        .json({ message: "Silahkan cek inbox email Anda, link reset sudah terkirim" });
 
     } catch (emailError) {
       console.error("❌ Gagal mengirim email:", emailError);
