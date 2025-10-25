@@ -7,7 +7,7 @@ import * as z from "zod";
 import axios from "axios";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Mail, Loader2, Send } from "lucide-react";
+import { Mail, Loader2, Send, CheckCircle2 } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 
-// ✅ Validasi
+// ✅ Validasi Email
 const formSchema = z.object({
   email: z.string().email({ message: "Masukkan alamat email yang valid." }),
 });
@@ -36,34 +36,49 @@ type ForgotPasswordFormValues = z.infer<typeof formSchema>;
 
 export default function ForgotPasswordForm() {
   const [loading, setLoading] = React.useState(false);
+  const [sent, setSent] = React.useState(false); // ⬅️ state untuk "Link Sent!"
 
   const form = useForm<ForgotPasswordFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: { email: "" },
   });
 
+  // ======================== HANDLE SUBMIT ========================
   async function onSubmit(values: ForgotPasswordFormValues) {
     try {
       setLoading(true);
+      setSent(false);
+
       const res = await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/api/auth/forgot-password`,
         { email: values.email }
       );
-      toast.success(
-        res.data.message ||
-          "Email reset password berhasil dikirim. Silakan cek inbox Anda."
-      );
+
+      toast.success("📩 Link reset password sudah dikirim!", {
+        description: "Silakan cek inbox atau folder spam email kamu.",
+        duration: 4000,
+      });
+
+      // ✅ Kosongkan field email setelah sukses
+      form.reset({ email: "" });
+
+      // ✅ Ubah tombol jadi "Link Sent!" selama 10 detik
+      setSent(true);
+      setTimeout(() => setSent(false), 10000);
+
     } catch (error: any) {
-      console.error(error);
-      toast.error(
-        error.response?.data?.message ||
-          "Gagal mengirim email reset password. Coba lagi nanti."
-      );
+      console.error("Forgot password error:", error);
+      toast.error("Gagal mengirim link reset ❌", {
+        description:
+          error.response?.data?.message ||
+          "Terjadi kesalahan, coba lagi nanti.",
+      });
     } finally {
       setLoading(false);
     }
   }
 
+  // ======================== RENDER UI ========================
   return (
     <Card className="w-full max-w-[20rem] shadow-xl">
       <CardHeader>
@@ -78,7 +93,7 @@ export default function ForgotPasswordForm() {
       <CardContent className="pb-0">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            {/* Email field */}
+            {/* Email Field */}
             <FormField
               control={form.control}
               name="email"
@@ -93,6 +108,7 @@ export default function ForgotPasswordForm() {
                       required
                       autoComplete="email"
                       {...field}
+                      disabled={loading || sent}
                       className="pl-12 text-sm peer"
                     />
                     <FormLabel
@@ -113,12 +129,17 @@ export default function ForgotPasswordForm() {
             <Button
               type="submit"
               className="w-full text-lg py-6 mt-6 flex items-center justify-center"
-              disabled={loading}
+              disabled={loading || sent}
             >
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-5 w-5 animate-spin text-lime-300" />
                   Sending...
+                </>
+              ) : sent ? (
+                <>
+                  <CheckCircle2 className="mr-2 h-5 w-5 text-lime-300" />
+                  Link Sent!
                 </>
               ) : (
                 <>
