@@ -170,11 +170,11 @@ export default function AdminDashboard() {
       {/* 2. CONTAINER KARTU PUTIH: 
           - w-full memastikan card 100% lebar layar di ponsel.
           - rounded-none pada mobile agar menempel di sisi layar.
-          - KUNCI: md:max-w-4xl (untuk ukuran tablet) dan lg:max-w-5xl (untuk ukuran desktop) 
+          - KUNCI: md:max-w-4xl (untuk ukuran tablet) dan lg:max-w-4xl (untuk ukuran desktop) 
                    digunakan untuk membatasi lebar card di layar besar.
           - mx-auto memastikan card terpusat di layar besar.
       */}
-      <div className="bg-white w-full shadow-lg rounded-none md:rounded-xl md:p-8 md:max-w-4xl lg:max-w-5xl mx-auto">
+      <div className="bg-white w-full shadow-lg rounded-none md:rounded-xl md:p-8 md:max-w-4xl lg:max-w-4xl mx-auto">
         
         {/* WRAPPER KONTEN (untuk memberi padding horizontal pada semua item non-tabel) */}
         <div className="px-4 py-4 md:p-0">
