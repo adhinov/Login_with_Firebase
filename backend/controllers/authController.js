@@ -224,48 +224,53 @@ export const getUserProfile = async (req, res) => {
 export const forgotPassword = async (req, res) => {
   const { email } = req.body;
 
-  console.log("📨 [ForgotPassword] Request diterima:", email);
-
   try {
-    // ✅ Cek user dari PostgreSQL
+    // 🔍 1. Cek apakah email ada di database
     const userQuery = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
     const user = userQuery.rows[0];
 
     if (!user) {
-      return res.status(404).json({ message: "Email tidak ditemukan." });
+      return res.status(404).json({ success: false, message: "Email tidak ditemukan." });
     }
 
-    // ✅ Buat token reset password
-    const resetToken = jwt.sign({ email }, process.env.JWT_SECRET, { expiresIn: "15m" });
+    // 🔐 2. Generate token reset password (berlaku 15 menit)
+    const token = jwt.sign({ email }, process.env.JWT_SECRET, { expiresIn: "15m" });
 
-    // ✅ Buat link reset password ke frontend
-    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+    // 🔗 3. Buat URL reset password
+    const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
 
-    // ✅ Kirim email pakai Resend
-    const emailResponse = await resend.emails.send({
-      from: `${process.env.FROM_NAME || "Login App"} <${process.env.EMAIL_FROM}>`,
+    // 📧 4. Kirim email menggunakan Resend
+    const { data, error } = await resend.emails.send({
+      from: "Login App <no-reply@login-app.dev>", // ✅ format harus benar
       to: email,
-      subject: "Reset Password Request",
+      subject: "Reset Password - Login App",
       html: `
-        <p>Halo,</p>
-        <p>Kami menerima permintaan reset password untuk akun Anda.</p>
-        <p>Klik link di bawah ini untuk mengatur ulang password Anda:</p>
-        <p><a href="${resetUrl}" target="_blank">${resetUrl}</a></p>
-        <p>Link ini hanya berlaku selama 15 menit.</p>
+        <div style="font-family: Arial, sans-serif; color: #333;">
+          <h2>Reset Password</h2>
+          <p>Hai ${user.username || "pengguna"},</p>
+          <p>Kami menerima permintaan untuk mereset password akun Anda.</p>
+          <p>Silakan klik tombol di bawah ini untuk mengatur ulang password Anda:</p>
+          <a href="${resetLink}" 
+             style="display: inline-block; padding: 10px 20px; margin-top: 10px; 
+             background-color: #007bff; color: white; text-decoration: none; 
+             border-radius: 5px;">Reset Password</a>
+          <p style="margin-top: 20px;">Jika Anda tidak meminta reset password, abaikan email ini.</p>
+          <hr>
+          <p style="font-size: 12px; color: #777;">Link ini berlaku selama 15 menit.</p>
+        </div>
       `,
     });
 
-    console.log("✅ Email reset password terkirim:", emailResponse);
-
-    if (emailResponse.error) {
-      console.error("❌ Resend error:", emailResponse.error);
-      return res.status(500).json({ message: "Gagal mengirim email." });
+    if (error) {
+      console.error("❌ Resend error:", error);
+      return res.status(500).json({ success: false, message: "Gagal mengirim email reset password." });
     }
 
-    res.status(200).json({ message: "Link reset password telah dikirim ke email Anda." });
+    console.log("✅ Email reset password terkirim:", data);
+    return res.status(200).json({ success: true, message: "Link reset password telah dikirim ke email Anda." });
   } catch (error) {
-    console.error("❌ Forgot password error:", error);
-    res.status(500).json({ message: "Terjadi kesalahan saat memproses permintaan." });
+    console.error("❌ Error forgotPassword:", error);
+    res.status(500).json({ success: false, message: "Terjadi kesalahan pada server." });
   }
 };
 
