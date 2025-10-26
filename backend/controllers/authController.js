@@ -227,8 +227,9 @@ export const forgotPassword = async (req, res) => {
   console.log("📨 [ForgotPassword] Request diterima:", email);
 
   try {
-    const userQuery = await pool.query("SELECT * FROM users WHERE email = ?", [email]);
-    const user = userQuery[0];
+    // ✅ Query PostgreSQL pakai $1
+    const userQuery = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+    const user = userQuery.rows[0]; // ✅ hasil di .rows
 
     if (!user) {
       return res.status(404).json({ message: "Email tidak ditemukan." });
@@ -237,10 +238,8 @@ export const forgotPassword = async (req, res) => {
     // Buat token reset password
     const resetToken = jwt.sign({ email }, process.env.JWT_SECRET, { expiresIn: "15m" });
 
-    // Buat URL reset password
     const resetUrl = `${process.env.CLIENT_URL}/reset-password?token=${resetToken}`;
 
-    // Kirim email dengan Resend
     const emailResponse = await resend.emails.send({
       from: process.env.EMAIL_FROM,
       to: email,
