@@ -227,21 +227,23 @@ export const forgotPassword = async (req, res) => {
   console.log("📨 [ForgotPassword] Request diterima:", email);
 
   try {
-    // ✅ Query PostgreSQL pakai $1
+    // ✅ Cek user dari PostgreSQL
     const userQuery = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
-    const user = userQuery.rows[0]; // ✅ hasil di .rows
+    const user = userQuery.rows[0];
 
     if (!user) {
       return res.status(404).json({ message: "Email tidak ditemukan." });
     }
 
-    // Buat token reset password
+    // ✅ Buat token reset password
     const resetToken = jwt.sign({ email }, process.env.JWT_SECRET, { expiresIn: "15m" });
 
-    const resetUrl = `${process.env.CLIENT_URL}/reset-password?token=${resetToken}`;
+    // ✅ Buat link reset password ke frontend
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
 
+    // ✅ Kirim email pakai Resend
     const emailResponse = await resend.emails.send({
-      from: process.env.EMAIL_FROM,
+      from: `${process.env.FROM_NAME || "Login App"} <${process.env.EMAIL_FROM}>`,
       to: email,
       subject: "Reset Password Request",
       html: `
@@ -255,10 +257,15 @@ export const forgotPassword = async (req, res) => {
 
     console.log("✅ Email reset password terkirim:", emailResponse);
 
+    if (emailResponse.error) {
+      console.error("❌ Resend error:", emailResponse.error);
+      return res.status(500).json({ message: "Gagal mengirim email." });
+    }
+
     res.status(200).json({ message: "Link reset password telah dikirim ke email Anda." });
   } catch (error) {
     console.error("❌ Forgot password error:", error);
-    res.status(500).json({ message: "Gagal mengirim email reset password." });
+    res.status(500).json({ message: "Terjadi kesalahan saat memproses permintaan." });
   }
 };
 
