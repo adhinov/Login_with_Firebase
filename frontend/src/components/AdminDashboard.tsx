@@ -132,10 +132,12 @@ export default function AdminDashboard() {
     <main className="min-h-screen flex flex-col items-center bg-gray-100 py-4 px-0 md:p-8 w-full overflow-x-hidden">
         
       {/* 2. CONTAINER KARTU (WHITE CARD): 
-          - KUNCI PERBAIKAN: Mengganti lg:max-w-6xl menjadi lg:max-w-3xl.
-          - lg:max-w-3xl (maksimal 768px) memastikan card terpusat dan ringkas di desktop.
+          - w-full: Memastikan 100% lebar container terluar (main).
+          - mx-auto: Memastikan card terpusat.
+          - KUNCI PERBAIKAN: md:max-w-xl DAN lg:max-w-xl. 
+            Ini membatasi lebar maksimum card menjadi 576px (ukuran sangat ringkas) di tablet dan desktop.
       */}
-      <div className="bg-white shadow-2xl w-full mx-auto px-0 py-4 rounded-none md:p-8 lg:max-w-3xl lg:rounded-xl">
+      <div className="bg-white shadow-2xl w-full mx-auto px-0 py-4 rounded-none md:p-8 md:max-w-xl lg:max-w-xl lg:rounded-xl">
         
         {/* === WRAPPER UNTUK KONTEN NON-TABEL (Mendapatkan Padding Internal) === */}
         <div className="px-4 md:px-0">
