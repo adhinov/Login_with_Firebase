@@ -223,65 +223,43 @@ export const getUserProfile = async (req, res) => {
 // ====================== FORGOT PASSWORD ======================
 export const forgotPassword = async (req, res) => {
   const { email } = req.body;
+
   console.log("📨 [ForgotPassword] Request diterima:", email);
 
   try {
-    // 1️⃣ Cek apakah email terdaftar
-    const userQuery = await pool.query("SELECT id, email FROM users WHERE email = $1", [email]);
-    if (userQuery.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Email tidak ditemukan di database.",
-      });
+    const userQuery = await pool.query("SELECT * FROM users WHERE email = ?", [email]);
+    const user = userQuery[0];
+
+    if (!user) {
+      return res.status(404).json({ message: "Email tidak ditemukan." });
     }
 
-    const user = userQuery.rows[0];
+    // Buat token reset password
+    const resetToken = jwt.sign({ email }, process.env.JWT_SECRET, { expiresIn: "15m" });
 
-    // 2️⃣ Buat token reset password (berlaku 15 menit)
-    const resetToken = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_RESET_SECRET, {
-      expiresIn: "15m",
-    });
+    // Buat URL reset password
+    const resetUrl = `${process.env.CLIENT_URL}/reset-password?token=${resetToken}`;
 
-    // 3️⃣ Buat link reset password (pakai query param)
-    const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
-
-    // 4️⃣ Konfigurasi Gmail SMTP
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
-
-    // 5️⃣ Kirim email
-    const mailOptions = {
-      from: `"Login App Support" <${process.env.EMAIL_USER}>`,
-      to: user.email,
-      subject: "Reset Password - Login App",
+    // Kirim email dengan Resend
+    const emailResponse = await resend.emails.send({
+      from: process.env.EMAIL_FROM,
+      to: email,
+      subject: "Reset Password Request",
       html: `
         <p>Halo,</p>
-        <p>Klik tautan di bawah ini untuk mengatur ulang password Anda:</p>
-        <a href="${resetLink}" target="_blank">${resetLink}</a>
-        <p><i>Link ini hanya berlaku selama 15 menit.</i></p>
-        <p>Salam,<br/>Tim Login App</p>
+        <p>Kami menerima permintaan reset password untuk akun Anda.</p>
+        <p>Klik link di bawah ini untuk mengatur ulang password Anda:</p>
+        <p><a href="${resetUrl}" target="_blank">${resetUrl}</a></p>
+        <p>Link ini hanya berlaku selama 15 menit.</p>
       `,
-    };
-
-    await transporter.sendMail(mailOptions);
-
-    console.log(`✅ Email reset terkirim ke: ${user.email}`);
-    res.status(200).json({
-      success: true,
-      message: "Email reset password berhasil dikirim. Silakan cek inbox Anda.",
     });
+
+    console.log("✅ Email reset password terkirim:", emailResponse);
+
+    res.status(200).json({ message: "Link reset password telah dikirim ke email Anda." });
   } catch (error) {
     console.error("❌ Forgot password error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Gagal mengirim email reset password.",
-      error: error.message,
-    });
+    res.status(500).json({ message: "Gagal mengirim email reset password." });
   }
 };
 
