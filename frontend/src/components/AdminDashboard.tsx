@@ -132,12 +132,9 @@ export default function AdminDashboard() {
     <main className="min-h-screen flex flex-col items-center bg-gray-100 py-4 px-0 md:p-8 w-full overflow-x-hidden">
         
       {/* 2. CONTAINER KARTU (WHITE CARD): 
-          - w-full: Memastikan 100% lebar container terluar (main).
-          - mx-auto: Memastikan card terpusat.
-          - KUNCI PERBAIKAN: md:max-w-xl DAN lg:max-w-xl. 
-            Ini membatasi lebar maksimum card menjadi 576px (ukuran sangat ringkas) di tablet dan desktop.
+          - KUNCI PERBAIKAN: md:max-w-lg DAN lg:max-w-lg. Ini membatasi lebar maksimum card menjadi 448px di tablet dan desktop.
       */}
-      <div className="bg-white shadow-2xl w-full mx-auto px-0 py-4 rounded-none md:p-8 md:max-w-xl lg:max-w-xl lg:rounded-xl">
+      <div className="bg-white shadow-2xl w-full mx-auto px-0 py-4 rounded-none md:p-8 md:max-w-lg lg:max-w-lg lg:rounded-xl">
         
         {/* === WRAPPER UNTUK KONTEN NON-TABEL (Mendapatkan Padding Internal) === */}
         <div className="px-4 md:px-0">
@@ -171,16 +168,18 @@ export default function AdminDashboard() {
 
 
         {/* 3. KONTENER TABEL DENGAN SCROLL */}
+        {/* min-w-full pada tabel dihilangkan agar tabel bisa menyesuaikan diri dengan lebar card yang sempit (max-w-lg) */}
         <div className="overflow-x-auto w-full max-w-full border border-gray-200 rounded-lg shadow-inner">
-          <table className="min-w-full border-collapse text-gray-800 text-sm">
+          <table className="border-collapse text-gray-800 text-sm">
             <thead className="bg-gray-700 text-white">
               <tr className="text-left uppercase text-xs tracking-wider">
-                <th className="px-4 py-3 border whitespace-nowrap min-w-[50px] text-center">ID</th>
-                <th className="px-4 py-3 border whitespace-nowrap min-w-[200px]">Email</th>
-                <th className="px-4 py-3 border whitespace-nowrap min-w-[150px]">Username</th>
-                <th className="px-4 py-3 border whitespace-nowrap min-w-[100px] text-center">Role</th>
-                <th className="px-4 py-3 border whitespace-nowrap min-w-[180px]">Created At</th>
-                <th className="px-4 py-3 border whitespace-nowrap min-w-[150px]">Phone</th>
+                {/* Menghapus min-w untuk membiarkan browser menentukan lebar kolom secara dinamis */}
+                <th className="px-4 py-3 border whitespace-nowrap text-center">ID</th>
+                <th className="px-4 py-3 border whitespace-nowrap">Email</th>
+                <th className="px-4 py-3 border whitespace-nowrap">Username</th>
+                <th className="px-4 py-3 border whitespace-nowrap text-center">Role</th>
+                <th className="px-4 py-3 border whitespace-nowrap">Created At</th>
+                <th className="px-4 py-3 border whitespace-nowrap">Phone</th>
               </tr>
             </thead>
             <tbody>
@@ -193,8 +192,9 @@ export default function AdminDashboard() {
                     }`}
                   >
                     <td className="px-4 py-3 border text-center font-medium">{user.id}</td>
-                    <td className="px-4 py-3 border text-gray-700 break-words max-w-[200px]">{user.email}</td>
-                    <td className="px-4 py-3 border text-gray-700 break-words max-w-[150px]">{user.username}</td>
+                    {/* Menggunakan max-w-xs untuk memastikan email dan username tidak terlalu panjang, dan break-all untuk mengatasi kata-kata panjang tanpa spasi */}
+                    <td className="px-4 py-3 border text-gray-700 break-all max-w-[100px]">{user.email}</td>
+                    <td className="px-4 py-3 border text-gray-700 break-all max-w-[80px]">{user.username}</td>
                     <td className="px-4 py-3 border text-center">
                       {user.role === "admin" ? (
                         <span className="bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-md">
