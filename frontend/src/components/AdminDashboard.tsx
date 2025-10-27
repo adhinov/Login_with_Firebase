@@ -119,15 +119,9 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col font-sans">
-      {/* HEADER */}
+      {/* HEADER: Tombol Logout dihapus dari sini */}
       <header className="bg-gray-800 text-white px-4 md:px-8 py-4 flex justify-between items-center shadow-lg">
         <h1 className="text-xl md:text-2xl font-bold">Admin Dashboard</h1>
-        <Button
-          onClick={handleLogout}
-          className="bg-red-600 hover:bg-red-700 text-white font-semibold text-sm"
-        >
-          Logout
-        </Button>
       </header>
 
       {/* MAIN CONTENT CONTAINER (Wrapper luar dengan background abu-abu terang) */}
@@ -208,6 +202,22 @@ export default function AdminDashboard() {
                 </tbody>
               </table>
             </div>
+            
+            {/* KONTROL BAWAH: Total Pengguna (kiri) dan Tombol Logout (kanan) */}
+            <div className="mt-8 flex justify-between items-center pt-4 border-t border-gray-200">
+                <p className="text-gray-700 font-semibold text-sm md:text-base">
+                    Total Pengguna: <span className="text-gray-900 font-bold">{users.length}</span>
+                </p>
+
+                {/* Tombol Logout: Disesuaikan paddingnya (px-5 py-2) */}
+                <Button
+                    onClick={handleLogout}
+                    className="bg-red-600 hover:bg-red-700 text-white font-semibold text-sm px-5 py-2"
+                >
+                    Logout
+                </Button>
+            </div>
+            {/* Akhir KONTROL BAWAH */}
           </div>
         </div>
       </main>
