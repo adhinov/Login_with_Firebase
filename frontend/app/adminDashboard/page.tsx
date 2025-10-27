@@ -126,7 +126,7 @@ export default function AdminDashboard() {
 
     // Fetch user saat komponen dimuat
     fetchUsers(token);
-  }, [/* router */]); // router dihilangkan dari dependencies karena tidak tersedia di sini
+  }, []); // router dihilangkan dari dependencies karena tidak tersedia di sini
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -163,11 +163,12 @@ export default function AdminDashboard() {
       
       {/* 2. CONTAINER KARTU PUTIH: 
           - KUNCI PERBAIKAN LEBAR: max-w-xl (56rem/896px)
+          - Menggunakan overflow-hidden untuk memastikan tidak ada elemen yang tumpah
       */}
-      <div className="bg-white w-full shadow-lg rounded-none md:rounded-xl md:p-8 md:max-w-xl lg:max-w-xl mx-auto">
+      <div className="bg-white w-full shadow-lg rounded-none md:rounded-xl md:p-8 md:max-w-xl lg:max-w-xl mx-auto overflow-hidden">
         
         {/* WRAPPER KONTEN (untuk memberi padding horizontal pada semua item non-tabel) */}
-        <div className="px-4 py-4 md:p-0">
+        <div className="px-4 pt-4 md:p-0">
             {/* Judul */}
             <h1 className="text-3xl font-bold text-gray-800 mb-2">
               Admin Dashboard
@@ -194,8 +195,10 @@ export default function AdminDashboard() {
         </div>
 
         {/* 3. KONTENER TABEL DENGAN SCROLL (Tidak diberi padding horizontal) */}
+        {/* Dibuat lebih responsif dan dijamin lebar penuh */}
         <div className="overflow-x-auto w-full max-w-full">
-          <table className="min-w-full border-collapse border border-gray-200 text-gray-800 text-xs">
+          {/* Ditambahkan table-auto untuk rendering kolom yang lebih baik */}
+          <table className="min-w-full border-collapse border border-gray-200 text-gray-800 text-xs table-auto"> 
             <thead className="bg-gray-700 text-white">
               <tr>
                 {/* Menetapkan min-w yang wajar agar tabel tetap rapi */}
@@ -240,7 +243,7 @@ export default function AdminDashboard() {
                 ))
               ) : (
                 <tr>
-                    <td colSpan={6} className="text-center py-6 text-gray-500 italic">
+                    <td colSpan={6} className="text-center py-6 text-gray-500 italic border">
                         Tidak ada pengguna ditemukan.
                     </td>
                 </tr>
@@ -250,7 +253,7 @@ export default function AdminDashboard() {
         </div>
         
         {/* KONTROL BAWAH: Total Pengguna (kiri) dan Tombol Logout (kanan) */}
-        {/* KUNCI PERBAIKAN: Hapus padding yang berlebihan di sini, dan pastikan w-full */}
+        {/* Perbaikan: Menambahkan padding-x di sini jika sebelumnya hilang */}
         <div className="px-4 py-4 md:p-0 flex flex-col md:flex-row justify-between items-center mt-6 pt-4 border-t border-gray-200 gap-3">
           <p className="text-gray-700 font-medium text-sm">
             Total Pengguna: <span className="font-bold text-gray-900">{filteredUsers.length}</span>
