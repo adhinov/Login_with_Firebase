@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
 
 interface User {
   id: number;
@@ -10,145 +8,214 @@ interface User {
   username: string;
   role: string;
   created_at: string;
-  phone: string;
+  phone_number?: string | null;
+  phone?: string | null;
+  last_login?: string | null;
 }
 
-export default function AdminDashboard() {
-  const router = useRouter();
+const formatDateTimeJakarta = (dateString?: string | null): string => {
+  if (!dateString) return "-";
+  try {
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return dateString;
+    return (
+      new Intl.DateTimeFormat("id-ID", {
+        timeZone: "Asia/Jakarta",
+        year: "numeric",
+        month: "short",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hourCycle: "h23",
+      }).format(d) + " WIB"
+    );
+  } catch {
+    return dateString || "-";
+  }
+};
+
+const formatDateOnlyJakarta = (dateString?: string | null): string => {
+  if (!dateString) return "-";
+  try {
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return dateString;
+    return new Intl.DateTimeFormat("id-ID", {
+      timeZone: "Asia/Jakarta",
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }).format(d);
+  } catch {
+    return dateString || "-";
+  }
+};
+
+const useMockAuthAndFetch = () => {
   const [users, setUsers] = useState<User[]>([]);
-  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [lastLogin, setLastLogin] = useState<string>("");
+  const [lastLogin, setLastLogin] = useState<string>("Belum ada data");
+  const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
+
+  const redirect = (path: string) => {
+    if (typeof window !== "undefined") {
+      window.location.replace(path);
+    }
+  };
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      router.push("/login");
+    const MOCK_IS_ADMIN = true;
+    const MOCK_LAST_LOGIN = new Date().toISOString();
+
+    if (!MOCK_IS_ADMIN) {
+      setIsAuthorized(false);
       return;
     }
 
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/users`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.users) {
-          setUsers(data.users);
-          setFilteredUsers(data.users);
-        }
-      })
-      .catch((err) => console.error(err));
+    setIsAuthorized(true);
+    setLastLogin(formatDateTimeJakarta(MOCK_LAST_LOGIN));
 
-    const now = new Date();
-    const formatted = new Intl.DateTimeFormat("id-ID", {
-      dateStyle: "long",
-      timeStyle: "short",
-    }).format(now);
-    setLastLogin(formatted);
-  }, [router]);
+    const fetchMockUsers = async () => {
+      const data = [
+        { id: 1, email: "admin@example.com", username: "Administrator", role: "admin", created_at: new Date().toISOString(), phone_number: "-" },
+        { id: 2, email: "budi@gmail.com", username: "Budi Santoso", role: "user", created_at: new Date().toISOString(), phone_number: "081234567890" },
+      ];
+      setUsers(data);
+    };
 
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const term = e.target.value.toLowerCase();
-    setSearchTerm(term);
-    const filtered = users.filter(
-      (u) =>
-        u.username?.toLowerCase().includes(term) ||
-        u.email.toLowerCase().includes(term)
+    fetchMockUsers();
+  }, []);
+
+  return { users, lastLogin, isAuthorized, fetchUsers: () => window.location.reload(), redirect };
+};
+
+export default function AdminDashboard() {
+  const { users, lastLogin, isAuthorized, fetchUsers, redirect } = useMockAuthAndFetch();
+  const [searchTerm, setSearchTerm] = useState<string>("");
+
+  const handleLogout = () => redirect("/login");
+  const handleRefresh = () => fetchUsers();
+
+  const filteredUsers = users.filter(
+    (u) =>
+      u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      u.username.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  if (isAuthorized === null) {
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-gray-100">
+        <p className="text-gray-600">Checking authorization...</p>
+      </main>
     );
-    setFilteredUsers(filtered);
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    router.push("/login");
-  };
+  }
 
   return (
-    <div className="min-h-screen bg-[#0c1b2a] flex justify-center py-12">
-      {/* CARD UTAMA */}
-      <div className="bg-white rounded-2xl shadow-lg w-full max-w-6xl px-10 py-8">
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-3xl font-bold text-gray-900">
-            Admin Dashboard
-          </h1>
-          <Button
-            onClick={handleLogout}
-            className="bg-red-600 hover:bg-red-700 text-white"
-          >
-            Logout
-          </Button>
-        </div>
+    <main className="min-h-screen flex flex-col items-center bg-gray-900 py-8 px-3">
+      {/* ✅ Card putih tengah */}
+      <div className="bg-white shadow-2xl rounded-2xl w-full sm:w-[90%] md:w-[80%] lg:w-[75%] xl:w-[65%] p-6 md:p-10 border border-gray-200">
 
-        <p className="text-sm text-gray-600 mb-4">
-          <strong>Last Login (Anda):</strong> {lastLogin}
+        {/* Header */}
+        <h1 className="text-3xl font-extrabold text-gray-900 mb-2 text-center md:text-left">
+          Admin Dashboard
+        </h1>
+        <p className="text-gray-600 mb-6 border-b pb-4 text-center md:text-left">
+          <span className="font-semibold">Last Login (Anda):</span> {lastLogin}
         </p>
 
-        <hr className="my-4 border-gray-300" />
+        {/* Section data pengguna */}
+        <h2 className="text-xl font-bold mb-4 text-gray-800 text-center md:text-left">
+          Data Pengguna ({filteredUsers.length})
+        </h2>
 
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold text-gray-800">
-            Data Pengguna ({filteredUsers.length})
-          </h2>
+        {/* Input pencarian */}
+        <div className="mb-6 flex justify-center md:justify-start">
           <input
             type="text"
             placeholder="Cari pengguna..."
             value={searchTerm}
-            onChange={handleSearch}
-            className="w-full mt-2 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="border rounded-xl px-4 py-2 w-full md:w-2/3 bg-white text-gray-800 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
           />
         </div>
 
-        {/* TABEL DATA */}
+        {/* ✅ Pembungkus tabel: agar scroll tidak buat card ikut menyempit */}
         <div className="overflow-x-auto">
-          <table className="min-w-full border border-gray-300 rounded-lg text-sm text-left">
-            <thead>
-              <tr className="bg-gray-800 text-white">
-                <th className="px-4 py-2 border">ID</th>
-                <th className="px-4 py-2 border">Email</th>
-                <th className="px-4 py-2 border">Username</th>
-                <th className="px-4 py-2 border">Role</th>
-                <th className="px-4 py-2 border">Created At</th>
-                <th className="px-4 py-2 border">Phone</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredUsers.map((user) => (
-                <tr
-                  key={user.id}
-                  className="hover:bg-gray-100 transition duration-150"
-                >
-                  <td className="px-4 py-2 border">{user.id}</td>
-                  <td className="px-4 py-2 border">{user.email}</td>
-                  <td className="px-4 py-2 border">
-                    {user.username || "-"}
-                  </td>
-                  <td className="px-4 py-2 border">
-                    {user.role === "admin" ? (
-                      <span className="bg-red-500 text-white px-3 py-1 rounded-full text-xs font-semibold">
-                        ADMIN
-                      </span>
-                    ) : (
-                      <span className="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-semibold">
-                        USER
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-2 border">
-                    {new Date(user.created_at).toLocaleDateString("id-ID", {
-                      day: "2-digit",
-                      month: "short",
-                      year: "numeric",
-                    })}
-                  </td>
-                  <td className="px-4 py-2 border">
-                    {user.phone || "-"}
-                  </td>
+          <div className="min-w-full border border-gray-300 rounded-lg shadow-sm">
+            <table className="w-full border-collapse text-sm text-gray-800">
+              <thead className="bg-gray-700 text-white">
+                <tr className="text-left uppercase text-xs tracking-wider">
+                  <th className="px-4 py-3 border text-center">ID</th>
+                  <th className="px-4 py-3 border">Email</th>
+                  <th className="px-4 py-3 border">Username</th>
+                  <th className="px-4 py-3 border text-center">Role</th>
+                  <th className="px-4 py-3 border">Created At</th>
+                  <th className="px-4 py-3 border">Phone</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filteredUsers.length > 0 ? (
+                  filteredUsers.map((user, idx) => (
+                    <tr
+                      key={user.id}
+                      className={`hover:bg-blue-50 ${
+                        idx % 2 === 0 ? "bg-white" : "bg-gray-50"
+                      } transition`}
+                    >
+                      <td className="px-4 py-3 border text-center font-medium">{user.id}</td>
+                      <td className="px-4 py-3 border break-all">{user.email}</td>
+                      <td className="px-4 py-3 border break-all">{user.username}</td>
+                      <td className="px-4 py-3 border text-center">
+                        {user.role === "admin" ? (
+                          <span className="bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold">
+                            ADMIN
+                          </span>
+                        ) : (
+                          <span className="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold">
+                            USER
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 border">
+                        {formatDateOnlyJakarta(user.created_at)}
+                      </td>
+                      <td className="px-4 py-3 border">
+                        {user.phone_number || user.phone || "-"}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={6} className="text-center py-6 text-gray-500 italic">
+                      Tidak ada pengguna ditemukan.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex flex-col md:flex-row justify-between items-center mt-6 pt-4 border-t gap-3">
+          <p className="text-gray-700 font-medium">
+            Total Pengguna:{" "}
+            <span className="font-bold text-gray-900">{filteredUsers.length}</span>
+          </p>
+          <div className="flex space-x-3">
+            <button
+              onClick={handleRefresh}
+              className="px-5 py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition duration-150"
+            >
+              Refresh Data
+            </button>
+            <button
+              onClick={handleLogout}
+              className="px-5 py-2 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700 transition duration-150"
+            >
+              Logout
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </main>
   );
 }
