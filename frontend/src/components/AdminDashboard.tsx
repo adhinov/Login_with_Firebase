@@ -22,8 +22,6 @@ export default function AdminDashboard() {
   useEffect(() => {
     const token = localStorage.getItem("token");
     const role = localStorage.getItem("role");
-    const email = localStorage.getItem("email");
-    const username = localStorage.getItem("username");
 
     if (!token || role !== "admin") {
       router.push("/login");
@@ -37,10 +35,9 @@ export default function AdminDashboard() {
       .then((data) => setUsers(data))
       .catch((err) => console.error("Error fetching users:", err));
 
-    // format tanggal login terakhir
+    // waktu login terakhir
     const now = new Date();
     const formatted = now.toLocaleString("id-ID", {
-      weekday: "short",
       day: "2-digit",
       month: "short",
       year: "numeric",
@@ -60,81 +57,92 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col items-center px-6 py-10">
-      <div className="w-full max-w-7xl bg-white shadow-lg rounded-xl p-8 border border-gray-200">
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-          <Button variant="destructive" onClick={handleLogout}>
-            Logout
-          </Button>
-        </div>
+    <div className="min-h-screen bg-gray-100 flex flex-col">
+      {/* HEADER */}
+      <header className="bg-gray-800 text-white px-8 py-5 flex justify-between items-center shadow-md">
+        <h1 className="text-2xl font-bold">Admin Dashboard</h1>
+        <Button
+          onClick={handleLogout}
+          className="bg-red-600 hover:bg-red-700 text-white font-semibold"
+        >
+          Logout
+        </Button>
+      </header>
 
-        <p className="text-gray-500 mb-4">
+      {/* MAIN CONTENT */}
+      <main className="flex-grow w-full bg-white px-10 py-8">
+        <p className="text-gray-600 mb-4">
           <strong>Last Login (Anda):</strong> {lastLogin}
         </p>
+        <hr className="mb-6 border-gray-300" />
 
-        <hr className="my-4 border-gray-300" />
+        <div className="flex flex-col w-full">
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">
+            Data Pengguna ({users.length})
+          </h2>
 
-        <h2 className="text-xl font-semibold mb-4">
-          Data Pengguna ({users.length})
-        </h2>
+          <input
+            type="text"
+            placeholder="Cari pengguna..."
+            className="w-full mb-4 p-3 border border-gray-300 rounded-md text-gray-800 focus:ring-2 focus:ring-blue-400 outline-none"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
 
-        <input
-          type="text"
-          placeholder="Cari pengguna..."
-          className="w-full mb-4 p-2 border rounded-md focus:ring-2 focus:ring-blue-400"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-
-        <div className="overflow-x-auto w-full">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-gray-800 text-white">
-                <th className="p-3 border">ID</th>
-                <th className="p-3 border">Email</th>
-                <th className="p-3 border">Username</th>
-                <th className="p-3 border">Role</th>
-                <th className="p-3 border">Created At</th>
-                <th className="p-3 border">Phone</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredUsers.map((user) => (
-                <tr
-                  key={user.id}
-                  className="border-b hover:bg-gray-50 transition"
-                >
-                  <td className="p-3 border">{user.id}</td>
-                  <td className="p-3 border">{user.email}</td>
-                  <td className="p-3 border">{user.username}</td>
-                  <td className="p-3 border">
-                    {user.role === "admin" ? (
-                      <span className="bg-red-600 text-white px-3 py-1 rounded-full text-sm font-bold">
-                        ADMIN
-                      </span>
-                    ) : (
-                      <span className="bg-green-500 text-white px-3 py-1 rounded-full text-sm font-bold">
-                        USER
-                      </span>
-                    )}
-                  </td>
-                  <td className="p-3 border">
-                    {new Date(user.created_at).toLocaleDateString("id-ID", {
-                      day: "2-digit",
-                      month: "short",
-                      year: "numeric",
-                    })}
-                  </td>
-                  <td className="p-3 border">
-                    {user.phone ? user.phone : "-"}
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left">
+              <thead>
+                <tr className="bg-gray-800 text-white">
+                  <th className="p-3 border">ID</th>
+                  <th className="p-3 border">Email</th>
+                  <th className="p-3 border">Username</th>
+                  <th className="p-3 border">Role</th>
+                  <th className="p-3 border">Created At</th>
+                  <th className="p-3 border">Phone</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filteredUsers.map((user) => (
+                  <tr
+                    key={user.id}
+                    className="border-b hover:bg-gray-50 transition"
+                  >
+                    <td className="p-3 border text-gray-800">{user.id}</td>
+                    <td className="p-3 border text-gray-800">{user.email}</td>
+                    <td className="p-3 border text-gray-800">{user.username}</td>
+                    <td className="p-3 border">
+                      {user.role === "admin" ? (
+                        <span className="bg-red-600 text-white px-3 py-1 rounded-full text-sm font-bold">
+                          ADMIN
+                        </span>
+                      ) : (
+                        <span className="bg-green-500 text-white px-3 py-1 rounded-full text-sm font-bold">
+                          USER
+                        </span>
+                      )}
+                    </td>
+                    <td className="p-3 border text-gray-800">
+                      {new Date(user.created_at).toLocaleDateString("id-ID", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                    </td>
+                    <td className="p-3 border text-gray-800">
+                      {user.phone || "-"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      </main>
+
+      {/* FOOTER */}
+      <footer className="bg-gray-800 text-white text-center py-3 text-sm">
+        © {new Date().getFullYear()} Login App — Admin Dashboard
+      </footer>
     </div>
   );
 }
