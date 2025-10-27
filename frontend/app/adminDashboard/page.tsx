@@ -1,11 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-// Mengganti import useRouter dari "next/navigation" yang tidak tersedia di lingkungan ini
-// dan menggantinya dengan simulasi.
-// import { useRouter } from "next/navigation"; 
-// import { toast } from "sonner"; // Toast juga disimulasikan.
-
 // Simulasi useRouter dan toast
 const useRouter = () => ({
     replace: (path: string) => {
@@ -167,10 +162,9 @@ export default function AdminDashboard() {
     <main className="min-h-screen flex flex-col items-center justify-start bg-gray-200 py-4 px-0 md:p-8">
       
       {/* 2. CONTAINER KARTU PUTIH: 
-          - KUNCI PERBAIKAN: Menggunakan md:max-w-md dan lg:max-w-md untuk membatasi lebar card secara drastis
-          - max-w-md di Tailwind default-nya sekitar 672px, jauh lebih kecil dari 1024px (4xl) sebelumnya.
+          - KUNCI PERBAIKAN LEBAR: Kembali ke md:max-w-xl (768px / 896px) yang ringkas tapi tidak terlalu kecil.
       */}
-      <div className="bg-white w-full shadow-lg rounded-none md:rounded-xl md:p-8 md:max-w-md lg:max-w-md mx-auto">
+      <div className="bg-white w-full shadow-lg rounded-none md:rounded-xl md:p-8 md:max-w-xl lg:max-w-xl mx-auto">
         
         {/* WRAPPER KONTEN (untuk memberi padding horizontal pada semua item non-tabel) */}
         <div className="px-4 py-4 md:p-0">
@@ -194,25 +188,25 @@ export default function AdminDashboard() {
                 placeholder="Cari pengguna..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                // w-full pada input
                 className="border rounded-lg px-3 py-2 w-full bg-white text-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
               />
             </div>
         </div>
 
         {/* 3. KONTENER TABEL DENGAN SCROLL (Tidak diberi padding horizontal) */}
+        {/* Overflow-x-auto memastikan scroll horizontal jika tabel melebihi batas max-w-xl card */}
         <div className="overflow-x-auto w-full max-w-full">
-          {/* Menghapus min-w-full pada tabel agar tabel tidak memaksakan lebar container (card putih) */}
-          <table className="border-collapse border border-gray-200 text-gray-800 text-xs">
+          {/* KUNCI: Tambahkan kembali min-w-full agar tabel mengambil 100% dari ruang container card */}
+          <table className="min-w-full border-collapse border border-gray-200 text-gray-800 text-xs">
             <thead className="bg-gray-700 text-white">
               <tr>
-                {/* Menghapus semua min-w[...] pada kolom */}
-                <th className="px-4 py-3 border whitespace-nowrap text-center">ID</th>
-                <th className="px-4 py-3 border whitespace-nowrap text-left">Email</th>
-                <th className="px-4 py-3 border whitespace-nowrap text-left">Username</th>
-                <th className="px-4 py-3 border whitespace-nowrap text-center">Role</th>
-                <th className="px-4 py-3 border whitespace-nowrap">Created At</th>
-                <th className="px-4 py-3 border whitespace-nowrap">Phone</th>
+                {/* Menetapkan min-w yang wajar agar tabel tetap rapi */}
+                <th className="px-4 py-3 border whitespace-nowrap min-w-[50px] text-center">ID</th>
+                <th className="px-4 py-3 border whitespace-nowrap min-w-[200px] text-left">Email</th>
+                <th className="px-4 py-3 border whitespace-nowrap min-w-[150px] text-left">Username</th>
+                <th className="px-4 py-3 border whitespace-nowrap min-w-[100px] text-center">Role</th>
+                <th className="px-4 py-3 border whitespace-nowrap min-w-[180px]">Created At</th>
+                <th className="px-4 py-3 border whitespace-nowrap min-w-[150px]">Phone</th>
               </tr>
             </thead>
             <tbody>
@@ -220,14 +214,14 @@ export default function AdminDashboard() {
                 filteredUsers.map((user, idx) => (
                   <tr
                     key={user.id}
-                    className={`text-center ${
+                    className={`text-center hover:bg-gray-100 transition duration-150 ${
                       idx % 2 === 0 ? "bg-white" : "bg-gray-50"
                     }`}
                   >
                     <td className="px-4 py-2 border font-medium text-center">{user.id}</td>
-                    {/* Menggunakan break-all dan max-w yang lebih kecil agar teks panjang tidak melebar */}
-                    <td className="px-4 py-2 border text-left max-w-[80px] break-all">{user.email}</td>
-                    <td className="px-4 py-2 border text-left max-w-[60px] break-all">{user.username}</td>
+                    {/* Menghapus break-all dan max-w yang agresif */}
+                    <td className="px-4 py-2 border text-left break-words">{user.email}</td>
+                    <td className="px-4 py-2 border text-left whitespace-nowrap">{user.username}</td>
                     <td className="px-4 py-2 border text-center">
                       {user.role === "admin" ? (
                         <span className="bg-red-500 text-white px-2 py-0.5 rounded-full text-[10px] font-bold shadow-md">
@@ -239,10 +233,10 @@ export default function AdminDashboard() {
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-2 border">
+                    <td className="px-4 py-2 border whitespace-nowrap">
                       {formatDateOnlyJakarta(user.created_at)}
                     </td>
-                    <td className="px-4 py-2 border">
+                    <td className="px-4 py-2 border whitespace-nowrap">
                       {user.phone_number || user.phone || "-"}
                     </td>
                   </tr>
