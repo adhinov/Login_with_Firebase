@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 
 interface User {
   id: number;
@@ -8,212 +10,131 @@ interface User {
   username: string;
   role: string;
   created_at: string;
-  phone_number?: string | null;
-  phone?: string | null;
-  last_login?: string | null;
+  phone: string;
 }
 
-const formatDateTimeJakarta = (dateString?: string | null): string => {
-  if (!dateString) return "-";
-  try {
-    const d = new Date(dateString);
-    if (isNaN(d.getTime())) return dateString;
-    return (
-      new Intl.DateTimeFormat("id-ID", {
-        timeZone: "Asia/Jakarta",
-        year: "numeric",
-        month: "short",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        hourCycle: "h23",
-      }).format(d) + " WIB"
-    );
-  } catch {
-    return dateString || "-";
-  }
-};
-
-const formatDateOnlyJakarta = (dateString?: string | null): string => {
-  if (!dateString) return "-";
-  try {
-    const d = new Date(dateString);
-    if (isNaN(d.getTime())) return dateString;
-    return new Intl.DateTimeFormat("id-ID", {
-      timeZone: "Asia/Jakarta",
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    }).format(d);
-  } catch {
-    return dateString || "-";
-  }
-};
-
-const useMockAuthAndFetch = () => {
+export default function AdminDashboard() {
+  const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
-  const [lastLogin, setLastLogin] = useState<string>("Belum ada data");
-  const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
-
-  const redirect = (path: string) => {
-    if (typeof window !== "undefined") {
-      window.location.replace(path);
-    }
-  };
+  const [search, setSearch] = useState("");
+  const [lastLogin, setLastLogin] = useState("");
 
   useEffect(() => {
-    const MOCK_IS_ADMIN = true;
-    const MOCK_LAST_LOGIN = new Date().toISOString();
+    const token = localStorage.getItem("token");
+    const role = localStorage.getItem("role");
+    const email = localStorage.getItem("email");
+    const username = localStorage.getItem("username");
 
-    if (!MOCK_IS_ADMIN) {
-      setIsAuthorized(false);
+    if (!token || role !== "admin") {
+      router.push("/login");
       return;
     }
 
-    setIsAuthorized(true);
-    setLastLogin(formatDateTimeJakarta(MOCK_LAST_LOGIN));
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/users`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => res.json())
+      .then((data) => setUsers(data))
+      .catch((err) => console.error("Error fetching users:", err));
 
-    const fetchMockUsers = async () => {
-      const data = [
-        { id: 1, email: "admin@example.com", username: "Administrator", role: "admin", created_at: new Date().toISOString(), phone_number: "-" },
-        { id: 2, email: "budi@gmail.com", username: "Budi Santoso", role: "user", created_at: new Date().toISOString(), phone_number: "081234567890" },
-      ];
-      setUsers(data);
-    };
+    // format tanggal login terakhir
+    const now = new Date();
+    const formatted = now.toLocaleString("id-ID", {
+      weekday: "short",
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    setLastLogin(formatted);
+  }, [router]);
 
-    fetchMockUsers();
-  }, []);
-
-  return { users, lastLogin, isAuthorized, fetchUsers: () => window.location.reload(), redirect };
-};
-
-export default function AdminDashboard() {
-  const { users, lastLogin, isAuthorized, fetchUsers, redirect } = useMockAuthAndFetch();
-  const [searchTerm, setSearchTerm] = useState<string>("");
-
-  const handleLogout = () => redirect("/login");
-  const handleRefresh = () => fetchUsers();
-
-  const filteredUsers = users.filter(
-    (u) =>
-      u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.username.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredUsers = users.filter((user) =>
+    user.email.toLowerCase().includes(search.toLowerCase())
   );
 
-  if (isAuthorized === null) {
-    return (
-      <main className="min-h-screen flex items-center justify-center bg-gray-100">
-        <p className="text-gray-600">Checking authorization...</p>
-      </main>
-    );
-  }
+  const handleLogout = () => {
+    localStorage.clear();
+    router.push("/login");
+  };
 
   return (
-    <main className="min-h-screen flex flex-col items-center bg-gray-900 py-10 px-4">
-      {/* ✅ Card putih tengah dengan lebar lebih kecil */}
-      <div className="bg-white shadow-xl rounded-2xl w-full max-w-4xl p-6 sm:p-8 border border-gray-200">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
-          <h1 className="text-3xl font-extrabold text-gray-900 mb-2 sm:mb-0 text-center sm:text-left">
-            Admin Dashboard
-          </h1>
-          <button
-            onClick={handleLogout}
-            className="px-5 py-2 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700 transition duration-150"
-          >
+    <div className="min-h-screen bg-gray-100 flex flex-col items-center px-6 py-10">
+      <div className="w-full max-w-7xl bg-white shadow-lg rounded-xl p-8 border border-gray-200">
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+          <Button variant="destructive" onClick={handleLogout}>
             Logout
-          </button>
+          </Button>
         </div>
 
-        <p className="text-gray-600 mb-6 border-b pb-3 text-center sm:text-left">
-          <span className="font-semibold">Last Login (Anda):</span> {lastLogin}
+        <p className="text-gray-500 mb-4">
+          <strong>Last Login (Anda):</strong> {lastLogin}
         </p>
 
-        {/* Section data pengguna */}
-        <h2 className="text-xl font-bold mb-4 text-gray-800 text-center sm:text-left">
-          Data Pengguna ({filteredUsers.length})
+        <hr className="my-4 border-gray-300" />
+
+        <h2 className="text-xl font-semibold mb-4">
+          Data Pengguna ({users.length})
         </h2>
 
-        {/* Input pencarian */}
-        <div className="mb-6 flex justify-center sm:justify-start">
-          <input
-            type="text"
-            placeholder="Cari pengguna..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="border rounded-xl px-4 py-2 w-full sm:w-2/3 bg-white text-gray-800 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
-          />
-        </div>
+        <input
+          type="text"
+          placeholder="Cari pengguna..."
+          className="w-full mb-4 p-2 border rounded-md focus:ring-2 focus:ring-blue-400"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
 
-        {/* ✅ Pembungkus tabel agar responsif dan tidak buat card melebar */}
-        <div className="overflow-x-auto">
-          <table className="w-full border border-gray-300 rounded-lg text-sm text-gray-800">
-            <thead className="bg-gray-700 text-white">
-              <tr className="text-left uppercase text-xs tracking-wider">
-                <th className="px-4 py-3 border text-center">ID</th>
-                <th className="px-4 py-3 border">Email</th>
-                <th className="px-4 py-3 border">Username</th>
-                <th className="px-4 py-3 border text-center">Role</th>
-                <th className="px-4 py-3 border">Created At</th>
-                <th className="px-4 py-3 border">Phone</th>
+        <div className="overflow-x-auto w-full">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-gray-800 text-white">
+                <th className="p-3 border">ID</th>
+                <th className="p-3 border">Email</th>
+                <th className="p-3 border">Username</th>
+                <th className="p-3 border">Role</th>
+                <th className="p-3 border">Created At</th>
+                <th className="p-3 border">Phone</th>
               </tr>
             </thead>
             <tbody>
-              {filteredUsers.length > 0 ? (
-                filteredUsers.map((user, idx) => (
-                  <tr
-                    key={user.id}
-                    className={`hover:bg-blue-50 ${
-                      idx % 2 === 0 ? "bg-white" : "bg-gray-50"
-                    } transition`}
-                  >
-                    <td className="px-4 py-3 border text-center font-medium">{user.id}</td>
-                    <td className="px-4 py-3 border break-all">{user.email}</td>
-                    <td className="px-4 py-3 border break-all">{user.username}</td>
-                    <td className="px-4 py-3 border text-center">
-                      {user.role === "admin" ? (
-                        <span className="bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold">
-                          ADMIN
-                        </span>
-                      ) : (
-                        <span className="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold">
-                          USER
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 border">
-                      {formatDateOnlyJakarta(user.created_at)}
-                    </td>
-                    <td className="px-4 py-3 border">
-                      {user.phone_number || user.phone || "-"}
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={6} className="text-center py-6 text-gray-500 italic">
-                    Tidak ada pengguna ditemukan.
+              {filteredUsers.map((user) => (
+                <tr
+                  key={user.id}
+                  className="border-b hover:bg-gray-50 transition"
+                >
+                  <td className="p-3 border">{user.id}</td>
+                  <td className="p-3 border">{user.email}</td>
+                  <td className="p-3 border">{user.username}</td>
+                  <td className="p-3 border">
+                    {user.role === "admin" ? (
+                      <span className="bg-red-600 text-white px-3 py-1 rounded-full text-sm font-bold">
+                        ADMIN
+                      </span>
+                    ) : (
+                      <span className="bg-green-500 text-white px-3 py-1 rounded-full text-sm font-bold">
+                        USER
+                      </span>
+                    )}
+                  </td>
+                  <td className="p-3 border">
+                    {new Date(user.created_at).toLocaleDateString("id-ID", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </td>
+                  <td className="p-3 border">
+                    {user.phone ? user.phone : "-"}
                   </td>
                 </tr>
-              )}
+              ))}
             </tbody>
           </table>
         </div>
-
-        {/* Footer */}
-        <div className="flex flex-col sm:flex-row justify-between items-center mt-6 pt-4 border-t gap-3">
-          <p className="text-gray-700 font-medium">
-            Total Pengguna:{" "}
-            <span className="font-bold text-gray-900">{filteredUsers.length}</span>
-          </p>
-          <button
-            onClick={handleRefresh}
-            className="px-5 py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition duration-150"
-          >
-            Refresh Data
-          </button>
-        </div>
       </div>
-    </main>
+    </div>
   );
 }
