@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-// Import next/navigation dihapus untuk mengatasi masalah kompilasi.
 
 interface User {
   id: number;
@@ -14,23 +13,25 @@ interface User {
   last_login?: string | null;
 }
 
-// ✅ Formatter Asia/Jakarta UTC+7, dengan jam & menit
+// ✅ Formatter waktu & tanggal (Jakarta)
 const formatDateTimeJakarta = (dateString?: string | null): string => {
   if (!dateString) return "-";
   try {
-    const d = new Date(dateString); // ISO UTC string
+    const d = new Date(dateString);
     if (isNaN(d.getTime())) return dateString;
-    
-    return new Intl.DateTimeFormat("id-ID", {
-      timeZone: "Asia/Jakarta",
-      year: "numeric",
-      month: "short",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      hourCycle: "h23",
-    }).format(d) + " WIB";
-  } catch (err) {
+
+    return (
+      new Intl.DateTimeFormat("id-ID", {
+        timeZone: "Asia/Jakarta",
+        year: "numeric",
+        month: "short",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hourCycle: "h23",
+      }).format(d) + " WIB"
+    );
+  } catch {
     return dateString || "-";
   }
 };
@@ -47,71 +48,56 @@ const formatDateOnlyJakarta = (dateString?: string | null): string => {
       month: "short",
       year: "numeric",
     }).format(d);
-  } catch (err) {
+  } catch {
     return dateString || "-";
   }
 };
 
-// Konstanta API dipertahankan untuk referensi
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ||
-  "/api/mock-users"; // Default untuk demonstrasi
-
-// Fungsi Mocking Data & Auth (untuk lingkungan Immersive)
+// Simulasi fetch data
 const useMockAuthAndFetch = () => {
-    const [users, setUsers] = useState<User[]>([]);
-    const [lastLogin, setLastLogin] = useState<string>("Belum ada data");
-    const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
+  const [lastLogin, setLastLogin] = useState<string>("Belum ada data");
+  const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
 
-    const redirect = (path: string) => {
-        if (typeof window !== 'undefined') {
-            window.location.replace(path);
-        } else {
-            console.log(`Simulating redirect to ${path}`);
-        }
+  const redirect = (path: string) => {
+    if (typeof window !== "undefined") {
+      window.location.replace(path);
+    }
+  };
+
+  useEffect(() => {
+    const MOCK_IS_ADMIN = true;
+    const MOCK_LAST_LOGIN = new Date().toISOString();
+
+    if (!MOCK_IS_ADMIN) {
+      setIsAuthorized(false);
+      return;
+    }
+
+    setIsAuthorized(true);
+    setLastLogin(formatDateTimeJakarta(MOCK_LAST_LOGIN));
+
+    const fetchMockUsers = async () => {
+      const data = [
+        { id: 1, email: "admin@mail.com", username: "Administrator", role: "admin", created_at: new Date().toISOString(), phone_number: "081234567890" },
+        { id: 2, email: "user1@mail.com", username: "Budi Santoso", role: "user", created_at: new Date().toISOString() },
+        { id: 3, email: "anggota@mail.com", username: "Anggi Pratama", role: "user", created_at: new Date().toISOString(), phone_number: "085678901234" },
+      ];
+      setUsers(data);
     };
 
-    useEffect(() => {
-        const MOCK_IS_ADMIN = true; 
-        const MOCK_LAST_LOGIN = new Date().toISOString(); 
-        
-        if (!MOCK_IS_ADMIN) {
-            setIsAuthorized(false);
-            return;
-        }
+    fetchMockUsers();
+  }, []);
 
-        setIsAuthorized(true);
-        setLastLogin(formatDateTimeJakarta(MOCK_LAST_LOGIN));
-
-        const fetchMockUsers = async () => {
-            const data = [
-                { id: 1, email: "admin@mail.com", username: "Administrator", role: "admin", created_at: new Date(Date.now() - 86400000).toISOString(), phone_number: "081234567890" },
-                { id: 2, email: "user1@mail.com", username: "Budi Santoso", role: "user", created_at: new Date(Date.now() - 3600000 * 25).toISOString() },
-                { id: 3, email: "anggota@mail.com", username: "Anggi Pratama", role: "user", created_at: new Date(Date.now() - 3600000 * 50).toISOString(), phone_number: "085678901234" },
-                { id: 4, email: "test_panjang@email.com", username: "Pengguna dengan Username Panjang Sekali dan Tidak Ada Spasi", role: "user", created_at: new Date(Date.now() - 3600000 * 70).toISOString(), phone_number: "089999999999" },
-                { id: 5, email: "user5@mail.com", username: "Lima", role: "user", created_at: new Date(Date.now() - 3600000 * 100).toISOString() },
-            ];
-            setUsers(data);
-        };
-
-        fetchMockUsers(); // Memuat data tiruan
-    }, []);
-
-    return { users, lastLogin, isAuthorized, fetchUsers: () => window.location.reload(), redirect }; 
-}
-
+  return { users, lastLogin, isAuthorized, fetchUsers: () => window.location.reload(), redirect };
+};
 
 export default function AdminDashboard() {
-  const { users, lastLogin, isAuthorized, fetchUsers, redirect } = useMockAuthAndFetch(); 
+  const { users, lastLogin, isAuthorized, fetchUsers, redirect } = useMockAuthAndFetch();
   const [searchTerm, setSearchTerm] = useState<string>("");
 
-  const handleLogout = () => {
-    redirect("/login"); 
-  };
-
-  const handleRefresh = () => {
-    fetchUsers(); 
-  };
+  const handleLogout = () => redirect("/login");
+  const handleRefresh = () => fetchUsers();
 
   const filteredUsers = users.filter(
     (u) =>
@@ -128,58 +114,45 @@ export default function AdminDashboard() {
   }
 
   return (
-    // 1. KONTEN UTAMA (MAIN): 
-    <main className="min-h-screen flex flex-col items-center bg-gray-100 py-4 px-0 md:p-8 w-full overflow-x-hidden">
+    <main className="min-h-screen flex flex-col items-center bg-gray-100 py-6 px-2 md:px-6">
+      {/* ✅ Container utama (card putih) */}
+      <div className="bg-white shadow-xl rounded-2xl w-full sm:w-[95%] md:w-[85%] lg:w-[70%] xl:w-[60%] p-6 md:p-8 border border-gray-200">
         
-      {/* 2. CONTAINER KARTU (WHITE CARD): 
-          - KUNCI PERBAIKAN: md:max-w-lg DAN lg:max-w-lg. Ini membatasi lebar maksimum card menjadi 448px di tablet dan desktop.
-      */}
-      <div className="bg-white shadow-2xl w-full mx-auto px-0 py-4 rounded-none md:p-8 md:max-w-lg lg:max-w-lg lg:rounded-xl">
-        
-        {/* === WRAPPER UNTUK KONTEN NON-TABEL (Mendapatkan Padding Internal) === */}
-        <div className="px-4 md:px-0">
-          
-            {/* Judul & Last Login */}
-            <h1 className="text-3xl font-extrabold text-gray-900 mb-2">
-              Admin Dashboard
-            </h1>
-            <p className="text-gray-600 mb-6 border-b pb-4">
-              <span className="font-semibold">Last Login (Anda):</span> {lastLogin}
-            </p>
+        {/* Header */}
+        <h1 className="text-3xl font-extrabold text-gray-900 mb-2 text-center md:text-left">
+          Admin Dashboard
+        </h1>
+        <p className="text-gray-600 mb-6 border-b pb-4 text-center md:text-left">
+          <span className="font-semibold">Last Login (Anda):</span> {lastLogin}
+        </p>
 
-            {/* Daftar Pengguna */}
-            <h2 className="text-xl font-bold mb-4 text-gray-800">
-              Data Pengguna ({filteredUsers.length})
-            </h2>
+        {/* Data Pengguna */}
+        <h2 className="text-xl font-bold mb-4 text-gray-800 text-center md:text-left">
+          Data Pengguna ({filteredUsers.length})
+        </h2>
 
-            {/* Pencarian */}
-            <div className="flex items-center justify-between mb-6">
-              <input
-                type="text"
-                placeholder="Cari pengguna (Email/Username)..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="border rounded-xl px-4 py-2 w-full bg-white text-gray-800 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
-              />
-            </div>
-            
+        {/* Input pencarian */}
+        <div className="mb-6 flex justify-center md:justify-start">
+          <input
+            type="text"
+            placeholder="Cari pengguna (Email/Username)..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="border rounded-xl px-4 py-2 w-full md:w-2/3 bg-white text-gray-800 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+          />
         </div>
-        {/* === END WRAPPER UNTUK KONTEN NON-TABEL === */}
 
-
-        {/* 3. KONTENER TABEL DENGAN SCROLL */}
-        {/* min-w-full pada tabel dihilangkan agar tabel bisa menyesuaikan diri dengan lebar card yang sempit (max-w-lg) */}
-        <div className="overflow-x-auto w-full max-w-full border border-gray-200 rounded-lg shadow-inner">
-          <table className="border-collapse text-gray-800 text-sm">
+        {/* ✅ Tabel responsif */}
+        <div className="overflow-x-auto border border-gray-300 rounded-lg shadow-sm">
+          <table className="w-full border-collapse text-sm text-gray-800">
             <thead className="bg-gray-700 text-white">
               <tr className="text-left uppercase text-xs tracking-wider">
-                {/* Menghapus min-w untuk membiarkan browser menentukan lebar kolom secara dinamis */}
-                <th className="px-4 py-3 border whitespace-nowrap text-center">ID</th>
-                <th className="px-4 py-3 border whitespace-nowrap">Email</th>
-                <th className="px-4 py-3 border whitespace-nowrap">Username</th>
-                <th className="px-4 py-3 border whitespace-nowrap text-center">Role</th>
-                <th className="px-4 py-3 border whitespace-nowrap">Created At</th>
-                <th className="px-4 py-3 border whitespace-nowrap">Phone</th>
+                <th className="px-4 py-3 border text-center">ID</th>
+                <th className="px-4 py-3 border">Email</th>
+                <th className="px-4 py-3 border">Username</th>
+                <th className="px-4 py-3 border text-center">Role</th>
+                <th className="px-4 py-3 border">Created At</th>
+                <th className="px-4 py-3 border">Phone</th>
               </tr>
             </thead>
             <tbody>
@@ -187,61 +160,61 @@ export default function AdminDashboard() {
                 filteredUsers.map((user, idx) => (
                   <tr
                     key={user.id}
-                    className={`text-sm hover:bg-blue-50 transition ${
+                    className={`hover:bg-blue-50 ${
                       idx % 2 === 0 ? "bg-white" : "bg-gray-50"
-                    }`}
+                    } transition`}
                   >
                     <td className="px-4 py-3 border text-center font-medium">{user.id}</td>
-                    {/* Menggunakan max-w-xs untuk memastikan email dan username tidak terlalu panjang, dan break-all untuk mengatasi kata-kata panjang tanpa spasi */}
-                    <td className="px-4 py-3 border text-gray-700 break-all max-w-[100px]">{user.email}</td>
-                    <td className="px-4 py-3 border text-gray-700 break-all max-w-[80px]">{user.username}</td>
+                    <td className="px-4 py-3 border break-all">{user.email}</td>
+                    <td className="px-4 py-3 border break-all">{user.username}</td>
                     <td className="px-4 py-3 border text-center">
                       {user.role === "admin" ? (
-                        <span className="bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-md">
+                        <span className="bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold">
                           ADMIN
                         </span>
                       ) : (
-                        <span className="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-md">
+                        <span className="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold">
                           USER
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 border text-gray-700">
+                    <td className="px-4 py-3 border">
                       {formatDateOnlyJakarta(user.created_at)}
                     </td>
-                    <td className="px-4 py-3 border text-gray-700">
+                    <td className="px-4 py-3 border">
                       {user.phone_number || user.phone || "-"}
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                    <td colSpan={6} className="text-center py-6 text-gray-500 italic">
-                        Tidak ada pengguna ditemukan.
-                    </td>
+                  <td colSpan={6} className="text-center py-6 text-gray-500 italic">
+                    Tidak ada pengguna ditemukan.
+                  </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
 
-        {/* Footer/Aksi (Diberi padding horizontal internal px-4) */}
-        <div className="px-4 md:px-0 flex flex-col md:flex-row justify-between items-center mt-6 pt-4 border-t border-gray-200 gap-3">
-          <p className="text-gray-700 font-medium text-base">
-            Total Pengguna: <span className="font-bold text-gray-900">{filteredUsers.length}</span>
+        {/* Footer */}
+        <div className="flex flex-col md:flex-row justify-between items-center mt-6 pt-4 border-t gap-3">
+          <p className="text-gray-700 font-medium">
+            Total Pengguna:{" "}
+            <span className="font-bold text-gray-900">{filteredUsers.length}</span>
           </p>
           <div className="flex space-x-3">
             <button
               onClick={handleRefresh}
-              className="px-5 py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition duration-150 shadow-md transform hover:scale-[1.02]"
+              className="px-5 py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition duration-150"
             >
               Refresh Data
             </button>
             <button
               onClick={handleLogout}
-              className="px-5 py-2 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700 transition duration-150 shadow-md transform hover:scale-[1.02]"
+              className="px-5 py-2 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700 transition duration-150"
             >
-            Logout
+              Logout
             </button>
           </div>
         </div>
