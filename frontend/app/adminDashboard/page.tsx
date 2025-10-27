@@ -164,17 +164,13 @@ export default function AdminDashboard() {
 
   return (
     // 1. KONTEN UTAMA (MAIN): 
-    // px-0 untuk mobile, p-8 untuk desktop
     <main className="min-h-screen flex flex-col items-center justify-start bg-gray-200 py-4 px-0 md:p-8">
       
       {/* 2. CONTAINER KARTU PUTIH: 
-          - w-full memastikan card 100% lebar layar di ponsel.
-          - rounded-none pada mobile agar menempel di sisi layar.
-          - KUNCI: md:max-w-4xl (untuk ukuran tablet) dan lg:max-w-4xl (untuk ukuran desktop) 
-                   digunakan untuk membatasi lebar card di layar besar.
-          - mx-auto memastikan card terpusat di layar besar.
+          - KUNCI PERBAIKAN: Menggunakan md:max-w-md dan lg:max-w-md untuk membatasi lebar card secara drastis
+          - max-w-md di Tailwind default-nya sekitar 672px, jauh lebih kecil dari 1024px (4xl) sebelumnya.
       */}
-      <div className="bg-white w-full shadow-lg rounded-none md:rounded-xl md:p-8 md:max-w-4xl lg:max-w-4xl mx-auto">
+      <div className="bg-white w-full shadow-lg rounded-none md:rounded-xl md:p-8 md:max-w-md lg:max-w-md mx-auto">
         
         {/* WRAPPER KONTEN (untuk memberi padding horizontal pada semua item non-tabel) */}
         <div className="px-4 py-4 md:p-0">
@@ -205,17 +201,18 @@ export default function AdminDashboard() {
         </div>
 
         {/* 3. KONTENER TABEL DENGAN SCROLL (Tidak diberi padding horizontal) */}
-        {/* Tabel tetap 100% lebar dari card, dan scrollable jika isinya terlalu lebar. */}
         <div className="overflow-x-auto w-full max-w-full">
-          <table className="min-w-full border-collapse border border-gray-200 text-gray-800 text-xs">
+          {/* Menghapus min-w-full pada tabel agar tabel tidak memaksakan lebar container (card putih) */}
+          <table className="border-collapse border border-gray-200 text-gray-800 text-xs">
             <thead className="bg-gray-700 text-white">
               <tr>
-                <th className="px-4 py-3 border whitespace-nowrap min-w-[50px] text-center">ID</th>
-                <th className="px-4 py-3 border whitespace-nowrap min-w-[200px] text-left">Email</th>
-                <th className="px-4 py-3 border whitespace-nowrap min-w-[150px] text-left">Username</th>
-                <th className="px-4 py-3 border whitespace-nowrap min-w-[100px] text-center">Role</th>
-                <th className="px-4 py-3 border whitespace-nowrap min-w-[180px]">Created At</th>
-                <th className="px-4 py-3 border whitespace-nowrap min-w-[150px]">Phone</th>
+                {/* Menghapus semua min-w[...] pada kolom */}
+                <th className="px-4 py-3 border whitespace-nowrap text-center">ID</th>
+                <th className="px-4 py-3 border whitespace-nowrap text-left">Email</th>
+                <th className="px-4 py-3 border whitespace-nowrap text-left">Username</th>
+                <th className="px-4 py-3 border whitespace-nowrap text-center">Role</th>
+                <th className="px-4 py-3 border whitespace-nowrap">Created At</th>
+                <th className="px-4 py-3 border whitespace-nowrap">Phone</th>
               </tr>
             </thead>
             <tbody>
@@ -228,8 +225,9 @@ export default function AdminDashboard() {
                     }`}
                   >
                     <td className="px-4 py-2 border font-medium text-center">{user.id}</td>
-                    <td className="px-4 py-2 border text-left max-w-[200px] break-words">{user.email}</td>
-                    <td className="px-4 py-2 border text-left max-w-[150px] break-words">{user.username}</td>
+                    {/* Menggunakan break-all dan max-w yang lebih kecil agar teks panjang tidak melebar */}
+                    <td className="px-4 py-2 border text-left max-w-[80px] break-all">{user.email}</td>
+                    <td className="px-4 py-2 border text-left max-w-[60px] break-all">{user.username}</td>
                     <td className="px-4 py-2 border text-center">
                       {user.role === "admin" ? (
                         <span className="bg-red-500 text-white px-2 py-0.5 rounded-full text-[10px] font-bold shadow-md">
