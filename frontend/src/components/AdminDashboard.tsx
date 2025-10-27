@@ -13,13 +13,11 @@ interface User {
   last_login?: string | null;
 }
 
-// ✅ Formatter waktu & tanggal (Jakarta)
 const formatDateTimeJakarta = (dateString?: string | null): string => {
   if (!dateString) return "-";
   try {
     const d = new Date(dateString);
     if (isNaN(d.getTime())) return dateString;
-
     return (
       new Intl.DateTimeFormat("id-ID", {
         timeZone: "Asia/Jakarta",
@@ -41,7 +39,6 @@ const formatDateOnlyJakarta = (dateString?: string | null): string => {
   try {
     const d = new Date(dateString);
     if (isNaN(d.getTime())) return dateString;
-
     return new Intl.DateTimeFormat("id-ID", {
       timeZone: "Asia/Jakarta",
       day: "2-digit",
@@ -53,7 +50,6 @@ const formatDateOnlyJakarta = (dateString?: string | null): string => {
   }
 };
 
-// Simulasi fetch data
 const useMockAuthAndFetch = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [lastLogin, setLastLogin] = useState<string>("Belum ada data");
@@ -79,9 +75,8 @@ const useMockAuthAndFetch = () => {
 
     const fetchMockUsers = async () => {
       const data = [
-        { id: 1, email: "admin@mail.com", username: "Administrator", role: "admin", created_at: new Date().toISOString(), phone_number: "081234567890" },
-        { id: 2, email: "user1@mail.com", username: "Budi Santoso", role: "user", created_at: new Date().toISOString() },
-        { id: 3, email: "anggota@mail.com", username: "Anggi Pratama", role: "user", created_at: new Date().toISOString(), phone_number: "085678901234" },
+        { id: 1, email: "admin@example.com", username: "Administrator", role: "admin", created_at: new Date().toISOString(), phone_number: "-" },
+        { id: 2, email: "budi@gmail.com", username: "Budi Santoso", role: "user", created_at: new Date().toISOString(), phone_number: "081234567890" },
       ];
       setUsers(data);
     };
@@ -114,10 +109,10 @@ export default function AdminDashboard() {
   }
 
   return (
-    <main className="min-h-screen flex flex-col items-center bg-gray-100 py-6 px-2 md:px-6">
-      {/* ✅ Container utama (card putih) */}
-      <div className="bg-white shadow-xl rounded-2xl w-full sm:w-[95%] md:w-[85%] lg:w-[70%] xl:w-[60%] p-6 md:p-8 border border-gray-200">
-        
+    <main className="min-h-screen flex flex-col items-center bg-gray-900 py-8 px-3">
+      {/* ✅ Card putih tengah */}
+      <div className="bg-white shadow-2xl rounded-2xl w-full sm:w-[90%] md:w-[80%] lg:w-[75%] xl:w-[65%] p-6 md:p-10 border border-gray-200">
+
         {/* Header */}
         <h1 className="text-3xl font-extrabold text-gray-900 mb-2 text-center md:text-left">
           Admin Dashboard
@@ -126,7 +121,7 @@ export default function AdminDashboard() {
           <span className="font-semibold">Last Login (Anda):</span> {lastLogin}
         </p>
 
-        {/* Data Pengguna */}
+        {/* Section data pengguna */}
         <h2 className="text-xl font-bold mb-4 text-gray-800 text-center md:text-left">
           Data Pengguna ({filteredUsers.length})
         </h2>
@@ -135,66 +130,68 @@ export default function AdminDashboard() {
         <div className="mb-6 flex justify-center md:justify-start">
           <input
             type="text"
-            placeholder="Cari pengguna (Email/Username)..."
+            placeholder="Cari pengguna..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="border rounded-xl px-4 py-2 w-full md:w-2/3 bg-white text-gray-800 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
           />
         </div>
 
-        {/* ✅ Tabel responsif */}
-        <div className="overflow-x-auto border border-gray-300 rounded-lg shadow-sm">
-          <table className="w-full border-collapse text-sm text-gray-800">
-            <thead className="bg-gray-700 text-white">
-              <tr className="text-left uppercase text-xs tracking-wider">
-                <th className="px-4 py-3 border text-center">ID</th>
-                <th className="px-4 py-3 border">Email</th>
-                <th className="px-4 py-3 border">Username</th>
-                <th className="px-4 py-3 border text-center">Role</th>
-                <th className="px-4 py-3 border">Created At</th>
-                <th className="px-4 py-3 border">Phone</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredUsers.length > 0 ? (
-                filteredUsers.map((user, idx) => (
-                  <tr
-                    key={user.id}
-                    className={`hover:bg-blue-50 ${
-                      idx % 2 === 0 ? "bg-white" : "bg-gray-50"
-                    } transition`}
-                  >
-                    <td className="px-4 py-3 border text-center font-medium">{user.id}</td>
-                    <td className="px-4 py-3 border break-all">{user.email}</td>
-                    <td className="px-4 py-3 border break-all">{user.username}</td>
-                    <td className="px-4 py-3 border text-center">
-                      {user.role === "admin" ? (
-                        <span className="bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold">
-                          ADMIN
-                        </span>
-                      ) : (
-                        <span className="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold">
-                          USER
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 border">
-                      {formatDateOnlyJakarta(user.created_at)}
-                    </td>
-                    <td className="px-4 py-3 border">
-                      {user.phone_number || user.phone || "-"}
+        {/* ✅ Pembungkus tabel: agar scroll tidak buat card ikut menyempit */}
+        <div className="overflow-x-auto">
+          <div className="min-w-full border border-gray-300 rounded-lg shadow-sm">
+            <table className="w-full border-collapse text-sm text-gray-800">
+              <thead className="bg-gray-700 text-white">
+                <tr className="text-left uppercase text-xs tracking-wider">
+                  <th className="px-4 py-3 border text-center">ID</th>
+                  <th className="px-4 py-3 border">Email</th>
+                  <th className="px-4 py-3 border">Username</th>
+                  <th className="px-4 py-3 border text-center">Role</th>
+                  <th className="px-4 py-3 border">Created At</th>
+                  <th className="px-4 py-3 border">Phone</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredUsers.length > 0 ? (
+                  filteredUsers.map((user, idx) => (
+                    <tr
+                      key={user.id}
+                      className={`hover:bg-blue-50 ${
+                        idx % 2 === 0 ? "bg-white" : "bg-gray-50"
+                      } transition`}
+                    >
+                      <td className="px-4 py-3 border text-center font-medium">{user.id}</td>
+                      <td className="px-4 py-3 border break-all">{user.email}</td>
+                      <td className="px-4 py-3 border break-all">{user.username}</td>
+                      <td className="px-4 py-3 border text-center">
+                        {user.role === "admin" ? (
+                          <span className="bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold">
+                            ADMIN
+                          </span>
+                        ) : (
+                          <span className="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold">
+                            USER
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 border">
+                        {formatDateOnlyJakarta(user.created_at)}
+                      </td>
+                      <td className="px-4 py-3 border">
+                        {user.phone_number || user.phone || "-"}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={6} className="text-center py-6 text-gray-500 italic">
+                      Tidak ada pengguna ditemukan.
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={6} className="text-center py-6 text-gray-500 italic">
-                    Tidak ada pengguna ditemukan.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {/* Footer */}
