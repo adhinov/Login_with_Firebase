@@ -221,7 +221,8 @@ export default function AdminDashboardComponent() {
                                         <th className={`border-r border-gray-600 w-[20%] text-left ${tableCellPadding}`}>Username</th>
                                         <th className={`border-r border-gray-600 w-[10%] text-center ${tableCellPadding}`}>Role</th>
                                         <th className={`border-r border-gray-600 w-[25%] text-center ${tableCellPadding}`}>Created At</th>
-                                        <th className={`w-[15%] text-center ${tableCellPadding}`}>Phone</th>
+                                        {/* PERBAIKAN 1: Menambahkan min-width pada kolom Phone di Header */}
+                                        <th className={`w-[15%] text-center ${tableCellPadding} min-w-[150px]`}>Phone</th> 
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -253,7 +254,8 @@ export default function AdminDashboardComponent() {
                                                 <td className={`${tableCellPadding} text-center border-r border-gray-200 whitespace-nowrap`}>
                                                     {formatDateJakarta(user.created_at)}
                                                 </td>
-                                                <td className={`${tableCellPadding} text-center break-all`}>
+                                                {/* PERBAIKAN 2: Menggunakan whitespace-nowrap dan penanganan overflow */}
+                                                <td className={`${tableCellPadding} text-center whitespace-nowrap overflow-hidden text-ellipsis`}>
                                                     {user.phone_number || "-"}
                                                 </td>
                                             </tr>
@@ -275,11 +277,11 @@ export default function AdminDashboardComponent() {
 
                     {/* Footer info */}
                     {!loading && (
-                         <div className="mt-6 text-sm text-gray-600 text-center">
-                            Total Pengguna: <span className="font-bold text-gray-800">{users.length}</span>
-                        </div>
+                           <div className="mt-6 text-sm text-gray-600 text-center">
+                                Total Pengguna: <span className="font-bold text-gray-800">{users.length}</span>
+                            </div>
                     )}
-                   
+                    
                 </div>
             </main>
 
