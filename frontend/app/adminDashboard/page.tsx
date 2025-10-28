@@ -218,7 +218,7 @@ export default function AdminDashboard() {
                                         <th className="py-1 px-2 border-r border-gray-600 w-[20%] text-left">Username</th>
                                         <th className="py-1 px-2 border-r border-gray-600 w-[10%] text-center">Role</th>
                                         <th className="py-1 px-2 border-r border-gray-600 w-[25%] text-center">Created At</th>
-                                        <th className="py-1 px-2 w-[15%] text-center">Phone</th>
+                                        <th className="py-1 px-2 w-[20%] text-center">Phone</th>
                                     </tr>
                                 </thead>
                                 <tbody>
