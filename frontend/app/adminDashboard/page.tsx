@@ -55,6 +55,7 @@ export default function AdminDashboard() {
     const [search, setSearch] = useState("");
     const [lastLogin, setLastLogin] = useState<string>("Memuat...");
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null); // State untuk pesan error
 
     // Fungsi yang dipanggil saat klik tombol logout
     const handleLogoutClick = () => {
@@ -71,6 +72,7 @@ export default function AdminDashboard() {
     // Logika Fetch Data
     const fetchUsers = async (token: string) => {
         setLoading(true);
+        setError(null); // Reset error state
         try {
             const res = await fetch(`${API_URL}/api/users`, {
                 headers: { Authorization: `Bearer ${token}` },
@@ -83,14 +85,17 @@ export default function AdminDashboard() {
             }
             
             if (!res.ok) {
-                throw new Error("Gagal mengambil data pengguna.");
+                const errorData = await res.json();
+                throw new Error(errorData.message || "Gagal mengambil data pengguna.");
             }
 
             const data = await res.json();
             setUsers(data);
-        } catch (error) {
-            console.error("Error fetching users:", error);
-            // Hanya log error, jangan forceLogout di sini karena mungkin error network
+        } catch (err) {
+            console.error("Error fetching users:", err);
+            // Handle error response object
+            setError((err instanceof Error) ? err.message : "Terjadi kesalahan saat memuat data.");
+            setUsers([]); // Kosongkan data jika gagal
         } finally {
             setLoading(false);
         }
@@ -173,32 +178,47 @@ export default function AdminDashboard() {
                             />
                             <button
                                 onClick={handleRefresh}
-                                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow transition duration-200 whitespace-nowrap"
+                                disabled={loading}
+                                className={`text-white px-4 py-2 rounded-xl text-sm font-semibold shadow transition duration-200 whitespace-nowrap ${
+                                    loading 
+                                        ? 'bg-blue-400 cursor-not-allowed' 
+                                        : 'bg-blue-600 hover:bg-blue-700'
+                                }`}
                             >
-                                Refresh
+                                {loading ? 'Memuat...' : 'Refresh'}
                             </button>
                         </div>
                     </div>
 
+                    {/* Tampilkan pesan error jika ada */}
+                    {error && (
+                        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 rounded-lg" role="alert">
+                            <p className="font-bold">Error Memuat Data:</p>
+                            <p>{error}</p>
+                            <p className="mt-2 text-sm italic">Coba klik 'Refresh' lagi, atau pastikan API service aktif.</p>
+                        </div>
+                    )}
+
+
                     {/* Tabel Container */}
-                    {loading ? (
+                    {loading && !error ? (
                         <div className="text-center p-10 text-lg text-gray-500">
                             <div className="animate-spin inline-block w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mr-3" role="status"></div>
                             Memuat data pengguna...
                         </div>
                     ) : (
                         <div className="overflow-x-auto rounded-lg shadow-xl border border-gray-200">
-                            {/* Pastikan `table-fixed` digunakan bersama dengan lebar kolom yang tepat */}
+                            {/* Menggunakan table-auto untuk responsif yang lebih baik */}
                             <table className="min-w-full table-auto border-collapse text-sm text-gray-800">
                                 <thead className="bg-gray-700 text-white sticky top-0">
                                     <tr>
-                                        {/* Atur lebar kolom secara eksplisit (gunakan persentase agar responsif) */}
-                                        <th className="p-3 border-r border-gray-600 w-[5%] text-center">ID</th>
-                                        <th className="p-3 border-r border-gray-600 w-[25%] text-left">Email</th>
-                                        <th className="p-3 border-r border-gray-600 w-[20%] text-left">Username</th>
-                                        <th className="p-3 border-r border-gray-600 w-[10%] text-center">Role</th>
-                                        <th className="p-3 border-r border-gray-600 w-[25%] text-center">Created At</th>
-                                        <th className="p-3 w-[15%] text-center">Phone</th>
+                                        {/* Menggunakan py-1 px-2 untuk header agar lebih rapat */}
+                                        <th className="py-1 px-2 border-r border-gray-600 w-[5%] text-center">ID</th>
+                                        <th className="py-1 px-2 border-r border-gray-600 w-[25%] text-left">Email</th>
+                                        <th className="py-1 px-2 border-r border-gray-600 w-[20%] text-left">Username</th>
+                                        <th className="py-1 px-2 border-r border-gray-600 w-[10%] text-center">Role</th>
+                                        <th className="py-1 px-2 border-r border-gray-600 w-[25%] text-center">Created At</th>
+                                        <th className="py-1 px-2 w-[15%] text-center">Phone</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -210,28 +230,27 @@ export default function AdminDashboard() {
                                                     i % 2 === 0 ? "bg-white" : "bg-gray-50"
                                                 } hover:bg-blue-50 transition duration-150`}
                                             >
-                                                <td className="p-3 text-center font-medium border-r border-gray-200">{user.id}</td>
-                                                {/* break-words untuk email yang terlalu panjang */}
-                                                <td className="p-3 border-r border-gray-200 break-words">
+                                                {/* BARIS DATA: Menggunakan py-1 px-2 untuk kepadatan maksimal */}
+                                                <td className="py-1 px-2 text-center font-medium border-r border-gray-200">{user.id}</td>
+                                                <td className="py-1 px-2 border-r border-gray-200 break-words">
                                                     {user.email}
                                                 </td>
-                                                <td className="p-3 border-r border-gray-200 whitespace-normal">{user.username}</td>
-                                                <td className="p-3 text-center border-r border-gray-200">
+                                                <td className="py-1 px-2 border-r border-gray-200 whitespace-normal">{user.username}</td>
+                                                <td className="py-1 px-2 text-center border-r border-gray-200">
                                                     {user.role === "admin" ? (
-                                                        <span className="bg-red-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-md">
+                                                        <span className="bg-red-600 text-white px-3 py-0.5 rounded-full text-xs font-bold shadow-md">
                                                             ADMIN
                                                         </span>
                                                     ) : (
-                                                        <span className="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold">
+                                                        <span className="bg-green-500 text-white px-3 py-0.5 rounded-full text-xs font-bold">
                                                             USER
                                                         </span>
                                                     )}
                                                 </td>
-                                                <td className="p-3 text-center border-r border-gray-200 whitespace-nowrap">
+                                                <td className="py-1 px-2 text-center border-r border-gray-200 whitespace-nowrap">
                                                     {formatDateJakarta(user.created_at)}
                                                 </td>
-                                                {/* break-all untuk nomor telepon yang panjang tanpa spasi */}
-                                                <td className="p-3 text-center break-all">
+                                                <td className="py-1 px-2 text-center break-all">
                                                     {user.phone_number || "-"}
                                                 </td>
                                             </tr>
@@ -242,7 +261,7 @@ export default function AdminDashboard() {
                                                 colSpan={6}
                                                 className="p-4 text-center text-gray-500 italic bg-white"
                                             >
-                                                Tidak ada pengguna ditemukan.
+                                                {error ? "Gagal memuat data, silakan coba Refresh." : "Tidak ada pengguna ditemukan."}
                                             </td>
                                         </tr>
                                     )}
