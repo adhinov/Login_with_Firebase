@@ -58,7 +58,7 @@ export default function AdminDashboardComponent() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null); // State untuk pesan error
 
-    // Fungsi yang dipanggil saat klik tombol logout (memperbaiki error tipe sebelumnya)
+    // Fungsi yang dipanggil saat klik tombol logout
     const handleLogoutClick = () => {
         localStorage.clear();
         router.replace("/login");
@@ -142,6 +142,9 @@ export default function AdminDashboardComponent() {
         }
     };
 
+    // Kelas padding baru untuk baris yang lebih rapat
+    const tableCellPadding = "py-2 px-3"; // Mengurangi padding vertikal (py-2) dari sebelumnya p-3
+
     return (
         <div className="min-h-screen flex flex-col bg-gray-100 font-sans">
             {/* Header */}
@@ -212,13 +215,13 @@ export default function AdminDashboardComponent() {
                             <table className="min-w-full table-auto border-collapse text-sm text-gray-800">
                                 <thead className="bg-gray-700 text-white sticky top-0">
                                     <tr>
-                                        {/* Atur lebar kolom menggunakan persentase */}
-                                        <th className="p-3 border-r border-gray-600 w-[5%] text-center">ID</th>
-                                        <th className="p-3 border-r border-gray-600 w-[25%] text-left">Email</th>
-                                        <th className="p-3 border-r border-gray-600 w-[20%] text-left">Username</th>
-                                        <th className="p-3 border-r border-gray-600 w-[10%] text-center">Role</th>
-                                        <th className="p-3 border-r border-gray-600 w-[25%] text-center">Created At</th>
-                                        <th className="p-3 w-[15%] text-center">Phone</th>
+                                        {/* Menggunakan padding yang lebih kecil untuk header juga */}
+                                        <th className={`border-r border-gray-600 w-[5%] text-center ${tableCellPadding}`}>ID</th>
+                                        <th className={`border-r border-gray-600 w-[25%] text-left ${tableCellPadding}`}>Email</th>
+                                        <th className={`border-r border-gray-600 w-[20%] text-left ${tableCellPadding}`}>Username</th>
+                                        <th className={`border-r border-gray-600 w-[10%] text-center ${tableCellPadding}`}>Role</th>
+                                        <th className={`border-r border-gray-600 w-[25%] text-center ${tableCellPadding}`}>Created At</th>
+                                        <th className={`w-[15%] text-center ${tableCellPadding}`}>Phone</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -230,12 +233,13 @@ export default function AdminDashboardComponent() {
                                                     i % 2 === 0 ? "bg-white" : "bg-gray-50"
                                                 } hover:bg-blue-50 transition duration-150`}
                                             >
-                                                <td className="p-3 text-center font-medium border-r border-gray-200">{user.id}</td>
-                                                <td className="p-3 border-r border-gray-200 break-words">
+                                                {/* BARIS DATA: Menggunakan tableCellPadding (py-2 px-3) */}
+                                                <td className={`${tableCellPadding} text-center font-medium border-r border-gray-200`}>{user.id}</td>
+                                                <td className={`${tableCellPadding} border-r border-gray-200 break-words`}>
                                                     {user.email}
                                                 </td>
-                                                <td className="p-3 border-r border-gray-200 whitespace-normal">{user.username}</td>
-                                                <td className="p-3 text-center border-r border-gray-200">
+                                                <td className={`${tableCellPadding} border-r border-gray-200 whitespace-normal`}>{user.username}</td>
+                                                <td className={`${tableCellPadding} text-center border-r border-gray-200`}>
                                                     {user.role === "admin" ? (
                                                         <span className="bg-red-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-md">
                                                             ADMIN
@@ -246,10 +250,10 @@ export default function AdminDashboardComponent() {
                                                         </span>
                                                     )}
                                                 </td>
-                                                <td className="p-3 text-center border-r border-gray-200 whitespace-nowrap">
+                                                <td className={`${tableCellPadding} text-center border-r border-gray-200 whitespace-nowrap`}>
                                                     {formatDateJakarta(user.created_at)}
                                                 </td>
-                                                <td className="p-3 text-center break-all">
+                                                <td className={`${tableCellPadding} text-center break-all`}>
                                                     {user.phone_number || "-"}
                                                 </td>
                                             </tr>
