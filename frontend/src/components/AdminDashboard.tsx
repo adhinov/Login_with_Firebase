@@ -1,230 +1,288 @@
 "use client";
 
 import { useEffect, useState } from "react";
-// --- START SIMULASI DEPENDENSI ---
-// Karena ini adalah satu file React, kita simulasikan useRouter dan menggunakan Fetch API
+// Karena ini adalah lingkungan Immersive, useRouter di sini disimulasikan agar dapat berjalan.
+// Dalam project Next.js asli Anda, Anda harus menggunakan: import { useRouter } from "next/navigation";
 const useRouter = () => ({
-    push: (path: string) => {
-        console.log(`Simulating router.push to ${path}`);
-        if (typeof window !== 'undefined') {
-            window.location.href = path; // Menggunakan window.location untuk simulasi redirect
-        }
-    }
+    replace: (path: string) => {
+        console.log(`Simulating router.replace to ${path}`);
+        if (typeof window !== 'undefined') {
+            // Menggunakan window.location.replace untuk simulasi redirect
+            window.location.replace(path);
+        }
+    }
 });
 
-const API_URL = "https://login-app-production-7f54.up.railway.app";
-// --- END SIMULASI DEPENDENSI ---
-
-
 interface User {
-  id: number;
-  email: string;
-  username: string;
-  role: string;
-  created_at: string;
-  phone?: string | null;
+    id: number;
+    email: string;
+    username: string;
+    role: string;
+    created_at: string;
+    phone_number?: string | null;
+    last_login?: string | null;
 }
 
-// Formatter Waktu (Sesuai dengan kebutuhan tampilan Waktu Indonesia)
-const formatDateTime = (dateString: string): string => {
-  try {
-    const d = new Date(dateString);
-    if (isNaN(d.getTime())) return dateString;
-    return d.toLocaleString("id-ID", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        hourCycle: "h23",
-    }) + " WIB";
-  } catch {
-    return dateString || "-";
-  }
+// Catatan: Di lingkungan Immersive, process.env tidak tersedia. Kita hardcode untuk simulasi.
+const API_URL =
+    // process.env.NEXT_PUBLIC_API_URL ||
+    "https://login-app-production-7f54.up.railway.app";
+
+const formatDateJakarta = (dateString?: string | null): string => {
+    if (!dateString) return "-";
+    try {
+        const d = new Date(dateString);
+        // Cek validitas tanggal
+        if (isNaN(d.getTime())) return dateString;
+
+        return new Intl.DateTimeFormat("id-ID", {
+            timeZone: "Asia/Jakarta",
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            hourCycle: "h23",
+        }).format(d) + " WIB";
+    } catch {
+        return dateString || "-";
+    }
 };
 
-export default function App() { // Mengubah nama export jika diperlukan agar kompatibel
-  const [users, setUsers] = useState<User[]>([]);
-  const [search, setSearch] = useState("");
-  const [lastLogin, setLastLogin] = useState<string>("");
-  const [isLoading, setIsLoading] = useState(true);
-  const router = useRouter();
+// Komponen utama AdminDashboard
+export default function AdminDashboardComponent() {
+    const router = useRouter();
+    const [users, setUsers] = useState<User[]>([]);
+    const [search, setSearch] = useState("");
+    const [lastLogin, setLastLogin] = useState<string>("Memuat...");
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null); // State untuk pesan error
 
-  // Ganti Axios dengan Fetch API
-  const fetchUsers = async (token: string) => {
-    setIsLoading(true);
-    try {
-      const res = await fetch(`${API_URL}/api/admin/users`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      
-      if (res.status === 401) {
-        throw new Error("Unauthorized");
-      }
-      
-      if (!res.ok) {
-        throw new Error("Gagal mengambil data pengguna.");
-      }
+    // Fungsi yang dipanggil saat klik tombol logout (memperbaiki error tipe sebelumnya)
+    const handleLogoutClick = () => {
+        localStorage.clear();
+        router.replace("/login");
+    };
 
-      const data = await res.json();
-      setUsers(data);
-    } catch (error) {
-      console.error("Error fetching users:", error);
-      // Jika error otorisasi, redirect ke login
-      if (error instanceof Error && error.message.includes("Unauthorized")) {
-        handleLogout(false); // Logout tanpa redirect karena sudah dipanggil di catch
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    // Fungsi pembantu untuk logout paksa (dipanggil saat token tidak valid)
+    const forceLogout = () => {
+        localStorage.clear();
+        router.replace("/login");
+    };
 
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    const storedLogin = localStorage.getItem("lastLogin");
-    const userRole = localStorage.getItem("role");
-    
+    // Logika Fetch Data
+    const fetchUsers = async (token: string) => {
+        setLoading(true);
+        setError(null); // Reset error state
+        try {
+            const res = await fetch(`${API_URL}/api/users`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            
+            if (res.status === 401) {
+                // Jika token tidak valid, panggil forceLogout
+                forceLogout();
+                throw new Error("Unauthorized");
+            }
+            
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.message || "Gagal mengambil data pengguna.");
+            }
 
-    if (!token || userRole !== 'admin') {
-      router.push("/login");
-      return;
-    }
+            const data = await res.json();
+            setUsers(data);
+        } catch (err) {
+            console.error("Error fetching users:", err);
+            setError((err instanceof Error) ? err.message : "Terjadi kesalahan saat memuat data.");
+            setUsers([]); // Kosongkan data jika gagal
+        } finally {
+            setLoading(false);
+        }
+    };
 
-    if (storedLogin) setLastLogin(storedLogin);
+    useEffect(() => {
+        const token = localStorage.getItem("token");
+        const userData = localStorage.getItem("user");
 
-    fetchUsers(token);
-  }, []); // router dihilangkan dari dependencies karena disimulasikan
+        if (!token || !userData) {
+            router.replace("/login");
+            return;
+        }
+
+        try {
+            const user = JSON.parse(userData);
+            if (user.role !== "admin") {
+                router.replace("/login");
+                return;
+            }
+            setLastLogin(formatDateJakarta(user.last_login));
+        } catch (e) {
+            // Handle jika JSON.parse gagal
+            console.error("Error parsing user data:", e);
+            router.replace("/login");
+            return;
+        }
+        
+        fetchUsers(token);
+    }, []);
 
 
-  const handleLogout = (shouldRedirect = true) => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("role");
-    localStorage.removeItem("email");
-    localStorage.removeItem("lastLogin"); // Clear lastLogin juga
-    if(shouldRedirect) {
-      router.push("/login");
-    }
-  };
+    const filteredUsers = users.filter(
+        (u) =>
+            u.email.toLowerCase().includes(search.toLowerCase()) ||
+            u.username?.toLowerCase().includes(search.toLowerCase()) ||
+            u.phone_number?.includes(search) // Cari juga berdasarkan nomor telepon
+    );
 
-  const handleRefresh = () => {
-    const token = localStorage.getItem("token");
-    if (token) {
-      fetchUsers(token);
-    }
-  };
+    const handleRefresh = () => {
+        const token = localStorage.getItem("token");
+        if (token) {
+            fetchUsers(token);
+        }
+    };
+
+    return (
+        <div className="min-h-screen flex flex-col bg-gray-100 font-sans">
+            {/* Header */}
+            <header className="bg-gray-800 text-white py-4 px-6 shadow-xl flex justify-between items-center sticky top-0 z-10">
+                <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">Admin Dashboard</h1>
+                <button
+                    onClick={handleLogoutClick}
+                    className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-xl text-sm font-semibold shadow-lg transition duration-200"
+                >
+                    Logout
+                </button>
+            </header>
+
+            {/* Main Content Wrapper */}
+            <main className="flex-grow w-full max-w-7xl mx-auto py-8 px-4 md:px-8">
+                <div className="bg-white shadow-2xl rounded-2xl p-6 md:p-8">
+                    
+                    <p className="text-gray-600 text-sm mb-6 border-b pb-4">
+                        <span className="font-bold text-gray-700">Last Login (Anda):</span> {lastLogin}
+                    </p>
+
+                    {/* Kontrol Data & Search */}
+                    <div className="flex flex-col md:flex-row items-center justify-between mb-6 gap-4">
+                        <h2 className="text-xl font-bold text-gray-800 flex-grow">
+                            Data Pengguna ({filteredUsers.length})
+                        </h2>
+                        <div className="flex flex-col md:flex-row w-full md:w-auto space-y-2 md:space-y-0 md:space-x-3">
+                            <input
+                                type="text"
+                                placeholder="Cari berdasarkan email, username, atau telepon..."
+                                className="w-full p-3 border border-gray-300 rounded-xl text-gray-700 focus:ring-2 focus:ring-blue-500 outline-none transition"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                            />
+                            <button
+                                onClick={handleRefresh}
+                                disabled={loading}
+                                className={`text-white px-4 py-2 rounded-xl text-sm font-semibold shadow transition duration-200 whitespace-nowrap ${
+                                    loading 
+                                        ? 'bg-blue-400 cursor-not-allowed' 
+                                        : 'bg-blue-600 hover:bg-blue-700'
+                                }`}
+                            >
+                                {loading ? 'Memuat...' : 'Refresh'}
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Tampilkan pesan error jika ada */}
+                    {error && (
+                        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 rounded-lg" role="alert">
+                            <p className="font-bold">Error Memuat Data:</p>
+                            <p>{error}</p>
+                            <p className="mt-2 text-sm italic">Coba klik 'Refresh' lagi, atau pastikan API service aktif.</p>
+                        </div>
+                    )}
 
 
-  const filteredUsers = users.filter(
-    (u) =>
-      u.username?.toLowerCase().includes(search.toLowerCase()) ||
-      u.email?.toLowerCase().includes(search.toLowerCase())
-  );
+                    {/* Tabel Container */}
+                    {loading && !error ? (
+                        <div className="text-center p-10 text-lg text-gray-500">
+                            <div className="animate-spin inline-block w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mr-3" role="status"></div>
+                            Memuat data pengguna...
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto rounded-lg shadow-xl border border-gray-200">
+                            {/* Menggunakan table-auto untuk responsif yang lebih baik */}
+                            <table className="min-w-full table-auto border-collapse text-sm text-gray-800">
+                                <thead className="bg-gray-700 text-white sticky top-0">
+                                    <tr>
+                                        {/* Atur lebar kolom menggunakan persentase */}
+                                        <th className="p-3 border-r border-gray-600 w-[5%] text-center">ID</th>
+                                        <th className="p-3 border-r border-gray-600 w-[25%] text-left">Email</th>
+                                        <th className="p-3 border-r border-gray-600 w-[20%] text-left">Username</th>
+                                        <th className="p-3 border-r border-gray-600 w-[10%] text-center">Role</th>
+                                        <th className="p-3 border-r border-gray-600 w-[25%] text-center">Created At</th>
+                                        <th className="p-3 w-[15%] text-center">Phone</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filteredUsers.length > 0 ? (
+                                        filteredUsers.map((user, i) => (
+                                            <tr
+                                                key={user.id}
+                                                className={`border-b border-gray-200 ${
+                                                    i % 2 === 0 ? "bg-white" : "bg-gray-50"
+                                                } hover:bg-blue-50 transition duration-150`}
+                                            >
+                                                <td className="p-3 text-center font-medium border-r border-gray-200">{user.id}</td>
+                                                <td className="p-3 border-r border-gray-200 break-words">
+                                                    {user.email}
+                                                </td>
+                                                <td className="p-3 border-r border-gray-200 whitespace-normal">{user.username}</td>
+                                                <td className="p-3 text-center border-r border-gray-200">
+                                                    {user.role === "admin" ? (
+                                                        <span className="bg-red-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-md">
+                                                            ADMIN
+                                                        </span>
+                                                    ) : (
+                                                        <span className="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold">
+                                                            USER
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="p-3 text-center border-r border-gray-200 whitespace-nowrap">
+                                                    {formatDateJakarta(user.created_at)}
+                                                </td>
+                                                <td className="p-3 text-center break-all">
+                                                    {user.phone_number || "-"}
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td
+                                                colSpan={6}
+                                                className="p-4 text-center text-gray-500 italic bg-white"
+                                            >
+                                                {error ? "Gagal memuat data, silakan coba Refresh." : "Tidak ada pengguna ditemukan."}
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
 
-  return (
-    // Container utama yang responsif
-    <div className="min-h-screen bg-gray-100 p-4 md:p-8 font-sans">
-      {/* Card Konten */}
-      <div className="max-w-7xl mx-auto bg-white text-gray-900 rounded-xl shadow-2xl p-6 md:p-8">
-        
-        {/* Header dan Tombol Logout */}
-        <div className="flex justify-between items-start mb-6 border-b pb-4">
-          <div>
-            <h1 className="text-3xl font-extrabold text-blue-700">Admin Dashboard</h1>
-            <p className="text-gray-600 font-medium text-sm mt-1">
-              Last Login (Anda):{" "}
-              <span className="text-blue-600">{lastLogin || "-"}</span>
-            </p>
-          </div>
-          <button
-            onClick={() => handleLogout()}
-            className="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg shadow-lg transition duration-150 transform hover:scale-105 text-sm"
-          >
-            Logout
-          </button>
-        </div>
+                    {/* Footer info */}
+                    {!loading && (
+                         <div className="mt-6 text-sm text-gray-600 text-center">
+                            Total Pengguna: <span className="font-bold text-gray-800">{users.length}</span>
+                        </div>
+                    )}
+                   
+                </div>
+            </main>
 
-        {/* Kontrol Data */}
-        <div className="flex flex-col md:flex-row justify-between items-center mb-5 gap-3">
-          <h2 className="text-xl font-bold text-gray-700 w-full md:w-auto">
-            Data Pengguna (<span className="text-blue-700">{filteredUsers.length}</span>)
-          </h2>
-          <div className="flex w-full md:w-auto space-x-3">
-            <input
-              type="text"
-              placeholder="Cari email atau username..."
-              className="flex-grow px-4 py-2 border border-gray-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-150 text-sm"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <button
-              onClick={handleRefresh}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-md transition duration-150 text-sm"
-            >
-              Refresh
-            </button>
-          </div>
-        </div>
-
-        {/* Table Wrapper dengan Horizontal Scroll */}
-        <div className="overflow-x-auto rounded-lg border border-gray-300 shadow-inner">
-          {isLoading ? (
-            <div className="p-8 text-center text-gray-500">
-              Memuat data pengguna...
-            </div>
-          ) : (
-            <table className="w-full text-sm text-left text-gray-600 table-fixed"> {/* Kunci perbaikan: table-fixed */}
-              <thead className="text-xs uppercase bg-blue-700 text-white sticky top-0">
-                <tr>
-                  {/* Menetapkan lebar kolom yang tetap, total 100% */}
-                  <th scope="col" className="px-3 py-3 w-[5%] border-r border-blue-500">ID</th>
-                  <th scope="col" className="px-3 py-3 w-[25%] border-r border-blue-500">Email</th>
-                  <th scope="col" className="px-3 py-3 w-[20%] border-r border-blue-500">Username</th>
-                  <th scope="col" className="px-3 py-3 w-[10%] border-r border-blue-500 text-center">Role</th>
-                  <th scope="col" className="px-3 py-3 w-[25%] border-r border-blue-500">Created At</th>
-                  <th scope="col" className="px-3 py-3 w-[15%]">Phone</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredUsers.length > 0 ? (
-                  filteredUsers.map((u, index) => (
-                    <tr
-                      key={u.id}
-                      className={`border-b ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50/50 transition-colors duration-100`}
-                    >
-                      <td className="px-3 py-2 border-r border-gray-300 font-medium text-gray-900">{u.id}</td>
-                      <td className="px-3 py-2 border-r border-gray-300 text-blue-700 font-medium break-all">{u.email}</td> {/* break-all untuk email panjang */}
-                      <td className="px-3 py-2 border-r border-gray-300 whitespace-normal">{u.username || "-"}</td>
-                      <td className="px-3 py-2 border-r border-gray-300 text-center">
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap ${
-                            u.role?.toUpperCase() === "ADMIN"
-                              ? "bg-red-500 text-white shadow-lg"
-                              : "bg-green-500 text-white"
-                          }`}
-                        >
-                          {u.role?.toUpperCase()}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 border-r border-gray-300 whitespace-nowrap">
-                        {formatDateTime(u.created_at)}
-                      </td>
-                      <td className="px-3 py-2 whitespace-nowrap">
-                        {u.phone || "-"}
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={6} className="text-center py-6 text-gray-500 italic">
-                      Tidak ada pengguna ditemukan.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+            {/* Footer */}
+            <footer className="bg-gray-800 text-white text-center py-3 text-sm mt-auto">
+                © {new Date().getFullYear()} Login App — Admin Dashboard
+            </footer>
+        </div>
+    );
 }
