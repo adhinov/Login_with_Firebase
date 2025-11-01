@@ -52,28 +52,35 @@ io.on("connection", (socket) => {
   // user join
   socket.on("join", ({ userId, username }) => {
     onlineUsers.set(userId, socket.id);
+    socket.userData = { userId, username };
     console.log(`✅ ${username} (${userId}) joined as ${socket.id}`);
   });
 
   // kirim pesan
   socket.on("sendMessage", async (msg) => {
     try {
-      const { sender_id, receiver_id, message, created_at } = msg;
+      const { sender_id, receiver_id, message, created_at, sender_name } = msg;
 
-      // simpan pesan ke DB
+      // Simpan ke DB (boleh kosongkan receiver_id jika chat room global)
       await pool.query(
         "INSERT INTO messages (sender_id, receiver_id, message, created_at) VALUES ($1, $2, $3, $4)",
         [sender_id, receiver_id, message, created_at]
       );
 
-      // kirim ke penerima jika online
-      const receiverSocketId = onlineUsers.get(receiver_id);
-      if (receiverSocketId) {
-        io.to(receiverSocketId).emit("receiveMessage", msg);
+      // ✅ Chat Room Mode (receiver_id null)
+      if (!receiver_id) {
+        // kirim ke semua user yang terhubung
+        io.emit("receiveMessage", msg);
+        console.log(`💬 [Room] ${sender_name}: ${message}`);
+      } else {
+        // ✅ Private chat mode
+        const receiverSocketId = onlineUsers.get(receiver_id);
+        if (receiverSocketId) {
+          io.to(receiverSocketId).emit("receiveMessage", msg);
+        }
+        io.to(socket.id).emit("receiveMessage", msg);
+        console.log(`💬 [Private] ${sender_name} → ${receiver_id}: ${message}`);
       }
-
-      // tampilkan juga ke pengirim
-      io.to(socket.id).emit("receiveMessage", msg);
     } catch (err) {
       console.error("❌ Error saving message:", err.message);
     }
@@ -95,6 +102,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/admin", adminRoutes);
 
+// ambil semua pesan (global chat)
 app.get("/api/messages", async (req, res) => {
   try {
     const result = await pool.query(
@@ -107,6 +115,7 @@ app.get("/api/messages", async (req, res) => {
   }
 });
 
+// ambil riwayat private chat
 app.get("/api/chat/history/:a/:b", async (req, res) => {
   const { a, b } = req.params;
   try {
