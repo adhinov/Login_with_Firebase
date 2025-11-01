@@ -1,65 +1,171 @@
-// ===== server.js =====
+// server.js
+import dotenv from "dotenv";
+dotenv.config();
+
 import express from "express";
 import http from "http";
 import { Server } from "socket.io";
 import cors from "cors";
+import "./config/db.js";
+import pool from "./config/db.js";
+
+import authRoutes from "./routes/authRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
 
 const app = express();
-app.use(cors());
-app.use(express.json());
-
 const server = http.createServer(app);
 
-// Konfigurasi Socket.io
+// ==================== CORS CONFIG ====================
+const allowedOrigins = process.env.FRONTEND_URL
+  ? process.env.FRONTEND_URL.split(",").map((o) => o.trim())
+  : ["*"];
+
+app.use(express.json());
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes("*")) {
+        callback(null, true);
+      } else {
+        console.warn("❌ Blocked by CORS:", origin);
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+  })
+);
+
+// ==================== SOCKET.IO SETUP ====================
 const io = new Server(server, {
   cors: {
-    origin: "*", // pastikan origin kamu di sini (misal vercel frontend)
+    origin: allowedOrigins,
     methods: ["GET", "POST"],
   },
 });
 
-// 🔥 Simpan daftar user online di memori
-let onlineUsers = {}; // key: socket.id, value: { userId, username }
+const onlineUsers = new Map(); // userId -> { socketId, username }
+
+// 🧾 Helper untuk menampilkan daftar user online
+function printOnlineUsers() {
+  const users = Array.from(onlineUsers.entries());
+  console.log(`\n🧑‍🤝‍🧑 Total online: ${users.length}`);
+  users.forEach(([id, data], index) => {
+    console.log(`  ${index + 1}. ${data.username} (ID: ${id})`);
+  });
+  console.log("-----------------------------------\n");
+}
 
 io.on("connection", (socket) => {
   console.log(`🟢 Socket connected: ${socket.id}`);
 
-  // Ketika user join room
+  // user join event
   socket.on("join", ({ userId, username }) => {
-    onlineUsers[socket.id] = { userId, username };
+    onlineUsers.set(userId, { socketId: socket.id, username });
+    socket.userData = { userId, username };
     console.log(`👤 ${username} joined the chat`);
     printOnlineUsers();
   });
 
-  // Ketika user kirim pesan
-  socket.on("sendMessage", (data) => {
-    console.log(`💬 Message from ${data.sender_name}: ${data.message}`);
-    socket.broadcast.emit("receiveMessage", data);
+  // kirim pesan
+  socket.on("sendMessage", async (msg) => {
+    try {
+      const { sender_id, receiver_id, message, created_at, sender_name } = msg;
+
+      await pool.query(
+        "INSERT INTO messages (sender_id, receiver_id, message, created_at) VALUES ($1, $2, $3, $4)",
+        [sender_id, receiver_id, message, created_at]
+      );
+
+      if (!receiver_id) {
+        // broadcast ke semua user (chat room)
+        io.emit("receiveMessage", msg);
+        console.log(`💬 Message from ${sender_name}: ${message}`);
+      } else {
+        // private message
+        const receiverData = onlineUsers.get(receiver_id);
+        if (receiverData) {
+          io.to(receiverData.socketId).emit("receiveMessage", msg);
+        }
+        io.to(socket.id).emit("receiveMessage", msg);
+        console.log(`💬 Private message from ${sender_name} → ${receiver_id}: ${message}`);
+      }
+    } catch (err) {
+      console.error("❌ Error saving message:", err.message);
+    }
   });
 
-  // Ketika user disconnect
+  // handle disconnect
   socket.on("disconnect", () => {
-    const user = onlineUsers[socket.id];
-    if (user) {
-      console.log(`🔴 ${user.username} disconnected`);
-      delete onlineUsers[socket.id];
+    let disconnectedUser = null;
+    for (let [userId, data] of onlineUsers.entries()) {
+      if (data.socketId === socket.id) {
+        disconnectedUser = { id: userId, username: data.username };
+        onlineUsers.delete(userId);
+        break;
+      }
+    }
+
+    if (disconnectedUser) {
+      console.log(`🔴 ${disconnectedUser.username} disconnected`);
       printOnlineUsers();
+    } else {
+      console.log(`🔴 Unknown socket disconnected: ${socket.id}`);
     }
   });
 });
 
-// Helper function untuk menampilkan jumlah user online
-function printOnlineUsers() {
-  const users = Object.values(onlineUsers);
-  console.log(`\n🧑‍🤝‍🧑 Total online: ${users.length}`);
-  users.forEach((u, i) => console.log(`  ${i + 1}. ${u.username} (ID: ${u.userId})`));
-  console.log("-----------------------------------\n");
-}
+// ==================== ROUTES ====================
+app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/admin", adminRoutes);
 
-// Root route
-app.get("/", (req, res) => {
-  res.send("Chat server running 🚀");
+// ambil semua pesan (global chat)
+app.get("/api/messages", async (req, res) => {
+  try {
+    const result = await pool.query(
+      "SELECT m.*, u.username AS sender_name FROM messages m JOIN users u ON m.sender_id = u.id ORDER BY m.created_at ASC"
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error:", err.message);
+    res.status(500).json({ error: "Gagal mengambil pesan" });
+  }
 });
 
-const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => console.log(`🚀 Server listening on port ${PORT}`));
+// ambil riwayat private chat
+app.get("/api/chat/history/:a/:b", async (req, res) => {
+  const { a, b } = req.params;
+  try {
+    const result = await pool.query(
+      `SELECT m.*, u.username AS sender_name
+       FROM messages m
+       JOIN users u ON m.sender_id = u.id
+       WHERE (m.sender_id = $1 AND m.receiver_id = $2)
+          OR (m.sender_id = $2 AND m.receiver_id = $1)
+       ORDER BY m.created_at ASC`,
+      [a, b]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error("❌ Error fetching chat history:", err.message);
+    res.status(500).json({ error: "Gagal mengambil riwayat pesan" });
+  }
+});
+
+// ==================== HEALTH CHECK ====================
+app.get("/", (req, res) => {
+  res.json({
+    status: "✅ OK",
+    message: "Backend aktif dengan Socket.io 🚀",
+    socket_status: io ? "aktif" : "tidak aktif",
+    endpoints: ["/api/auth", "/api/users", "/api/admin", "/api/chat/history/:a/:b"],
+  });
+});
+
+// ==================== START SERVER ====================
+const PORT = process.env.PORT || 8080;
+server.listen(PORT, "0.0.0.0", () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log("✅ Socket.io chat server aktif 🎯");
+});
