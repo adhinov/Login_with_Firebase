@@ -78,13 +78,14 @@ export default function LoginForm() {
       throw new Error("Invalid response from server.");
     }
 
+    // Simpan token & user ke localStorage
     localStorage.setItem("token", result.token);
     localStorage.setItem("user", JSON.stringify(result.user));
 
     return result;
   }
 
-  // ✅ Submit handler
+  // ✅ Submit handler (revisi → redirect ke /chat)
   async function onSubmit(data: LoginFormValues) {
     setErrorMessage(null);
     setLoading(true);
@@ -93,16 +94,13 @@ export default function LoginForm() {
       const result = await login(data.email, data.password);
 
       toast.success(`Selamat datang, ${result.user?.username || "User"} 🎉`, {
-        description: "Login berhasil! Anda akan diarahkan ke halaman utama.",
+        description: "Login berhasil! Anda akan diarahkan ke halaman Chat.",
         duration: 2500,
       });
 
+      // Delay sebentar agar toast tampil dulu
       setTimeout(() => {
-        if (result.user?.role === "admin") {
-          router.push("/adminDashboard");
-        } else {
-          router.push("/welcome");
-        }
+        router.push("/chat");
       }, 1800);
     } catch (error: any) {
       setErrorMessage(error?.message ?? "Login failed");
