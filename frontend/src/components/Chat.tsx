@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-// ✅ gunakan import default, bukan named import
 import io from "socket.io-client";
 
 interface Message {
@@ -19,14 +18,13 @@ export default function Chat() {
   const [userId, setUserId] = useState<number | null>(null);
   const [username, setUsername] = useState<string>("User");
 
-  // ✅ gunakan ReturnType<typeof io> untuk type socket (tanpa error)
   const socketRef = useRef<ReturnType<typeof io> | null>(null);
 
   const API_URL =
     process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
   useEffect(() => {
-    // ✅ ambil data user dari localStorage
+    // Ambil user dari localStorage
     const user =
       typeof window !== "undefined"
         ? localStorage.getItem("user")
@@ -42,7 +40,7 @@ export default function Chat() {
       }
     }
 
-    // ✅ inisialisasi socket
+    // Inisialisasi socket
     const socket = io(API_URL, {
       transports: ["websocket", "polling"],
       reconnectionAttempts: 5,
@@ -69,7 +67,6 @@ export default function Chat() {
       setMessages((prev) => [...prev, data]);
     });
 
-    // ✅ cleanup
     return () => {
       socket.disconnect();
     };
@@ -88,15 +85,31 @@ export default function Chat() {
 
     console.log("✉️ Sending:", messageData);
     socketRef.current.emit("sendMessage", messageData);
-    setMessages((prev) => [...prev, messageData]);
-    setInput("");
+    setInput(""); // ✅ tidak perlu setMessages di sini
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    window.location.href = "/login";
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-slate-900 text-white">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-slate-900 text-white relative">
+      {/* Tombol Logout */}
+      <button
+        onClick={handleLogout}
+        className="absolute top-4 right-6 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition"
+      >
+        Logout
+      </button>
+
       <div className="w-full max-w-2xl bg-slate-800 rounded-xl shadow-lg p-6">
-        <h1 className="text-2xl font-bold text-center mb-4">
-          💬 Chat Room {connected ? "🟢" : "🔴"}
+        <h1 className="text-2xl font-bold text-center mb-4 flex justify-center items-center gap-2">
+          💬 Chat Room{" "}
+          <span className={connected ? "text-lime-400" : "text-red-400"}>
+            {connected ? "🟢" : "🔴"}
+          </span>
         </h1>
 
         <div className="h-96 overflow-y-auto border border-slate-700 rounded-lg p-3 mb-4 bg-slate-900">
