@@ -1,110 +1,92 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+// ✅ gunakan import default, bukan named import
+import io from "socket.io-client";
 
 interface Message {
-  sender: string;
+  sender_id: number;
+  receiver_id: number | null;
+  sender_name?: string;
   message: string;
-  createdAt?: string;
+  created_at?: string;
 }
 
 export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [username, setUsername] = useState<string>("User");
   const [connected, setConnected] = useState(false);
-  const socketRef = useRef<any>(null);
+  const [userId, setUserId] = useState<number | null>(null);
+  const [username, setUsername] = useState<string>("User");
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+  // ✅ gunakan ReturnType<typeof io> untuk type socket (tanpa error)
+  const socketRef = useRef<ReturnType<typeof io> | null>(null);
+
+  const API_URL =
+    process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
   useEffect(() => {
-  // Ambil username dari localStorage (safely)
-  const user = typeof window !== "undefined" ? localStorage.getItem("user") : null;
-  if (user) {
-    try {
-      const parsed = JSON.parse(user);
-      if (parsed?.username) setUsername(parsed.username);
-    } catch {
-      /* ignore */
-    }
-  }
+    // ✅ ambil data user dari localStorage
+    const user =
+      typeof window !== "undefined"
+        ? localStorage.getItem("user")
+        : null;
 
-  let mounted = true;
-
-  (async () => {
-    try {
-      const mod = await import("socket.io-client");
-      const modAny = mod as any; // <-- CAST DI SINI (penting)
-
-      // kompatibel dengan berbagai ekspor versi socket.io-client
-      const ioFn =
-        modAny.io ?? // named export (v4+)
-        modAny.default ?? // default export
-        modAny.connect ?? // older shapes
-        modAny; // fallback
-
-      const socket = ioFn(API_URL, {
-        transports: ["websocket", "polling"],
-        timeout: 5000,
-        reconnectionAttempts: 5,
-        reconnectionDelay: 1000,
-      });
-
-      socketRef.current = socket;
-
-      socket.on("connect", () => {
-        if (!mounted) return;
-        console.log("🟢 Connected to socket server:", socket.id);
-        setConnected(true);
-      });
-
-      socket.on("disconnect", (reason: any) => {
-        if (!mounted) return;
-        console.log("🔴 Disconnected:", reason);
-        setConnected(false);
-      });
-
-      socket.on("connect_error", (err: any) => {
-        if (!mounted) return;
-        console.warn("⚠️ Socket connect_error:", err?.message ?? err);
-        setConnected(false);
-      });
-
-      socket.on("receiveMessage", (data: Message) => {
-        if (!mounted) return;
-        setMessages((prev) => [
-          ...prev,
-          { ...data, createdAt: new Date().toISOString() },
-        ]);
-      });
-    } catch (err: any) {
-      console.error("❌ Failed to load socket.io-client or connect:", err?.message ?? err);
-    }
-  })();
-
-  return () => {
-    mounted = false;
-    if (socketRef.current) {
+    if (user) {
       try {
-        socketRef.current.disconnect();
+        const parsed = JSON.parse(user);
+        if (parsed?.id) setUserId(parsed.id);
+        if (parsed?.username) setUsername(parsed.username);
       } catch {
-        /* ignore */
+        console.warn("Failed to parse user from localStorage");
       }
-      socketRef.current = null;
     }
-  };
-}, [API_URL]);
 
-  // Fungsi kirim pesan
+    // ✅ inisialisasi socket
+    const socket = io(API_URL, {
+      transports: ["websocket", "polling"],
+      reconnectionAttempts: 5,
+    });
+
+    socketRef.current = socket;
+
+    socket.on("connect", () => {
+      console.log("🟢 Connected:", socket.id);
+      setConnected(true);
+
+      if (userId) {
+        socket.emit("join", { userId, username });
+      }
+    });
+
+    socket.on("disconnect", () => {
+      console.log("🔴 Disconnected");
+      setConnected(false);
+    });
+
+    socket.on("receiveMessage", (data: Message) => {
+      console.log("📩 New message:", data);
+      setMessages((prev) => [...prev, data]);
+    });
+
+    // ✅ cleanup
+    return () => {
+      socket.disconnect();
+    };
+  }, [API_URL, userId, username]);
+
   const sendMessage = () => {
-    const msg = input.trim();
-    if (!msg || !socketRef.current) return;
+    if (!input.trim() || !socketRef.current || !userId) return;
 
-    const messageData = {
-      sender: username,
-      message: msg,
+    const messageData: Message = {
+      sender_id: userId,
+      receiver_id: null,
+      sender_name: username,
+      message: input.trim(),
+      created_at: new Date().toISOString(),
     };
 
+    console.log("✉️ Sending:", messageData);
     socketRef.current.emit("sendMessage", messageData);
     setMessages((prev) => [...prev, messageData]);
     setInput("");
@@ -125,11 +107,13 @@ export default function Chat() {
               <div
                 key={index}
                 className={`mb-2 ${
-                  msg.sender === username ? "text-right" : "text-left"
+                  msg.sender_name === username
+                    ? "text-right"
+                    : "text-left"
                 }`}
               >
                 <p className="text-sm text-lime-300 font-semibold">
-                  {msg.sender}
+                  {msg.sender_name || `User ${msg.sender_id}`}
                 </p>
                 <p className="text-white bg-slate-700 inline-block rounded-lg px-3 py-1">
                   {msg.message}
