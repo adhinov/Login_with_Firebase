@@ -54,7 +54,7 @@ export default function LoginForm() {
     },
   });
 
-  // ✅ Fungsi login
+  // ✅ Fungsi login ke backend
   async function login(email: string, password: string) {
     if (!API_URL) {
       throw new Error("API base URL is not configured (NEXT_PUBLIC_API_URL).");
@@ -78,29 +78,37 @@ export default function LoginForm() {
       throw new Error("Invalid response from server.");
     }
 
-    // Simpan token & user ke localStorage
+    // Simpan ke localStorage
     localStorage.setItem("token", result.token);
     localStorage.setItem("user", JSON.stringify(result.user));
 
     return result;
   }
 
-  // ✅ Submit handler (revisi → redirect ke /chat)
+  // ✅ Handler submit (dengan role-based redirect)
   async function onSubmit(data: LoginFormValues) {
     setErrorMessage(null);
     setLoading(true);
 
     try {
       const result = await login(data.email, data.password);
+      const role = result.user?.role || "user";
 
       toast.success(`Selamat datang, ${result.user?.username || "User"} 🎉`, {
-        description: "Login berhasil! Anda akan diarahkan ke halaman Chat.",
+        description:
+          role === "admin"
+            ? "Login berhasil! Mengarahkan ke Admin Dashboard..."
+            : "Login berhasil! Mengarahkan ke Chat Room...",
         duration: 2500,
       });
 
-      // Delay sebentar agar toast tampil dulu
+      // 🔀 Redirect berdasarkan role
       setTimeout(() => {
-        router.push("/chat");
+        if (role === "admin") {
+          router.push("/adminDashboard");
+        } else {
+          router.push("/chat");
+        }
       }, 1800);
     } catch (error: any) {
       setErrorMessage(error?.message ?? "Login failed");
