@@ -41,43 +41,41 @@ const io = new Server(server, {
   cors: {
     origin: allowedOrigins,
     methods: ["GET", "POST"],
-    credentials: true,
   },
-  transports: ["websocket", "polling"], // fallback
-  allowEIO3: true, // penting untuk kompatibilitas
 });
 
-const onlineUsers = new Map();
+const onlineUsers = new Map(); // userId -> socket.id
 
 io.on("connection", (socket) => {
-  console.log("⚡ Socket connected:", socket.id);
+  console.log("⚡ User connected:", socket.id);
 
+  // user join
   socket.on("join", ({ userId, username }) => {
     onlineUsers.set(userId, socket.id);
     console.log(`✅ ${username} (${userId}) joined as ${socket.id}`);
   });
 
-  socket.on("send_message", async (msg) => {
+  // kirim pesan
+  socket.on("sendMessage", async (msg) => {
     try {
       const { sender_id, receiver_id, message, created_at } = msg;
 
-      // Simpan pesan ke database
+      // simpan pesan ke DB
       await pool.query(
         "INSERT INTO messages (sender_id, receiver_id, message, created_at) VALUES ($1, $2, $3, $4)",
         [sender_id, receiver_id, message, created_at]
       );
 
-      // Kirim pesan ke penerima
-      const receiverSocketId = receiver_id ? onlineUsers.get(receiver_id) : null;
+      // kirim ke penerima jika online
+      const receiverSocketId = onlineUsers.get(receiver_id);
       if (receiverSocketId) {
-        io.to(receiverSocketId).emit("receive_message", msg);
+        io.to(receiverSocketId).emit("receiveMessage", msg);
       }
 
-      // Kirim balik ke pengirim
-      io.to(socket.id).emit("receive_message", msg);
+      // tampilkan juga ke pengirim
+      io.to(socket.id).emit("receiveMessage", msg);
     } catch (err) {
       console.error("❌ Error saving message:", err.message);
-      socket.emit("error_message", { error: "Gagal menyimpan pesan" });
     }
   });
 
@@ -85,7 +83,7 @@ io.on("connection", (socket) => {
     for (let [userId, id] of onlineUsers.entries()) {
       if (id === socket.id) {
         onlineUsers.delete(userId);
-        console.log(`🔴 User ${userId} disconnected`);
+        console.log(`❌ User ${userId} disconnected`);
         break;
       }
     }
