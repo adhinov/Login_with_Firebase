@@ -1,8 +1,9 @@
-// routes/messageRoutes.js
 import express from "express";
-import { uploadFile } from "../controllers/messageController.js";
+import { upload, uploadMessageFile } from "../controllers/messageController.js";
+import verifyToken from "../middleware/verifyToken.js";
+
 const router = express.Router();
 
-router.post("/upload", uploadFile);
+router.post("/upload", verifyToken, upload.single("file"), uploadMessageFile);
 
 export default router;

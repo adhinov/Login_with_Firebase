@@ -1,49 +1,47 @@
-// controllers/messageController.js
-import pool from "../config/db.js";
 import multer from "multer";
-import path from "path";
-import fs from "fs";
+import { CloudinaryStorage } from "multer-storage-cloudinary";
+import cloudinary from "../config/cloudinary.js";
+import pool from "../config/db.js"; // sesuaikan dengan config database kamu
 
-// Lokasi folder upload
-const uploadDir = "./uploads";
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
-
-// Konfigurasi multer
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => {
-    const unique = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, unique + path.extname(file.originalname));
+// Setup storage Cloudinary
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: "chat_uploads",
+    allowed_formats: ["jpg", "jpeg", "png", "gif", "webp"],
   },
 });
+
 const upload = multer({ storage });
 
-// ✅ Controller upload
-export const uploadFile = [
-  upload.single("file"),
-  async (req, res) => {
-    try {
-      if (!req.file) return res.status(400).json({ error: "Tidak ada file yang diupload" });
+// Upload file ke Cloudinary
+export const uploadMessageFile = async (req, res) => {
+  try {
+    const { sender_id, receiver_id, message } = req.body;
+    const file = req.file;
 
-      const { sender_id, receiver_id, message } = req.body;
-      const fileUrl = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
-      const fileType = req.file.mimetype;
+    // Dapatkan URL file dari Cloudinary
+    const fileUrl = file?.path || null;
+    const fileType = file?.mimetype || null;
 
-      // Simpan metadata ke database
-      await pool.query(
-        `INSERT INTO messages (sender_id, receiver_id, message, file_url, file_type, created_at)
-         VALUES ($1, $2, $3, $4, $5, NOW())`,
-        [sender_id, receiver_id || null, message || "", fileUrl, fileType]
-      );
+    // Simpan ke database
+    const [result] = await pool.query(
+      `INSERT INTO messages (sender_id, receiver_id, message, file_url, file_type)
+       VALUES (?, ?, ?, ?, ?)`,
+      [sender_id, receiver_id, message, fileUrl, fileType]
+    );
 
-      res.json({
-        success: true,
-        file_url: fileUrl,
-        file_type: fileType,
-      });
-    } catch (err) {
-      console.error("❌ Error saat upload file:", err.message);
-      res.status(500).json({ error: "Gagal upload file" });
-    }
-  },
-];
+    res.json({
+      success: true,
+      message: "File uploaded to Cloudinary",
+      file_url: fileUrl,
+      file_type: fileType,
+    });
+  } catch (err) {
+    console.error("❌ Upload error:", err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// Export middleware upload
+export { upload };
