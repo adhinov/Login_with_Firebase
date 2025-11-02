@@ -22,6 +22,7 @@ import messageRoutes from './routes/messageRoutes.js';
 const app = express();
 const server = http.createServer(app);
 app.use('/api/messages', messageRoutes);
+app.use("/uploads", express.static("uploads"));
 
 // ==================== CORS CONFIG ====================
 const allowedOrigins = process.env.FRONTEND_URL
