@@ -96,7 +96,7 @@ export default function Chat() {
       <Card
         className="
           w-full 
-          h-[100vh] 
+          h-[100vh]
           sm:h-[85vh] sm:max-w-[600px]
           flex flex-col 
           bg-gray-900 border border-gray-800 shadow-2xl
@@ -110,19 +110,17 @@ export default function Chat() {
             100% { opacity: 1; transform: translateY(0) scale(1); }
           }
           .msg-anim {
-            animation: slideUpFade 240ms ease-out;
+            animation: slideUpFade 220ms ease-out;
           }
-
-          /* small subtle pop for messages sent by me */
           .msg-sent {
             transform-origin: bottom right;
           }
         `}</style>
 
         {/* HEADER */}
-        <CardHeader className="flex flex-col gap-1 border-b border-gray-800 py-3 px-4">
+        <CardHeader className="flex flex-col gap-1 border-b border-gray-800 py-3 px-4 bg-gray-900 sticky top-0 z-10">
           <div className="flex justify-between items-center">
-            <CardTitle className="text-lg font-semibold text-lime-300">
+            <CardTitle className="text-lg font-semibold text-lime-300 truncate max-w-[75%]">
               Chat Room 💬 — {user?.username || "Guest"}
             </CardTitle>
 
@@ -159,7 +157,7 @@ export default function Chat() {
           </div>
         </CardHeader>
 
-        {/* MESSAGE LIST */}
+        {/* CHAT LIST */}
         <CardContent className="flex-1 overflow-y-auto px-3 py-2 space-y-2 bg-gray-900">
           {messages.map((msg, i) => {
             const mine = msg.sender_name === user.username;
@@ -169,10 +167,12 @@ export default function Chat() {
                 className={`msg-anim flex ${mine ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm ${mine ? "bg-lime-500 text-black msg-sent" : "bg-gray-800 text-gray-100"}`}
+                  className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm ${
+                    mine ? "bg-lime-500 text-black msg-sent" : "bg-gray-800 text-gray-100"
+                  }`}
                 >
                   <p className="font-semibold text-xs mb-1">{msg.sender_name}</p>
-                  <p>{msg.message}</p>
+                  <p className="break-words">{msg.message}</p>
                 </div>
               </div>
             );
@@ -180,17 +180,20 @@ export default function Chat() {
           <div ref={bottomRef} />
         </CardContent>
 
-        {/* INPUT AREA */}
-        <CardFooter className="border-t border-gray-800 p-3 flex items-center gap-2 bg-gray-900">
+        {/* INPUT (sticky bottom) */}
+        <CardFooter className="border-t border-gray-800 p-3 flex items-center gap-2 bg-gray-900 sticky bottom-0">
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-            className="flex-1 bg-gray-800 border border-gray-700 rounded-full px-4 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-lime-400"
+            className="flex-1 bg-gray-800 border border-gray-700 rounded-full px-4 py-2 text-sm text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-lime-400"
             placeholder="Ketik pesan..."
           />
-          <Button onClick={sendMessage} className="rounded-full p-3 bg-lime-500 hover:bg-lime-400 text-black">
+          <Button
+            onClick={sendMessage}
+            className="rounded-full p-3 bg-lime-500 hover:bg-lime-400 text-black"
+          >
             <Send className="w-4 h-4" />
           </Button>
         </CardFooter>
