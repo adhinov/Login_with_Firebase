@@ -17,9 +17,11 @@ import pool from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
+import messageRoutes from './routes/messageRoutes.js';
 
 const app = express();
 const server = http.createServer(app);
+app.use('/api/messages', messageRoutes);
 
 // ==================== CORS CONFIG ====================
 const allowedOrigins = process.env.FRONTEND_URL
