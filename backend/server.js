@@ -6,6 +6,11 @@ import express from "express";
 import http from "http";
 import { Server } from "socket.io";
 import cors from "cors";
+import multer from "multer";
+import path from "path";
+import { fileURLToPath } from "url";
+import fs from "fs";
+
 import "./config/db.js";
 import pool from "./config/db.js";
 
@@ -35,6 +40,45 @@ app.use(
     credentials: true,
   })
 );
+
+// ==================== UPLOAD FILE SETUP ====================
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// buat folder uploads jika belum ada
+const uploadDir = path.join(__dirname, "uploads");
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir);
+  console.log("📁 Folder uploads dibuat");
+}
+
+// konfigurasi multer
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, uploadDir),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    const unique = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, `${unique}${ext}`);
+  },
+});
+
+const upload = multer({ storage });
+
+// endpoint upload file
+app.post("/api/upload", upload.single("file"), (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+    const fileUrl = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+    console.log(`📤 File uploaded: ${fileUrl}`);
+    res.json({ url: fileUrl });
+  } catch (err) {
+    console.error("❌ Upload error:", err.message);
+    res.status(500).json({ error: "Gagal upload file" });
+  }
+});
+
+// serve folder uploads secara publik
+app.use("/uploads", express.static(uploadDir));
 
 // ==================== SOCKET.IO SETUP ====================
 const io = new Server(server, {
@@ -80,25 +124,31 @@ io.on("connection", (socket) => {
   // 🟨 Kirim pesan
   socket.on("sendMessage", async (msg) => {
     try {
-      const { sender_id, receiver_id, message, created_at, sender_name } = msg;
+      const {
+        sender_id,
+        receiver_id,
+        message,
+        created_at,
+        sender_name,
+        file_url,
+        file_type,
+      } = msg;
 
       await pool.query(
-        "INSERT INTO messages (sender_id, receiver_id, message, created_at) VALUES ($1, $2, $3, $4)",
-        [sender_id, receiver_id, message, created_at]
+        "INSERT INTO messages (sender_id, receiver_id, message, created_at, file_url, file_type) VALUES ($1, $2, $3, $4, $5, $6)",
+        [sender_id, receiver_id, message, created_at, file_url || null, file_type || null]
       );
 
       if (!receiver_id) {
-        // broadcast ke semua user (chat room)
         io.emit("receiveMessage", msg);
-        console.log(`💬 Message from ${sender_name}: ${message}`);
+        console.log(`💬 Message from ${sender_name}: ${message || file_url}`);
       } else {
-        // private message
         const receiverData = onlineUsers.get(receiver_id);
         if (receiverData) {
           io.to(receiverData.socketId).emit("receiveMessage", msg);
         }
         io.to(socket.id).emit("receiveMessage", msg);
-        console.log(`💬 Private message from ${sender_name} → ${receiver_id}: ${message}`);
+        console.log(`💬 Private message from ${sender_name} → ${receiver_id}: ${message || file_url}`);
       }
     } catch (err) {
       console.error("❌ Error saving message:", err.message);
@@ -170,7 +220,14 @@ app.get("/", (req, res) => {
     status: "✅ OK",
     message: "Backend aktif dengan Socket.io 🚀",
     socket_status: io ? "aktif" : "tidak aktif",
-    endpoints: ["/api/auth", "/api/users", "/api/admin", "/api/chat/history/:a/:b"],
+    endpoints: [
+      "/api/auth",
+      "/api/users",
+      "/api/admin",
+      "/api/upload",
+      "/api/messages",
+      "/api/chat/history/:a/:b",
+    ],
   });
 });
 
