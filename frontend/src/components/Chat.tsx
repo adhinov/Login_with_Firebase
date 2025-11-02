@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-// Using default import + ts-ignore to avoid "no exported member 'io'" across versions
 // @ts-ignore
 import io from "socket.io-client";
 
@@ -13,7 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { Settings, Users } from "lucide-react";
+import { Settings, Users, Send } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
 
@@ -32,7 +31,6 @@ export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
   const [input, setInput] = useState("");
-  // use ReturnType<typeof io> so TS treats the socket type correctly without importing Socket
   const socketRef = useRef<ReturnType<typeof io> | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
@@ -56,13 +54,8 @@ export default function Chat() {
       setOnlineUsers(users);
     });
 
-    socket.on("connect", () => {
-      console.log("socket connected:", socket.id);
-    });
-
-    socket.on("disconnect", () => {
-      console.log("socket disconnected");
-    });
+    socket.on("connect", () => console.log("socket connected:", socket.id));
+    socket.on("disconnect", () => console.log("socket disconnected"));
 
     return () => {
       socket.disconnect();
@@ -70,7 +63,6 @@ export default function Chat() {
     };
   }, [API_URL, user?.id, user?.username]);
 
-  // auto scroll
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -100,8 +92,34 @@ export default function Chat() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-950 p-4">
-      <Card className="w-full max-w-[600px] h-[85vh] flex flex-col bg-gray-900 border border-gray-800 shadow-2xl">
+    <div className="flex items-center justify-center min-h-screen bg-gray-950">
+      <Card
+        className="
+          w-full 
+          h-[100vh] 
+          sm:h-[85vh] sm:max-w-[600px]
+          flex flex-col 
+          bg-gray-900 border border-gray-800 shadow-2xl
+          rounded-none sm:rounded-2xl
+        "
+      >
+        {/* inject CSS keyframes locally */}
+        <style jsx>{`
+          @keyframes slideUpFade {
+            0% { opacity: 0; transform: translateY(12px) scale(0.98); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+          }
+          .msg-anim {
+            animation: slideUpFade 240ms ease-out;
+          }
+
+          /* small subtle pop for messages sent by me */
+          .msg-sent {
+            transform-origin: bottom right;
+          }
+        `}</style>
+
+        {/* HEADER */}
         <CardHeader className="flex flex-col gap-1 border-b border-gray-800 py-3 px-4">
           <div className="flex justify-between items-center">
             <CardTitle className="text-lg font-semibold text-lime-300">
@@ -141,19 +159,29 @@ export default function Chat() {
           </div>
         </CardHeader>
 
-        <CardContent className="flex-1 overflow-y-auto px-3 py-2 space-y-2">
-          {messages.map((msg, i) => (
-            <div key={i} className={`flex ${msg.sender_name === user.username ? "justify-end" : "justify-start"}`}>
-              <div className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm ${msg.sender_name === user.username ? "bg-lime-500 text-black" : "bg-gray-800 text-gray-100"}`}>
-                <p className="font-semibold text-xs mb-1">{msg.sender_name}</p>
-                <p>{msg.message}</p>
+        {/* MESSAGE LIST */}
+        <CardContent className="flex-1 overflow-y-auto px-3 py-2 space-y-2 bg-gray-900">
+          {messages.map((msg, i) => {
+            const mine = msg.sender_name === user.username;
+            return (
+              <div
+                key={i}
+                className={`msg-anim flex ${mine ? "justify-end" : "justify-start"}`}
+              >
+                <div
+                  className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm ${mine ? "bg-lime-500 text-black msg-sent" : "bg-gray-800 text-gray-100"}`}
+                >
+                  <p className="font-semibold text-xs mb-1">{msg.sender_name}</p>
+                  <p>{msg.message}</p>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
           <div ref={bottomRef} />
         </CardContent>
 
-        <CardFooter className="border-t border-gray-800 p-3 flex items-center gap-2">
+        {/* INPUT AREA */}
+        <CardFooter className="border-t border-gray-800 p-3 flex items-center gap-2 bg-gray-900">
           <input
             type="text"
             value={input}
@@ -162,8 +190,8 @@ export default function Chat() {
             className="flex-1 bg-gray-800 border border-gray-700 rounded-full px-4 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-lime-400"
             placeholder="Ketik pesan..."
           />
-          <Button onClick={sendMessage} className="rounded-full px-6 bg-lime-500 hover:bg-lime-400 text-black">
-            Send
+          <Button onClick={sendMessage} className="rounded-full p-3 bg-lime-500 hover:bg-lime-400 text-black">
+            <Send className="w-4 h-4" />
           </Button>
         </CardFooter>
       </Card>
