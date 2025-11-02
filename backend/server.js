@@ -46,7 +46,7 @@ const io = new Server(server, {
 
 const onlineUsers = new Map(); // userId -> { socketId, username }
 
-// 🧾 Helper untuk menampilkan daftar user online
+// 🔹 Helper: tampilkan user online di console
 function printOnlineUsers() {
   const users = Array.from(onlineUsers.entries());
   console.log(`\n🧑‍🤝‍🧑 Total online: ${users.length}`);
@@ -56,18 +56,28 @@ function printOnlineUsers() {
   console.log("-----------------------------------\n");
 }
 
+// 🔹 Helper: kirim daftar user online ke semua client
+function broadcastOnlineUsers() {
+  const users = Array.from(onlineUsers.values()).map((u) => ({
+    username: u.username,
+    socketId: u.socketId,
+  }));
+  io.emit("updateOnlineUsers", users);
+}
+
 io.on("connection", (socket) => {
   console.log(`🟢 Socket connected: ${socket.id}`);
 
-  // user join event
+  // 🟩 User join chat
   socket.on("join", ({ userId, username }) => {
     onlineUsers.set(userId, { socketId: socket.id, username });
     socket.userData = { userId, username };
     console.log(`👤 ${username} joined the chat`);
     printOnlineUsers();
+    broadcastOnlineUsers(); // ✅ update semua client
   });
 
-  // kirim pesan
+  // 🟨 Kirim pesan
   socket.on("sendMessage", async (msg) => {
     try {
       const { sender_id, receiver_id, message, created_at, sender_name } = msg;
@@ -95,7 +105,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  // handle disconnect
+  // 🟥 Handle disconnect
   socket.on("disconnect", () => {
     let disconnectedUser = null;
     for (let [userId, data] of onlineUsers.entries()) {
@@ -109,6 +119,7 @@ io.on("connection", (socket) => {
     if (disconnectedUser) {
       console.log(`🔴 ${disconnectedUser.username} disconnected`);
       printOnlineUsers();
+      broadcastOnlineUsers(); // ✅ update semua client
     } else {
       console.log(`🔴 Unknown socket disconnected: ${socket.id}`);
     }
@@ -120,7 +131,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/admin", adminRoutes);
 
-// ambil semua pesan (global chat)
+// 📨 Ambil semua pesan (global chat)
 app.get("/api/messages", async (req, res) => {
   try {
     const result = await pool.query(
@@ -133,7 +144,7 @@ app.get("/api/messages", async (req, res) => {
   }
 });
 
-// ambil riwayat private chat
+// 💬 Ambil riwayat private chat
 app.get("/api/chat/history/:a/:b", async (req, res) => {
   const { a, b } = req.params;
   try {
