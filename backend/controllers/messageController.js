@@ -29,11 +29,11 @@ export const uploadMessageFile = async (req, res) => {
     console.log("📩 BODY:", req.body);
     console.log("📎 FILE:", req.file);
 
-    // Pastikan field dari frontend (atau Postman) benar
     const { sender_id, receiver_id, message } = req.body;
     const file = req.file;
 
     if (!sender_id || !receiver_id) {
+      console.log("❌ Sender atau Receiver kosong");
       return res.status(400).json({
         success: false,
         message: "Sender dan Receiver wajib diisi.",
@@ -42,29 +42,32 @@ export const uploadMessageFile = async (req, res) => {
 
     let fileUrl = null;
 
-    // Upload file ke Cloudinary (jika ada)
     if (file) {
+      console.log("☁️ Mengupload ke Cloudinary...");
       const result = await cloudinary.uploader.upload(file.path, {
         folder: "chat_uploads",
       });
+      console.log("✅ Cloudinary success:", result.secure_url);
       fileUrl = result.secure_url;
-
-      // Hapus file lokal setelah diupload ke Cloudinary
-      fs.unlinkSync(file.path);
+    } else {
+      console.log("⚠️ Tidak ada file dikirim");
     }
 
-    // Simpan pesan ke database
+    console.log("💾 Menyimpan pesan ke database...");
     const query = `
       INSERT INTO messages (sender_id, receiver_id, message, file_url)
       VALUES ($1, $2, $3, $4)
       RETURNING *;
     `;
+
     const values = [sender_id, receiver_id, message || null, fileUrl || null];
     const { rows } = await pool.query(query, values);
 
+    console.log("✅ Pesan tersimpan:", rows[0]);
+
     res.status(201).json({
       success: true,
-      message: "Pesan berhasil dikirim",
+      message: "Pesan dengan file berhasil dikirim",
       data: rows[0],
     });
   } catch (error) {
@@ -76,3 +79,4 @@ export const uploadMessageFile = async (req, res) => {
     });
   }
 };
+
