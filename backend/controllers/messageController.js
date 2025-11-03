@@ -3,44 +3,48 @@ import { CloudinaryStorage } from "multer-storage-cloudinary";
 import cloudinary from "../config/cloudinary.js";
 import pool from "../config/db.js";
 
-// Setup Cloudinary storage
+// Konfigurasi storage untuk Cloudinary
 const storage = new CloudinaryStorage({
   cloudinary,
   params: {
     folder: "chat_uploads",
-    allowed_formats: ["jpg", "jpeg", "png", "gif", "webp"],
+    allowed_formats: ["jpg", "jpeg", "png", "gif", "webp", "pdf", "mp4", "mp3"],
   },
 });
 
 const upload = multer({ storage });
 
-// Controller upload file + simpan ke DB
+// Controller: Upload pesan + file (jika ada)
 export const uploadMessageFile = async (req, res) => {
   try {
-    // --- ambil data dari form ---
-    const { sender_id, receiver_id, message } = req.body;
-    const file = req.file;
+    console.log("📩 BODY:", req.body);
+    console.log("📎 FILE:", req.file);
 
-    // --- validasi dasar ---
-    if (!sender_id || !receiver_id) {
-      return res.status(400).json({
-        success: false,
-        message: "sender_id dan receiver_id wajib diisi",
-      });
+    const { sender_id, receiver_id, message } = req.body;
+    const fileUrl = req.file ? req.file.path : null;
+    const fileType = req.file ? req.file.mimetype : null;
+
+    // ✅ Gunakan query yang aman tanpa koma ganda
+    let query = "";
+    let values = [];
+
+    if (fileUrl && fileType) {
+      query = `
+        INSERT INTO messages (sender_id, receiver_id, message, file_url, file_type, created_at)
+        VALUES (?, ?, ?, ?, ?, NOW())
+      `;
+      values = [sender_id, receiver_id, message || null, fileUrl, fileType];
+    } else {
+      query = `
+        INSERT INTO messages (sender_id, receiver_id, message, created_at)
+        VALUES (?, ?, ?, NOW())
+      `;
+      values = [sender_id, receiver_id, message || null];
     }
 
-    // --- jika ada file ---
-    const fileUrl = file?.path || null;
-    const fileType = file?.mimetype || null;
+    const [result] = await pool.query(query, values);
 
-    // --- simpan ke DB ---
-    const [result] = await pool.query(
-      `INSERT INTO messages (sender_id, receiver_id, message, file_url, file_type)
-       VALUES (?, ?, ?, ?, ?)`,
-      [sender_id, receiver_id, message || null, fileUrl, fileType]
-    );
-
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Pesan berhasil dikirim",
       data: {
@@ -62,4 +66,5 @@ export const uploadMessageFile = async (req, res) => {
   }
 };
 
+// Export multer middleware
 export { upload };
