@@ -1,13 +1,10 @@
 import express from "express";
-import { sendMessage, getMessageHistory } from "../controllers/messageController.js";
-import verifyToken from "../middleware/verifyToken.js";
+import { upload, uploadMessageFile } from "../controllers/messageController.js";
+import { verifyToken } from "../middleware/verifyToken.js";
 
 const router = express.Router();
 
-// ✅ Endpoint untuk mengirim pesan
-router.post("/send", verifyToken, sendMessage);
-
-// ✅ Endpoint untuk mengambil riwayat pesan antara dua user
-router.get("/history/:userId1/:userId2", verifyToken, getMessageHistory);
+// Kirim pesan + upload file ke Cloudinary
+router.post("/upload", verifyToken, upload.single("file"), uploadMessageFile);
 
 export default router;
