@@ -17,19 +17,18 @@ import pool from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
-import messageRoutes from './routes/messageRoutes.js';
+import messageRoutes from "./routes/messageRoutes.js";
 
 const app = express();
 const server = http.createServer(app);
-app.use('/api/messages', messageRoutes);
-app.use("/uploads", express.static("uploads"));
 
-// ==================== CORS CONFIG ====================
+// ==================================================
+// 🛠 CORS & Middleware harus di paling atas
+// ==================================================
 const allowedOrigins = process.env.FRONTEND_URL
   ? process.env.FRONTEND_URL.split(",").map((o) => o.trim())
-  : ["*"];
+  : ["https://login-with-firebase-sandy.vercel.app", "http://localhost:5173"];
 
-app.use(express.json());
 app.use(
   cors({
     origin: function (origin, callback) {
@@ -44,18 +43,17 @@ app.use(
   })
 );
 
-// ==================== UPLOAD FILE SETUP ====================
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// ==================================================
+// 🧩 Upload file setup
+// ==================================================
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-// buat folder uploads jika belum ada
 const uploadDir = path.join(__dirname, "uploads");
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir);
-  console.log("📁 Folder uploads dibuat");
-}
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
 
-// konfigurasi multer
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),
   filename: (req, file, cb) => {
@@ -64,10 +62,8 @@ const storage = multer.diskStorage({
     cb(null, `${unique}${ext}`);
   },
 });
-
 const upload = multer({ storage });
 
-// endpoint upload file
 app.post("/api/upload", upload.single("file"), (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
@@ -79,11 +75,11 @@ app.post("/api/upload", upload.single("file"), (req, res) => {
     res.status(500).json({ error: "Gagal upload file" });
   }
 });
-
-// serve folder uploads secara publik
 app.use("/uploads", express.static(uploadDir));
 
-// ==================== SOCKET.IO SETUP ====================
+// ==================================================
+// ⚡ Socket.io Setup
+// ==================================================
 const io = new Server(server, {
   cors: {
     origin: allowedOrigins,
@@ -91,9 +87,8 @@ const io = new Server(server, {
   },
 });
 
-const onlineUsers = new Map(); // userId -> { socketId, username }
+const onlineUsers = new Map();
 
-// 🔹 Helper: tampilkan user online di console
 function printOnlineUsers() {
   const users = Array.from(onlineUsers.entries());
   console.log(`\n🧑‍🤝‍🧑 Total online: ${users.length}`);
@@ -103,7 +98,6 @@ function printOnlineUsers() {
   console.log("-----------------------------------\n");
 }
 
-// 🔹 Helper: kirim daftar user online ke semua client
 function broadcastOnlineUsers() {
   const users = Array.from(onlineUsers.values()).map((u) => ({
     username: u.username,
@@ -115,16 +109,14 @@ function broadcastOnlineUsers() {
 io.on("connection", (socket) => {
   console.log(`🟢 Socket connected: ${socket.id}`);
 
-  // 🟩 User join chat
   socket.on("join", ({ userId, username }) => {
     onlineUsers.set(userId, { socketId: socket.id, username });
     socket.userData = { userId, username };
     console.log(`👤 ${username} joined the chat`);
     printOnlineUsers();
-    broadcastOnlineUsers(); // ✅ update semua client
+    broadcastOnlineUsers();
   });
 
-  // 🟨 Kirim pesan
   socket.on("sendMessage", async (msg) => {
     try {
       const {
@@ -138,27 +130,22 @@ io.on("connection", (socket) => {
       } = msg;
 
       await pool.query(
-        "INSERT INTO messages (sender_id, receiver_id, message, created_at, file_url, file_type) VALUES ($1, $2, $3, $4, $5, $6)",
+        "INSERT INTO messages (sender_id, receiver_id, message, created_at, file_url, file_type) VALUES (?, ?, ?, ?, ?, ?)",
         [sender_id, receiver_id, message, created_at, file_url || null, file_type || null]
       );
 
       if (!receiver_id) {
         io.emit("receiveMessage", msg);
-        console.log(`💬 Message from ${sender_name}: ${message || file_url}`);
       } else {
         const receiverData = onlineUsers.get(receiver_id);
-        if (receiverData) {
-          io.to(receiverData.socketId).emit("receiveMessage", msg);
-        }
+        if (receiverData) io.to(receiverData.socketId).emit("receiveMessage", msg);
         io.to(socket.id).emit("receiveMessage", msg);
-        console.log(`💬 Private message from ${sender_name} → ${receiver_id}: ${message || file_url}`);
       }
     } catch (err) {
       console.error("❌ Error saving message:", err.message);
     }
   });
 
-  // 🟥 Handle disconnect
   socket.on("disconnect", () => {
     let disconnectedUser = null;
     for (let [userId, data] of onlineUsers.entries()) {
@@ -172,69 +159,32 @@ io.on("connection", (socket) => {
     if (disconnectedUser) {
       console.log(`🔴 ${disconnectedUser.username} disconnected`);
       printOnlineUsers();
-      broadcastOnlineUsers(); // ✅ update semua client
+      broadcastOnlineUsers();
     } else {
       console.log(`🔴 Unknown socket disconnected: ${socket.id}`);
     }
   });
 });
 
-// ==================== ROUTES ====================
+// ==================================================
+// 📦 Routes
+// ==================================================
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/messages", messageRoutes);
 
-// 📨 Ambil semua pesan (global chat)
-app.get("/api/messages", async (req, res) => {
-  try {
-    const result = await pool.query(
-      "SELECT m.*, u.username AS sender_name FROM messages m JOIN users u ON m.sender_id = u.id ORDER BY m.created_at ASC"
-    );
-    res.json(result.rows);
-  } catch (err) {
-    console.error("Error:", err.message);
-    res.status(500).json({ error: "Gagal mengambil pesan" });
-  }
-});
-
-// 💬 Ambil riwayat private chat
-app.get("/api/chat/history/:a/:b", async (req, res) => {
-  const { a, b } = req.params;
-  try {
-    const result = await pool.query(
-      `SELECT m.*, u.username AS sender_name
-       FROM messages m
-       JOIN users u ON m.sender_id = u.id
-       WHERE (m.sender_id = $1 AND m.receiver_id = $2)
-          OR (m.sender_id = $2 AND m.receiver_id = $1)
-       ORDER BY m.created_at ASC`,
-      [a, b]
-    );
-    res.json(result.rows);
-  } catch (err) {
-    console.error("❌ Error fetching chat history:", err.message);
-    res.status(500).json({ error: "Gagal mengambil riwayat pesan" });
-  }
-});
-
-// ==================== HEALTH CHECK ====================
+// ==================================================
+// 🧭 Default route
+// ==================================================
 app.get("/", (req, res) => {
   res.json({
     status: "✅ OK",
     message: "Backend aktif dengan Socket.io 🚀",
-    socket_status: io ? "aktif" : "tidak aktif",
-    endpoints: [
-      "/api/auth",
-      "/api/users",
-      "/api/admin",
-      "/api/upload",
-      "/api/messages",
-      "/api/chat/history/:a/:b",
-    ],
   });
 });
 
-// ==================== START SERVER ====================
+// ==================================================
 const PORT = process.env.PORT || 8080;
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Server running on port ${PORT}`);

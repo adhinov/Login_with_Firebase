@@ -40,3 +40,6 @@ export const verifyToken = (req, res, next) => {
       .json({ success: false, message: "Token tidak valid" });
   }
 };
+
+export default router;
+
