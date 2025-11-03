@@ -1,10 +1,10 @@
 import express from "express";
-import { upload, uploadMessageFile } from "../controllers/messageController.js";
+import { uploadMessageFile } from "../controllers/messageController.js";
 import { verifyToken } from "../middleware/verifyToken.js";
 
 const router = express.Router();
 
-// kirim pesan + file
-router.post("/upload", verifyToken, upload.single("file"), uploadMessageFile);
+// Kirim pesan + file (upload handled inside controller)
+router.post("/upload", verifyToken, uploadMessageFile);
 
 export default router;
