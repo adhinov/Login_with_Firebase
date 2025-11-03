@@ -2,7 +2,7 @@ import express from "express";
 import multer from "multer";
 import { v2 as cloudinary } from "cloudinary";
 import { verifyToken } from "../middleware/verifyToken.js";
-import pool from "../config/db.js"; // sesuaikan path koneksi DB kamu
+import pool from "../config/db.js"; // koneksi ke DB
 
 const router = express.Router();
 
@@ -13,7 +13,7 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// 🔧 Konfigurasi Multer (gunakan buffer, bukan simpan lokal)
+// 🔧 Konfigurasi Multer (pakai buffer, bukan simpan lokal)
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
@@ -28,46 +28,54 @@ router.post("/send", verifyToken, upload.single("file"), async (req, res) => {
 
     // Jika user upload file → upload ke Cloudinary
     if (req.file) {
-      const uploadedFile = await cloudinary.uploader.upload_stream(
+      const uploadStream = cloudinary.uploader.upload_stream(
         {
           resource_type: "auto",
           folder: "chat_uploads",
         },
         async (error, result) => {
           if (error) {
-            console.error("❌ Upload Cloudinary error:", error);
+            console.error("❌ Upload Cloudinary error:", error.message);
             return res
               .status(500)
-              .json({ success: false, message: "Gagal upload file" });
+              .json({ success: false, message: "Gagal upload file", error: error.message });
           }
 
-          file_url = result.secure_url;
-          file_type = result.resource_type;
+          try {
+            file_url = result.secure_url;
+            file_type = result.resource_type;
 
-          // Simpan pesan ke database
-          const [rows] = await pool.query(
-            `INSERT INTO messages (sender_id, receiver_id, message, file_url, file_type, created_at)
-             VALUES (?, ?, ?, ?, ?, NOW())`,
-            [sender_id, receiver_id, message || null, file_url, file_type]
-          );
+            const [rows] = await pool.query(
+              `INSERT INTO messages (sender_id, receiver_id, message, file_url, file_type, created_at)
+               VALUES (?, ?, ?, ?, ?, NOW())`,
+              [sender_id, receiver_id, message || null, file_url, file_type]
+            );
 
-          return res.status(200).json({
-            success: true,
-            message: "Pesan berhasil dikirim",
-            data: {
-              id: rows.insertId,
-              sender_id,
-              receiver_id,
-              message,
-              file_url,
-              file_type,
-            },
-          });
+            return res.status(200).json({
+              success: true,
+              message: "Pesan dengan file berhasil dikirim",
+              data: {
+                id: rows.insertId,
+                sender_id,
+                receiver_id,
+                message,
+                file_url,
+                file_type,
+              },
+            });
+          } catch (dbError) {
+            console.error("❌ Gagal simpan ke DB:", dbError.message);
+            return res.status(500).json({
+              success: false,
+              message: "Gagal menyimpan pesan ke database",
+              error: dbError.message,
+            });
+          }
         }
       );
 
-      // tulis stream data agar Cloudinary bisa baca buffer
-      uploadedFile.end(req.file.buffer);
+      // kirim buffer file ke Cloudinary
+      uploadStream.end(req.file.buffer);
     } else {
       // Jika tanpa file
       const [rows] = await pool.query(
@@ -83,8 +91,12 @@ router.post("/send", verifyToken, upload.single("file"), async (req, res) => {
       });
     }
   } catch (error) {
-    console.error("❌ Error di /send:", error);
-    res.status(500).json({ success: false, message: "Gagal mengirim pesan" });
+    console.error("❌ Error di /send:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "Gagal mengirim pesan",
+      error: error.message, // tampilkan detail error
+    });
   }
 });
 
@@ -108,8 +120,12 @@ router.get("/history/:sender_id/:receiver_id", verifyToken, async (req, res) => 
       messages: rows,
     });
   } catch (error) {
-    console.error("❌ Error di /history:", error);
-    res.status(500).json({ success: false, message: "Gagal mengambil pesan" });
+    console.error("❌ Error di /history:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "Gagal mengambil pesan",
+      error: error.message,
+    });
   }
 });
 
