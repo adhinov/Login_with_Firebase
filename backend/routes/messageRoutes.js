@@ -4,7 +4,7 @@ import { verifyToken } from "../middleware/verifyToken.js";
 
 const router = express.Router();
 
-// Kirim pesan + upload file ke Cloudinary
+// kirim pesan + file
 router.post("/upload", verifyToken, upload.single("file"), uploadMessageFile);
 
 export default router;
