@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 // @ts-ignore
 import io from "socket.io-client";
+import axios from "axios";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -10,15 +11,32 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
-import { Settings, Users, Send, Paperclip, Image, FileVideo, FileText, Mic } from "lucide-react";
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
+import {
+  Settings,
+  Users,
+  Send,
+  Paperclip,
+  Image,
+  FileVideo,
+  FileText,
+  Mic,
+} from "lucide-react";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  CardFooter,
+} from "@/components/ui/card";
 import { useRouter } from "next/navigation";
 
 interface Message {
+  sender_id: number;
   sender_name: string;
+  receiver_id?: number;
   message: string;
-  fileUrl?: string;
-  fileType?: string;
+  file_url?: string;
+  file_type?: string;
   created_at?: string;
 }
 
@@ -37,9 +55,22 @@ export default function Chat() {
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
 
-  const user = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("user") || "{}") : {};
-  const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "";
+  // Ambil user dan token
+  const user =
+    typeof window !== "undefined"
+      ? JSON.parse(localStorage.getItem("user") || "{}")
+      : {};
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
+  const API_URL =
+    process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ||
+    "https://beneficial-fulfillment-production-ad1b.up.railway.app";
+
+  // ID penerima sementara (contoh: user 17)
+  const RECEIVER_ID = 17;
+
+  // Socket.io setup
   useEffect(() => {
     if (!API_URL || !user?.id) return;
 
@@ -48,10 +79,14 @@ export default function Chat() {
 
     socket.emit("join", { userId: user.id, username: user.username });
 
-    socket.on("receiveMessage", (msg: Message) => setMessages((prev) => [...prev, msg]));
-    socket.on("updateOnlineUsers", (users: OnlineUser[]) => setOnlineUsers(users));
-    socket.on("connect", () => console.log("socket connected:", socket.id));
-    socket.on("disconnect", () => console.log("socket disconnected"));
+    socket.on("receiveMessage", (msg: Message) =>
+      setMessages((prev) => [...prev, msg])
+    );
+    socket.on("updateOnlineUsers", (users: OnlineUser[]) =>
+      setOnlineUsers(users)
+    );
+    socket.on("connect", () => console.log("✅ socket connected:", socket.id));
+    socket.on("disconnect", () => console.log("❌ socket disconnected"));
 
     return () => {
       socket.disconnect();
@@ -59,40 +94,68 @@ export default function Chat() {
     };
   }, [API_URL, user?.id, user?.username]);
 
+  // Auto-scroll ke bawah
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const sendMessage = () => {
-    if (!input.trim() || !socketRef.current || !user?.id) return;
+  // Kirim pesan teks
+  const sendMessage = async () => {
+    if (!input.trim() || !token) return;
 
-    const msg = {
-      sender_id: user.id,
-      sender_name: user.username,
-      message: input.trim(),
-      created_at: new Date().toISOString(),
-    };
+    try {
+      const res = await axios.post(
+        `${API_URL}/api/messages/upload`,
+        {
+          message: input.trim(),
+          receiver_id: RECEIVER_ID,
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
 
-    socketRef.current.emit("sendMessage", msg);
-    setInput("");
+      if (res.data.success) {
+        socketRef.current?.emit("sendMessage", res.data.data);
+        setMessages((prev) => [...prev, res.data.data]);
+        setInput("");
+      }
+    } catch (err) {
+      console.error("❌ Error sending message:", err);
+    }
   };
 
+  // Kirim pesan + file
   const handleFileUpload = async (file: File, type: string) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const msg = {
-        sender_id: user.id,
-        sender_name: user.username,
-        message: "",
-        fileUrl: reader.result as string,
-        fileType: type,
-        created_at: new Date().toISOString(),
-      };
-      socketRef.current?.emit("sendMessage", msg);
-    };
-    reader.readAsDataURL(file);
+    if (!token) return;
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("message", input || ""); // opsional
+      formData.append("receiver_id", RECEIVER_ID.toString());
+
+      const res = await axios.post(
+        `${API_URL}/api/messages/upload`,
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      if (res.data.success) {
+        socketRef.current?.emit("sendMessage", res.data.data);
+        setMessages((prev) => [...prev, res.data.data]);
+      }
+    } catch (err) {
+      console.error("❌ Upload file error:", err);
+    }
   };
 
+  // Rekam suara
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -100,21 +163,10 @@ export default function Chat() {
       const chunks: BlobPart[] = [];
 
       recorder.ondataavailable = (e) => chunks.push(e.data);
-      recorder.onstop = () => {
+      recorder.onstop = async () => {
         const blob = new Blob(chunks, { type: "audio/webm" });
-        const reader = new FileReader();
-        reader.onload = () => {
-          const msg = {
-            sender_id: user.id,
-            sender_name: user.username,
-            message: "",
-            fileUrl: reader.result as string,
-            fileType: "audio",
-            created_at: new Date().toISOString(),
-          };
-          socketRef.current?.emit("sendMessage", msg);
-        };
-        reader.readAsDataURL(blob);
+        const file = new File([blob], "recording.webm", { type: "audio/webm" });
+        await handleFileUpload(file, "audio");
       };
 
       recorder.start();
@@ -152,13 +204,24 @@ export default function Chat() {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="text-gray-400 hover:text-white hover:bg-gray-800">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-gray-400 hover:text-white hover:bg-gray-800"
+                >
                   <Settings className="w-5 h-5" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40 bg-gray-900 text-white border border-gray-700">
-                <DropdownMenuItem onClick={handleEditProfile}>✏️ Edit Profile</DropdownMenuItem>
-                <DropdownMenuItem onClick={handleLogout}>🚪 Logout</DropdownMenuItem>
+              <DropdownMenuContent
+                align="end"
+                className="w-40 bg-gray-900 text-white border border-gray-700"
+              >
+                <DropdownMenuItem onClick={handleEditProfile}>
+                  ✏️ Edit Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleLogout}>
+                  🚪 Logout
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -169,7 +232,11 @@ export default function Chat() {
               {onlineUsers.length} online{" "}
               {onlineUsers.length > 0 && (
                 <span className="text-gray-500 ml-1">
-                  ({onlineUsers.map((u) => u.username).slice(0, 3).join(", ")}
+                  (
+                  {onlineUsers
+                    .map((u) => u.username)
+                    .slice(0, 3)
+                    .join(", ")}
                   {onlineUsers.length > 3 ? ", ..." : ""})
                 </span>
               )}
@@ -180,7 +247,7 @@ export default function Chat() {
         {/* CHAT LIST */}
         <CardContent className="flex-1 overflow-y-auto px-3 py-2 space-y-2 bg-gray-900">
           {messages.map((msg, i) => {
-            const mine = msg.sender_name === user.username;
+            const mine = msg.sender_id === user.id;
             return (
               <div key={i} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
                 <div
@@ -189,15 +256,21 @@ export default function Chat() {
                   }`}
                 >
                   <p className="font-semibold text-xs mb-1">{msg.sender_name}</p>
-                  {msg.fileUrl ? (
-                    msg.fileType === "image" ? (
-                      <img src={msg.fileUrl} alt="upload" className="rounded-lg max-w-[200px]" />
-                    ) : msg.fileType === "video" ? (
-                      <video src={msg.fileUrl} controls className="rounded-lg max-w-[200px]" />
-                    ) : msg.fileType === "audio" ? (
-                      <audio src={msg.fileUrl} controls />
+                  {msg.file_url ? (
+                    msg.file_type?.includes("image") ? (
+                      <img src={msg.file_url} alt="upload" className="rounded-lg max-w-[200px]" />
+                    ) : msg.file_type?.includes("video") ? (
+                      <video src={msg.file_url} controls className="rounded-lg max-w-[200px]" />
+                    ) : msg.file_type?.includes("audio") ? (
+                      <audio src={msg.file_url} controls />
                     ) : (
-                      <a href={msg.fileUrl} download className="underline text-blue-300">📄 File</a>
+                      <a
+                        href={msg.file_url}
+                        download
+                        className="underline text-blue-300"
+                      >
+                        📄 File
+                      </a>
                     )
                   ) : (
                     <p className="break-words">{msg.message}</p>
@@ -213,25 +286,56 @@ export default function Chat() {
         <CardFooter className="border-t border-gray-800 p-3 flex items-center gap-2 bg-gray-900 sticky bottom-0">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="text-gray-300 hover:text-white hover:bg-gray-800">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-gray-300 hover:text-white hover:bg-gray-800"
+              >
                 <Paperclip className="w-5 h-5" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="bg-gray-900 text-white border border-gray-700">
               <label className="cursor-pointer px-3 py-2 flex items-center gap-2 hover:bg-gray-800">
                 <Image className="w-4 h-4 text-lime-400" /> Gambar
-                <input type="file" accept="image/*" hidden onChange={(e) => e.target.files && handleFileUpload(e.target.files[0], "image")} />
+                <input
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  onChange={(e) =>
+                    e.target.files && handleFileUpload(e.target.files[0], "image")
+                  }
+                />
               </label>
               <label className="cursor-pointer px-3 py-2 flex items-center gap-2 hover:bg-gray-800">
                 <FileVideo className="w-4 h-4 text-lime-400" /> Video
-                <input type="file" accept="video/*" hidden onChange={(e) => e.target.files && handleFileUpload(e.target.files[0], "video")} />
+                <input
+                  type="file"
+                  accept="video/*"
+                  hidden
+                  onChange={(e) =>
+                    e.target.files && handleFileUpload(e.target.files[0], "video")
+                  }
+                />
               </label>
               <label className="cursor-pointer px-3 py-2 flex items-center gap-2 hover:bg-gray-800">
                 <FileText className="w-4 h-4 text-lime-400" /> Dokumen
-                <input type="file" hidden onChange={(e) => e.target.files && handleFileUpload(e.target.files[0], "file")} />
+                <input
+                  type="file"
+                  hidden
+                  onChange={(e) =>
+                    e.target.files && handleFileUpload(e.target.files[0], "file")
+                  }
+                />
               </label>
-              <DropdownMenuItem onClick={recording ? stopRecording : startRecording} className="cursor-pointer flex items-center gap-2 hover:bg-gray-800">
-                <Mic className={`w-4 h-4 ${recording ? "text-red-400" : "text-lime-400"}`} />
+              <DropdownMenuItem
+                onClick={recording ? stopRecording : startRecording}
+                className="cursor-pointer flex items-center gap-2 hover:bg-gray-800"
+              >
+                <Mic
+                  className={`w-4 h-4 ${
+                    recording ? "text-red-400" : "text-lime-400"
+                  }`}
+                />
                 {recording ? "Stop Rekam" : "Rekam Suara"}
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -245,7 +349,10 @@ export default function Chat() {
             className="flex-1 bg-gray-800 border border-gray-700 rounded-full px-4 py-2 text-sm text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-lime-400"
             placeholder="Ketik pesan..."
           />
-          <Button onClick={sendMessage} className="rounded-full p-3 bg-lime-500 hover:bg-lime-400 text-black">
+          <Button
+            onClick={sendMessage}
+            className="rounded-full p-3 bg-lime-500 hover:bg-lime-400 text-black"
+          >
             <Send className="w-4 h-4" />
           </Button>
         </CardFooter>
