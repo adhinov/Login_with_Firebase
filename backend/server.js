@@ -21,7 +21,6 @@ import messageRoutes from "./routes/messageRoutes.js";
 
 const app = express();
 const server = http.createServer(app);
-app.use("/api/messages", messageRoutes);
 
 // ==================================================
 // 🛠 CORS & Middleware harus di paling atas
@@ -48,7 +47,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // ==================================================
-// 🧩 Upload file setup
+// 🧩 Upload file setup (untuk testing langsung ke server)
 // ==================================================
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -77,6 +76,14 @@ app.post("/api/upload", upload.single("file"), (req, res) => {
   }
 });
 app.use("/uploads", express.static(uploadDir));
+
+// ==================================================
+// 📦 Routes — PENTING: letakkan SETELAH middleware
+// ==================================================
+app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/messages", messageRoutes);
 
 // ==================================================
 // ⚡ Socket.io Setup
@@ -166,14 +173,6 @@ io.on("connection", (socket) => {
     }
   });
 });
-
-// ==================================================
-// 📦 Routes
-// ==================================================
-app.use("/api/auth", authRoutes);
-app.use("/api/users", userRoutes);
-app.use("/api/admin", adminRoutes);
-app.use("/api/messages", messageRoutes);
 
 // ==================================================
 // 🧭 Default route
