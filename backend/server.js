@@ -23,7 +23,7 @@ const app = express();
 const server = http.createServer(app);
 
 // ==================================================
-// 🛠 CORS & Middleware harus di paling atas
+// 🛠 CORS setup (HARUS paling atas)
 // ==================================================
 const allowedOrigins = process.env.FRONTEND_URL
   ? process.env.FRONTEND_URL.split(",").map((o) => o.trim())
@@ -43,11 +43,17 @@ app.use(
   })
 );
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// ==================================================
+// 📦 Body Parser — skip untuk multipart/form-data
+// ==================================================
+app.use((req, res, next) => {
+  if (req.is("multipart/form-data")) return next(); // biarkan multer yang handle
+  express.json({ limit: "10mb" })(req, res, next);
+});
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // ==================================================
-// 🧩 Upload file setup (untuk testing langsung ke server)
+// 🧩 Upload file setup (backend langsung simpan di uploads/)
 // ==================================================
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -58,8 +64,8 @@ const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname);
-    const unique = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, `${unique}${ext}`);
+    const unique = `${Date.now()}${ext}`;
+    cb(null, unique);
   },
 });
 const upload = multer({ storage });
@@ -78,7 +84,7 @@ app.post("/api/upload", upload.single("file"), (req, res) => {
 app.use("/uploads", express.static(uploadDir));
 
 // ==================================================
-// 📦 Routes — PENTING: letakkan SETELAH middleware
+// 📦 Routes — taruh SETELAH middleware
 // ==================================================
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
@@ -100,9 +106,9 @@ const onlineUsers = new Map();
 function printOnlineUsers() {
   const users = Array.from(onlineUsers.entries());
   console.log(`\n🧑‍🤝‍🧑 Total online: ${users.length}`);
-  users.forEach(([id, data], index) => {
-    console.log(`  ${index + 1}. ${data.username} (ID: ${id})`);
-  });
+  users.forEach(([id, data], i) =>
+    console.log(`  ${i + 1}. ${data.username} (ID: ${id})`)
+  );
   console.log("-----------------------------------\n");
 }
 
@@ -163,7 +169,6 @@ io.on("connection", (socket) => {
         break;
       }
     }
-
     if (disconnectedUser) {
       console.log(`🔴 ${disconnectedUser.username} disconnected`);
       printOnlineUsers();
