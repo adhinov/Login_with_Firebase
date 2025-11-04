@@ -80,3 +80,36 @@ export const uploadMessageFile = async (req, res) => {
   }
 };
 
+// Ambil semua pesan antara dua user (chat history)
+export const getMessagesBetweenUsers = async (req, res) => {
+  try {
+    const { senderId, receiverId } = req.params;
+
+    const query = `
+      SELECT *
+      FROM messages
+      WHERE 
+        (sender_id = $1 AND receiver_id = $2)
+        OR 
+        (sender_id = $2 AND receiver_id = $1)
+      ORDER BY created_at ASC;
+    `;
+
+    const { rows } = await pool.query(query, [senderId, receiverId]);
+
+    res.status(200).json({
+      success: true,
+      message: "Daftar pesan berhasil diambil",
+      data: rows,
+    });
+  } catch (error) {
+    console.error("❌ Error ambil pesan:", error);
+    res.status(500).json({
+      success: false,
+      message: "Gagal mengambil pesan",
+      error: error.message,
+    });
+  }
+};
+
+
