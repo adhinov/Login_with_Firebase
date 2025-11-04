@@ -29,8 +29,8 @@ export const uploadMessageFile = async (req, res) => {
     console.log("📩 BODY:", req.body);
     console.log("📎 FILE:", req.file);
 
-    const { sender_id, receiver_id, message } = req.body;
-    const file = req.file;
+    const sender_id = req.user?.id; // ✅ ambil dari token
+    const { receiver_id, message } = req.body;
 
     if (!sender_id || !receiver_id) {
       console.log("❌ Sender atau Receiver kosong");
@@ -40,41 +40,38 @@ export const uploadMessageFile = async (req, res) => {
       });
     }
 
-    let fileUrl = null;
+    let file_url = null;
+    let file_type = null;
 
-    if (file) {
+    if (req.file) {
       console.log("☁️ Mengupload ke Cloudinary...");
-      const result = await cloudinary.uploader.upload(file.path, {
+      const result = await cloudinary.uploader.upload(req.file.path, {
         folder: "chat_uploads",
       });
-      console.log("✅ Cloudinary success:", result.secure_url);
-      fileUrl = result.secure_url;
-    } else {
-      console.log("⚠️ Tidak ada file dikirim");
+      file_url = result.secure_url;
+      file_type = req.file.mimetype;
+      console.log("✅ Cloudinary success:", file_url);
     }
 
     console.log("💾 Menyimpan pesan ke database...");
     const query = `
-      INSERT INTO messages (sender_id, receiver_id, message, file_url)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO messages (sender_id, receiver_id, message, file_url, file_type, created_at)
+      VALUES ($1, $2, $3, $4, $5, NOW())
       RETURNING *;
     `;
-
-    const values = [sender_id, receiver_id, message || null, fileUrl || null];
-    const { rows } = await pool.query(query, values);
-
-    console.log("✅ Pesan tersimpan:", rows[0]);
+    const values = [sender_id, receiver_id, message || "", file_url, file_type];
+    const result = await pool.query(query, values);
 
     res.status(201).json({
       success: true,
       message: "Pesan dengan file berhasil dikirim",
-      data: rows[0],
+      data: result.rows[0],
     });
   } catch (error) {
     console.error("❌ Upload error:", error);
     res.status(500).json({
       success: false,
-      message: "Gagal upload file atau simpan pesan",
+      message: "Terjadi kesalahan saat mengirim pesan",
       error: error.message,
     });
   }
