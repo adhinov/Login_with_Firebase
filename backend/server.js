@@ -21,6 +21,7 @@ import messageRoutes from "./routes/messageRoutes.js";
 
 const app = express();
 const server = http.createServer(app);
+app.use("/api/messages", messageRoutes);
 
 // ==================================================
 // 🛠 CORS & Middleware harus di paling atas
