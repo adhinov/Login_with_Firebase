@@ -4,7 +4,9 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 
-// ===== Konfigurasi multer =====
+// ========================
+// Konfigurasi Multer
+// ========================
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const uploadPath = "uploads/";
@@ -23,7 +25,9 @@ export const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 }, // maks 10MB
 });
 
-// ===== Controller: Upload Pesan + File =====
+// ========================
+// Controller: Upload Pesan + File
+// ========================
 export const uploadMessageFile = async (req, res) => {
   try {
     console.log("📩 BODY:", req.body);
@@ -43,6 +47,7 @@ export const uploadMessageFile = async (req, res) => {
     let file_url = null;
     let file_type = null;
 
+    // Upload file ke Cloudinary jika ada
     if (req.file) {
       console.log("☁️ Mengupload ke Cloudinary...");
       const result = await cloudinary.uploader.upload(req.file.path, {
@@ -51,9 +56,14 @@ export const uploadMessageFile = async (req, res) => {
       file_url = result.secure_url;
       file_type = req.file.mimetype;
       console.log("✅ Cloudinary success:", file_url);
+
+      // hapus file lokal setelah upload sukses
+      fs.unlinkSync(req.file.path);
     }
 
     console.log("💾 Menyimpan pesan ke database...");
+
+    // ✅ query PostgreSQL aman tanpa koma salah
     const query = `
       INSERT INTO messages (sender_id, receiver_id, message, file_url, file_type, created_at)
       VALUES ($1, $2, $3, $4, $5, NOW())
@@ -62,11 +72,20 @@ export const uploadMessageFile = async (req, res) => {
     const values = [sender_id, receiver_id, message || "", file_url, file_type];
     const result = await pool.query(query, values);
 
+    console.log("✅ Pesan tersimpan:", result.rows[0]);
+
+    // kirim response
     res.status(201).json({
       success: true,
-      message: "Pesan dengan file berhasil dikirim",
+      message: "Pesan berhasil dikirim",
       data: result.rows[0],
     });
+
+    // Optional: kirim ke socket.io
+    if (req.io) {
+      req.io.to(receiver_id).emit("receiveMessage", result.rows[0]);
+    }
+
   } catch (error) {
     console.error("❌ Upload error:", error);
     res.status(500).json({
@@ -77,7 +96,9 @@ export const uploadMessageFile = async (req, res) => {
   }
 };
 
-// Ambil semua pesan antara dua user (chat history)
+// ========================
+// Ambil semua pesan antara dua user
+// ========================
 export const getMessagesBetweenUsers = async (req, res) => {
   try {
     const { senderId, receiverId } = req.params;
@@ -108,5 +129,3 @@ export const getMessagesBetweenUsers = async (req, res) => {
     });
   }
 };
-
-
