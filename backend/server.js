@@ -1,4 +1,6 @@
-// server.js
+// ==================================================
+// 🌍 Environment & Imports
+// ==================================================
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -61,7 +63,7 @@ cloudinary.v2.config({
 });
 
 // ==================================================
-// 🧩 Upload file setup (local + Cloudinary)
+// 🧩 Upload file setup
 // ==================================================
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -103,13 +105,15 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/messages", messageRoutes);
 
 // ==================================================
-// ⚡ Socket.io Setup
+// ⚡ Socket.io Setup (optimized for Render/Vercel)
 // ==================================================
 const io = new Server(server, {
   cors: {
     origin: allowedOrigins,
     methods: ["GET", "POST"],
+    credentials: true,
   },
+  transports: ["websocket"], // ⬅️ Hindari long-polling (fix HTTP2 issues)
 });
 
 const onlineUsers = new Map();
@@ -157,14 +161,13 @@ io.on("connection", (socket) => {
 
       console.log("📩 BODY:", msg);
 
-      // Simpan pesan ke database (PostgreSQL syntax)
       await pool.query(
         `INSERT INTO messages (sender_id, receiver_id, message, created_at, file_url, file_type)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
+         VALUES (?, ?, ?, ?, ?, ?)`,
         [sender_id, receiver_id, message, created_at, file_url || null, file_type || null]
       );
 
-      // Kirim ke receiver dan sender (biar realtime di keduanya)
+      // kirim ke penerima dan pengirim
       const receiverData = onlineUsers.get(receiver_id);
       if (receiverData) {
         io.to(receiverData.socketId).emit("receiveMessage", msg);
@@ -207,6 +210,8 @@ app.get("/", (req, res) => {
   });
 });
 
+// ==================================================
+// 🚀 Start Server
 // ==================================================
 const PORT = process.env.PORT || 8080;
 server.listen(PORT, "0.0.0.0", () => {
