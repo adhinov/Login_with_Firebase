@@ -10,6 +10,7 @@ import multer from "multer";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
+import cloudinary from "cloudinary";
 
 import "./config/db.js";
 import pool from "./config/db.js";
@@ -23,7 +24,7 @@ const app = express();
 const server = http.createServer(app);
 
 // ==================================================
-// 🛠 CORS setup (HARUS paling atas)
+// 🛠 CORS setup
 // ==================================================
 const allowedOrigins = process.env.FRONTEND_URL
   ? process.env.FRONTEND_URL.split(",").map((o) => o.trim())
@@ -44,16 +45,25 @@ app.use(
 );
 
 // ==================================================
-// 📦 Body Parser — skip untuk multipart/form-data
+// 📦 Body Parser — skip multipart/form-data
 // ==================================================
 app.use((req, res, next) => {
-  if (req.is("multipart/form-data")) return next(); // biarkan multer yang handle
+  if (req.is("multipart/form-data")) return next();
   express.json({ limit: "10mb" })(req, res, next);
 });
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // ==================================================
-// 🧩 Upload file setup (backend langsung simpan di uploads/)
+// ☁️ Cloudinary Config
+// ==================================================
+cloudinary.v2.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+// ==================================================
+// 🧩 Upload file setup (local + Cloudinary)
 // ==================================================
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -70,11 +80,14 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
+// ==================================================
+// 📤 Local upload endpoint (optional debugging)
+// ==================================================
 app.post("/api/upload", upload.single("file"), (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
     const fileUrl = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
-    console.log(`📤 File uploaded: ${fileUrl}`);
+    console.log(`📤 File uploaded locally: ${fileUrl}`);
     res.json({ url: fileUrl });
   } catch (err) {
     console.error("❌ Upload error:", err.message);
@@ -84,7 +97,7 @@ app.post("/api/upload", upload.single("file"), (req, res) => {
 app.use("/uploads", express.static(uploadDir));
 
 // ==================================================
-// 📦 Routes — taruh SETELAH middleware
+// 📦 Routes
 // ==================================================
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
@@ -143,11 +156,15 @@ io.on("connection", (socket) => {
         file_type,
       } = msg;
 
+      // 🧠 Simpan ke DB
       await pool.query(
-        "INSERT INTO messages (sender_id, receiver_id, message, created_at, file_url, file_type) VALUES (?, ?, ?, ?, ?, ?)",
+        `INSERT INTO messages 
+         (sender_id, receiver_id, message, created_at, file_url, file_type)
+         VALUES (?, ?, ?, ?, ?, ?)`,
         [sender_id, receiver_id, message, created_at, file_url || null, file_type || null]
       );
 
+      // 📨 Kirim ke receiver (jika online)
       if (!receiver_id) {
         io.emit("receiveMessage", msg);
       } else {
@@ -155,6 +172,8 @@ io.on("connection", (socket) => {
         if (receiverData) io.to(receiverData.socketId).emit("receiveMessage", msg);
         io.to(socket.id).emit("receiveMessage", msg);
       }
+
+      console.log(`💬 Pesan tersimpan dari ${sender_id} → ${receiver_id}`);
     } catch (err) {
       console.error("❌ Error saving message:", err.message);
     }
