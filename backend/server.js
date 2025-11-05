@@ -11,8 +11,6 @@ import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
 import cloudinary from "cloudinary";
-
-import "./config/db.js";
 import pool from "./config/db.js";
 
 import authRoutes from "./routes/authRoutes.js";
@@ -136,6 +134,7 @@ function broadcastOnlineUsers() {
 io.on("connection", (socket) => {
   console.log(`🟢 Socket connected: ${socket.id}`);
 
+  // ============ User Join ============
   socket.on("join", ({ userId, username }) => {
     onlineUsers.set(userId, { socketId: socket.id, username });
     socket.userData = { userId, username };
@@ -144,6 +143,7 @@ io.on("connection", (socket) => {
     broadcastOnlineUsers();
   });
 
+  // ============ Kirim Pesan ============
   socket.on("sendMessage", async (msg) => {
     try {
       const {
@@ -151,27 +151,25 @@ io.on("connection", (socket) => {
         receiver_id,
         message,
         created_at,
-        sender_name,
         file_url,
         file_type,
       } = msg;
 
-      // 🧠 Simpan ke DB
+      console.log("📩 BODY:", msg);
+
+      // Simpan pesan ke database (PostgreSQL syntax)
       await pool.query(
-        `INSERT INTO messages 
-         (sender_id, receiver_id, message, created_at, file_url, file_type)
-         VALUES (?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO messages (sender_id, receiver_id, message, created_at, file_url, file_type)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
         [sender_id, receiver_id, message, created_at, file_url || null, file_type || null]
       );
 
-      // 📨 Kirim ke receiver (jika online)
-      if (!receiver_id) {
-        io.emit("receiveMessage", msg);
-      } else {
-        const receiverData = onlineUsers.get(receiver_id);
-        if (receiverData) io.to(receiverData.socketId).emit("receiveMessage", msg);
-        io.to(socket.id).emit("receiveMessage", msg);
+      // Kirim ke receiver dan sender (biar realtime di keduanya)
+      const receiverData = onlineUsers.get(receiver_id);
+      if (receiverData) {
+        io.to(receiverData.socketId).emit("receiveMessage", msg);
       }
+      io.to(socket.id).emit("receiveMessage", msg);
 
       console.log(`💬 Pesan tersimpan dari ${sender_id} → ${receiver_id}`);
     } catch (err) {
@@ -179,6 +177,7 @@ io.on("connection", (socket) => {
     }
   });
 
+  // ============ Disconnect ============
   socket.on("disconnect", () => {
     let disconnectedUser = null;
     for (let [userId, data] of onlineUsers.entries()) {
