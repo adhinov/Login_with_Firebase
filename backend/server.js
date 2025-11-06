@@ -87,21 +87,22 @@ const io = new Server(server, {
 
 app.set("io", io);
 
+// Simpan user yang online
 const onlineUsers = new Map();
 
 io.on("connection", (socket) => {
   console.log(`🟢 Socket connected: ${socket.id}`);
 
+  // ============ User bergabung ============
   socket.on("join", ({ userId, username }) => {
+    if (!userId) return;
     onlineUsers.set(userId, { socketId: socket.id, username });
-    socket.join(userId);
+    socket.join(String(userId)); // gunakan string agar konsisten
     console.log(`👤 ${username} joined (ID: ${userId})`);
     console.log(`🧑‍🤝‍🧑 Total online: ${onlineUsers.size}`);
   });
 
-  // ====================================
-  // 📩 Kirim pesan antar user (realtime)
-  // ====================================
+  // ============ Kirim Pesan ============
   socket.on("sendMessage", async (msg) => {
     const {
       sender_id,
@@ -112,9 +113,24 @@ io.on("connection", (socket) => {
       file_type,
     } = msg;
 
-    console.log("📩 BODY:", msg);
+    if (!sender_id || !receiver_id) {
+      console.log("❌ sender_id / receiver_id kosong");
+      return;
+    }
+
+    console.log("📩 Pesan diterima di server:", msg);
 
     try {
+      // Pastikan sender & receiver ada di tabel users (hindari foreign key error)
+      const checkUsers = await pool.query(
+        `SELECT id FROM users WHERE id IN ($1, $2)`,
+        [sender_id, receiver_id]
+      );
+      if (checkUsers.rows.length < 2) {
+        console.log("⚠️ Salah satu user tidak ditemukan di database");
+        return;
+      }
+
       const query = `
         INSERT INTO messages (sender_id, receiver_id, message, created_at, file_url, file_type)
         VALUES ($1, $2, $3, $4, $5, $6)
@@ -123,21 +139,21 @@ io.on("connection", (socket) => {
       const values = [
         sender_id,
         receiver_id,
-        message,
-        created_at,
+        message || "",
+        created_at || new Date(),
         file_url || null,
         file_type || null,
       ];
       const result = await pool.query(query, values);
       const savedMessage = result.rows[0];
 
-      // kirim ke penerima (kalau online)
+      // Kirim ke penerima jika online
       const receiverData = onlineUsers.get(receiver_id);
       if (receiverData) {
         io.to(receiverData.socketId).emit("receiveMessage", savedMessage);
       }
 
-      // tampilkan juga ke pengirim (supaya muncul langsung di UI sendiri)
+      // Kirim balik ke pengirim (agar muncul langsung)
       io.to(socket.id).emit("receiveMessage", savedMessage);
 
       console.log(`💬 Pesan tersimpan dari ${sender_id} → ${receiver_id}`);
@@ -146,10 +162,11 @@ io.on("connection", (socket) => {
     }
   });
 
+  // ============ Disconnect ============
   socket.on("disconnect", () => {
     for (const [userId, user] of onlineUsers.entries()) {
       if (user.socketId === socket.id) {
-        console.log(`🔴 ${user.username} disconnected`);
+        console.log(`🔴 ${user.username || "Unknown"} disconnected`);
         onlineUsers.delete(userId);
         break;
       }
