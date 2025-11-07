@@ -17,15 +17,21 @@ export default function ChatList({ onSelect }: ChatListProps) {
   const currentUserId = localStorage.getItem("userId");
 
   useEffect(() => {
-    axios
-      .get("https://login-app-production-7f54.up.railway.app/api/users")
-      .then((res) => {
-        const filtered = res.data.filter(
-          (u: User) => u.id !== currentUserId && u.email !== "admin@example.com"
+    const fetchUsers = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const response = await axios.get(
+          "https://login-app-production-7f54.up.railway.app/api/users/chat-users",
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
         );
-        setUsers(filtered);
-      })
-      .catch((err) => console.error("Gagal ambil users:", err));
+        setUsers(response.data);
+      } catch (err) {
+        console.error("Gagal ambil users:", err);
+      }
+    };
+    fetchUsers();
   }, []);
 
   return (

@@ -6,16 +6,15 @@ import pool from "../config/db.js";
  */
 const toJakartaISO = (date) => {
   if (!date) return null;
-
-  // Pastikan input berupa Date object
   const d = new Date(date);
-
-  // Tambahkan offset 7 jam (UTC+7)
   const jakartaTime = new Date(d.getTime() + 7 * 60 * 60 * 1000);
-
-  return jakartaTime.toISOString(); // tetap format ISO
+  return jakartaTime.toISOString();
 };
 
+/**
+ * 🔹 Endpoint: GET /api/users
+ * 🔒 Hanya admin yang bisa lihat semua user
+ */
 export const getAllUsers = async (req, res) => {
   try {
     const result = await pool.query(
@@ -32,16 +31,42 @@ export const getAllUsers = async (req, res) => {
        ORDER BY u.id ASC`
     );
 
-    // Konversi kolom tanggal ke UTC+7
     const users = result.rows.map((u) => ({
       ...u,
       created_at: toJakartaISO(u.created_at),
       last_login: toJakartaISO(u.last_login),
     }));
 
-    res.json(users); // ⚡ tetap array langsung
+    res.json(users);
   } catch (error) {
     console.error("❌ Error getAllUsers:", error.message);
     res.status(500).json({ message: "Gagal mengambil data users" });
+  }
+};
+
+/**
+ * 🔹 Endpoint: GET /api/users/chat-users
+ * ✅ Untuk semua user login — menampilkan daftar user lain untuk chat
+ */
+export const getChatUsers = async (req, res) => {
+  try {
+    const currentUserId = req.user.id;
+
+    const result = await pool.query(
+      `SELECT 
+         id, 
+         email, 
+         COALESCE(username, '') AS username
+       FROM users
+       WHERE id != ? 
+       AND email != 'admin@example.com'
+       ORDER BY id ASC`,
+      [currentUserId]
+    );
+
+    res.json(result[0] || result.rows || []); // handle mysql2/postgres pool
+  } catch (error) {
+    console.error("❌ Error getChatUsers:", error.message);
+    res.status(500).json({ message: "Gagal mengambil daftar user untuk chat" });
   }
 };
