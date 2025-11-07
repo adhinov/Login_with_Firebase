@@ -58,13 +58,13 @@ export const getChatUsers = async (req, res) => {
          email, 
          COALESCE(username, '') AS username
        FROM users
-       WHERE id != ? 
+       WHERE id != $1
        AND email != 'admin@example.com'
        ORDER BY id ASC`,
       [currentUserId]
     );
 
-    res.json(result[0] || result.rows || []); // handle mysql2/postgres pool
+    res.json(result.rows || []);
   } catch (error) {
     console.error("❌ Error getChatUsers:", error.message);
     res.status(500).json({ message: "Gagal mengambil daftar user untuk chat" });
