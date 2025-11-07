@@ -47,12 +47,12 @@ export default function Chat() {
 
   const sendMessage = () => {
     const sender_id = localStorage.getItem("userId");
-    if (!input || !receiver || !sender_id) return;
+    if (!input.trim() || !receiver || !sender_id) return;
 
     const messageData: Message = {
       sender_id,
       receiver_id: receiver.id,
-      message: input,
+      message: input.trim(),
       created_at: new Date().toISOString(),
     };
 
@@ -62,19 +62,24 @@ export default function Chat() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-100">
-      {/* daftar user */}
-      <ChatList onSelect={setReceiver} />
+    <div className="flex h-screen bg-gray-50 text-gray-900">
+      {/* Sidebar kiri: daftar user */}
+      <div className="w-64 bg-white border-r shadow-sm">
+        <div className="p-4 text-lg font-semibold border-b">Daftar User</div>
+        <ChatList onSelect={setReceiver} selectedUser={receiver} />
+      </div>
 
-      {/* area chat */}
+      {/* Area chat kanan */}
       <div className="flex flex-col flex-1">
         {receiver ? (
           <>
-            <div className="p-3 bg-blue-500 text-white font-semibold">
+            {/* Header chat */}
+            <div className="p-4 bg-blue-600 text-white font-semibold shadow-sm">
               Chat dengan {receiver.email}
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+            {/* Pesan */}
+            <div className="flex-1 overflow-y-auto p-4 bg-gray-100">
               {messages
                 .filter(
                   (m) =>
@@ -86,34 +91,45 @@ export default function Chat() {
                 .map((msg, idx) => (
                   <div
                     key={idx}
-                    className={`p-2 rounded-lg max-w-[70%] ${
+                    className={`flex mb-3 ${
                       msg.sender_id === localStorage.getItem("userId")
-                        ? "bg-blue-500 text-white ml-auto"
-                        : "bg-white text-black"
+                        ? "justify-end"
+                        : "justify-start"
                     }`}
                   >
-                    {msg.message}
-                    <div className="text-xs text-gray-600 mt-1">
-                      {msg.created_at &&
-                        new Date(msg.created_at).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                    <div
+                      className={`max-w-[70%] px-3 py-2 rounded-2xl shadow-sm ${
+                        msg.sender_id === localStorage.getItem("userId")
+                          ? "bg-blue-500 text-white rounded-br-none"
+                          : "bg-white text-gray-800 rounded-bl-none"
+                      }`}
+                    >
+                      <div>{msg.message}</div>
+                      <div className="text-[10px] text-gray-300 text-right mt-1">
+                        {msg.created_at &&
+                          new Date(msg.created_at).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                      </div>
                     </div>
                   </div>
                 ))}
             </div>
 
+            {/* Input pesan */}
             <div className="flex items-center p-3 border-t bg-white">
               <input
-                className="flex-1 p-2 border rounded-md bg-white text-black"
+                type="text"
+                className="flex-1 p-2 border border-gray-300 rounded-xl bg-gray-50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Ketik pesan..."
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && sendMessage()}
               />
               <button
                 onClick={sendMessage}
-                className="ml-2 px-4 py-2 bg-blue-500 text-white rounded-md"
+                className="ml-3 px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition"
               >
                 Kirim
               </button>
