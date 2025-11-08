@@ -1,13 +1,13 @@
 import express from "express";
-import { upload, uploadMessageFile, getMessagesBetweenUsers } from "../controllers/messageController.js";
+import { upload, uploadMessageFile, getMessages } from "../controllers/messageController.js";
 import { verifyToken } from "../middleware/verifyToken.js";
 
 const router = express.Router();
 
-// kirim pesan + file
-router.post("/upload", verifyToken, upload.single("file"), uploadMessageFile);
+// Ambil semua pesan antar user
+router.get("/:sender_id/:receiver_id", verifyToken, getMessages);
 
-// ambil semua pesan antara dua user
-router.get("/:senderId/:receiverId", verifyToken, getMessagesBetweenUsers);
+// Kirim pesan baru (teks atau dengan file)
+router.post("/upload", verifyToken, upload.single("file"), uploadMessageFile);
 
 export default router;

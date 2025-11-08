@@ -26,7 +26,7 @@ export const upload = multer({
 });
 
 // ========================
-// Upload Pesan + File
+// Upload Pesan + File (REST API)
 // ========================
 export const uploadMessageFile = async (req, res) => {
   try {
@@ -68,15 +68,15 @@ export const uploadMessageFile = async (req, res) => {
     const newMessage = result.rows[0];
     console.log("✅ Pesan tersimpan:", newMessage);
 
-    // Kirim ke socket receiver jika ada koneksi aktif
-    if (req.io) {
-      req.io.to(receiver_id).emit("receiveMessage", newMessage);
-    }
-
+    // Respons sederhana ke frontend
     res.status(201).json({
-      success: true,
-      message: "Pesan berhasil dikirim",
-      data: newMessage,
+      id: newMessage.id,
+      sender_id: newMessage.sender_id,
+      receiver_id: newMessage.receiver_id,
+      message: newMessage.message,
+      file_url: newMessage.file_url,
+      file_type: newMessage.file_type,
+      created_at: newMessage.created_at,
     });
   } catch (error) {
     console.error("❌ Upload error:", error);
@@ -89,11 +89,11 @@ export const uploadMessageFile = async (req, res) => {
 };
 
 // ========================
-// Ambil Pesan Antar User
+// Ambil Pesan Antar User (REST API)
 // ========================
-export const getMessagesBetweenUsers = async (req, res) => {
+export const getMessages = async (req, res) => {
   try {
-    const { senderId, receiverId } = req.params;
+    const { sender_id, receiver_id } = req.params;
 
     const query = `
       SELECT *
@@ -104,13 +104,9 @@ export const getMessagesBetweenUsers = async (req, res) => {
         (sender_id = $2 AND receiver_id = $1)
       ORDER BY created_at ASC;
     `;
-    const { rows } = await pool.query(query, [senderId, receiverId]);
+    const { rows } = await pool.query(query, [sender_id, receiver_id]);
 
-    res.status(200).json({
-      success: true,
-      message: "Daftar pesan berhasil diambil",
-      data: rows,
-    });
+    res.status(200).json(rows);
   } catch (error) {
     console.error("❌ Error ambil pesan:", error);
     res.status(500).json({

@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import io from "socket.io-client"; // ✅ versi lama (v2) pakai default import
+import { useEffect, useState } from "react";
+import axios from "axios";
 
 interface Message {
+  id?: number;
   sender_id: string;
   receiver_id: string;
   message: string;
@@ -21,61 +22,64 @@ export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [receiver, setReceiver] = useState<User | null>(null);
-  const socketRef = useRef<any>(null);
+  const [users, setUsers] = useState<User[]>([]);
+  const sender_id = localStorage.getItem("userId");
+  const token = localStorage.getItem("token");
 
+  // Ambil daftar user
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const userId = localStorage.getItem("userId");
-    if (!userId || !token) return;
+    if (!token) return;
+    axios
+      .get("https://login-app-production-7f54.up.railway.app/api/users", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then((res) => {
+        setUsers(res.data);
+      })
+      .catch((err) => console.error("❌ Error get users:", err));
+  }, [token]);
 
-    // ✅ koneksi socket versi v2
-    const socket = io("https://login-app-production-7f54.up.railway.app", {
-      transports: ["websocket"],
-      query: { token, userId },
-      withCredentials: true,
-    } as any);
+  // Ambil pesan antara user aktif dan receiver
+  useEffect(() => {
+    if (!receiver || !sender_id) return;
 
-    socketRef.current = socket;
+    axios
+      .get(
+        `https://login-app-production-7f54.up.railway.app/api/messages/${sender_id}/${receiver.id}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      .then((res) => {
+        setMessages(res.data);
+      })
+      .catch((err) => console.error("❌ Error get messages:", err));
+  }, [receiver, sender_id, token]);
 
-    socket.on("connect", () => {
-      console.log("✅ Socket connected:", socket.id);
-      const username = localStorage.getItem("username") || "User";
-      socket.emit("join", { userId, username });
-    });
-
-    socket.on("connect_error", (err: any) => {
-      console.error("❌ Socket connection error:", err);
-    });
-
-    socket.on("receiveMessage", (data: Message) => {
-      console.log("📥 Pesan diterima:", data);
-      setMessages((prev) => [...prev, data]);
-    });
-
-    socket.on("disconnect", () => {
-      console.log("❌ Socket disconnected");
-    });
-
-    return () => {
-      socket.disconnect();
-    };
-  }, []);
-
-  const sendMessage = () => {
-    const sender_id = localStorage.getItem("userId");
+  // Kirim pesan baru
+  const sendMessage = async () => {
     if (!input.trim() || !receiver || !sender_id) return;
 
-    const messageData: Message = {
+    const newMsg = {
       sender_id,
       receiver_id: receiver.id,
       message: input.trim(),
-      created_at: new Date().toISOString(),
     };
 
-    console.log("📤 Mengirim pesan:", messageData);
-    socketRef.current?.emit("sendMessage", messageData);
-    setMessages((prev) => [...prev, messageData]);
-    setInput("");
+    try {
+      const res = await axios.post(
+        "https://login-app-production-7f54.up.railway.app/api/messages/upload",
+        newMsg,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      setMessages((prev) => [...prev, res.data]);
+      setInput("");
+    } catch (err) {
+      console.error("❌ Error send message:", err);
+    }
   };
 
   return (
@@ -83,7 +87,19 @@ export default function Chat() {
       {/* Sidebar kiri: daftar user */}
       <div className="w-64 bg-white border-r shadow-sm">
         <div className="p-4 text-lg font-semibold border-b">Daftar User</div>
-        <ChatList onSelect={setReceiver} selectedUser={receiver} />
+        <div>
+          {users.map((u) => (
+            <div
+              key={u.id}
+              onClick={() => setReceiver(u)}
+              className={`p-3 cursor-pointer hover:bg-blue-100 ${
+                receiver?.id === u.id ? "bg-blue-50" : ""
+              }`}
+            >
+              {u.email}
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Area chat kanan */}
@@ -97,41 +113,33 @@ export default function Chat() {
 
             {/* Pesan */}
             <div className="flex-1 overflow-y-auto p-4 bg-gray-100">
-              {messages
-                .filter(
-                  (m) =>
-                    (m.sender_id === localStorage.getItem("userId") &&
-                      m.receiver_id === receiver.id) ||
-                    (m.sender_id === receiver.id &&
-                      m.receiver_id === localStorage.getItem("userId"))
-                )
-                .map((msg, idx) => (
+              {messages.map((msg, idx) => (
+                <div
+                  key={idx}
+                  className={`flex mb-3 ${
+                    msg.sender_id === sender_id
+                      ? "justify-end"
+                      : "justify-start"
+                  }`}
+                >
                   <div
-                    key={idx}
-                    className={`flex mb-3 ${
-                      msg.sender_id === localStorage.getItem("userId")
-                        ? "justify-end"
-                        : "justify-start"
+                    className={`max-w-[70%] px-3 py-2 rounded-2xl shadow-sm ${
+                      msg.sender_id === sender_id
+                        ? "bg-blue-500 text-white rounded-br-none"
+                        : "bg-white text-gray-800 rounded-bl-none"
                     }`}
                   >
-                    <div
-                      className={`max-w-[70%] px-3 py-2 rounded-2xl shadow-sm ${
-                        msg.sender_id === localStorage.getItem("userId")
-                          ? "bg-blue-500 text-white rounded-br-none"
-                          : "bg-white text-gray-800 rounded-bl-none"
-                      }`}
-                    >
-                      <div>{msg.message}</div>
-                      <div className="text-[10px] text-gray-300 text-right mt-1">
-                        {msg.created_at &&
-                          new Date(msg.created_at).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                      </div>
+                    <div>{msg.message}</div>
+                    <div className="text-[10px] text-gray-300 text-right mt-1">
+                      {msg.created_at &&
+                        new Date(msg.created_at).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
                     </div>
                   </div>
-                ))}
+                </div>
+              ))}
             </div>
 
             {/* Input pesan */}
@@ -158,36 +166,6 @@ export default function Chat() {
           </div>
         )}
       </div>
-    </div>
-  );
-}
-
-/* Placeholder ChatList agar bisa jalan langsung */
-function ChatList({
-  onSelect,
-  selectedUser,
-}: {
-  onSelect: (user: User) => void;
-  selectedUser: User | null;
-}) {
-  const dummyUsers: User[] = [
-    { id: "1", email: "admin@example.com" },
-    { id: "2", email: "user@example.com" },
-  ];
-
-  return (
-    <div>
-      {dummyUsers.map((u) => (
-        <div
-          key={u.id}
-          onClick={() => onSelect(u)}
-          className={`p-3 cursor-pointer hover:bg-blue-100 ${
-            selectedUser?.id === u.id ? "bg-blue-50" : ""
-          }`}
-        >
-          {u.email}
-        </div>
-      ))}
     </div>
   );
 }
