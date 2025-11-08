@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import io from "socket.io-client"; // ✅ versi lama pakai default import
 import ChatList from "./ChatList";
+
+// ✅ Gunakan kompatibel untuk semua versi socket.io-client
+import ioClient from "socket.io-client";
 
 interface Message {
   sender_id: string;
@@ -22,48 +24,53 @@ export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [receiver, setReceiver] = useState<User | null>(null);
-  const socketRef = useRef<any>(null); // ✅ pakai any supaya lint aman di semua versi
+  const socketRef = useRef<any>(null);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
     const userId = localStorage.getItem("userId");
     if (!userId || !token) return;
 
-    // ✅ koneksi socket
-    socketRef.current = io("https://login-app-production-7f54.up.railway.app", {
+    // ✅ gunakan default import "ioClient" agar aman di semua versi
+    const socket = ioClient("https://login-app-production-7f54.up.railway.app", {
       transports: ["websocket"],
       query: { token, userId },
     });
 
-    socketRef.current.on("connect", () => {
-      console.log("✅ Socket connected:", socketRef.current.id);
+    socketRef.current = socket;
+
+    socket.on("connect", () => {
+      console.log("✅ Socket connected:", socket.id);
       const username = localStorage.getItem("username") || "User";
-      socketRef.current.emit("join", { userId, username });
+      socket.emit("join", { userId, username });
     });
 
-    socketRef.current.on("receiveMessage", (data: Message) => {
+    socket.on("receiveMessage", (data: Message) => {
       console.log("📥 Pesan diterima:", data);
       setMessages((prev) => [...prev, data]);
     });
 
+    socket.on("disconnect", () => {
+      console.log("❌ Socket disconnected");
+    });
+
     return () => {
-      socketRef.current?.disconnect();
+      socket.disconnect();
     };
   }, []);
 
   const sendMessage = () => {
     const sender_id = localStorage.getItem("userId");
-    if (!input || !receiver || !sender_id) return;
+    if (!input.trim() || !receiver || !sender_id) return;
 
     const messageData: Message = {
       sender_id,
       receiver_id: receiver.id,
-      message: input,
+      message: input.trim(),
       created_at: new Date().toISOString(),
     };
 
     console.log("📤 Mengirim pesan:", messageData);
-
     socketRef.current?.emit("sendMessage", messageData);
     setMessages((prev) => [...prev, messageData]);
     setInput("");
