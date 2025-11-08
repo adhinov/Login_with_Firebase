@@ -1,10 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import ChatList from "./ChatList";
-
-// ✅ Gunakan kompatibel untuk semua versi socket.io-client
-import ioClient from "socket.io-client";
+import io from "socket.io-client"; // ✅ versi lama (v2) pakai default import
 
 interface Message {
   sender_id: string;
@@ -31,11 +28,12 @@ export default function Chat() {
     const userId = localStorage.getItem("userId");
     if (!userId || !token) return;
 
-    // ✅ gunakan default import "ioClient" agar aman di semua versi
-    const socket = ioClient("https://login-app-production-7f54.up.railway.app", {
+    // ✅ koneksi socket versi v2
+    const socket = io("https://login-app-production-7f54.up.railway.app", {
       transports: ["websocket"],
       query: { token, userId },
-    });
+      withCredentials: true,
+    } as any);
 
     socketRef.current = socket;
 
@@ -43,6 +41,10 @@ export default function Chat() {
       console.log("✅ Socket connected:", socket.id);
       const username = localStorage.getItem("username") || "User";
       socket.emit("join", { userId, username });
+    });
+
+    socket.on("connect_error", (err: any) => {
+      console.error("❌ Socket connection error:", err);
     });
 
     socket.on("receiveMessage", (data: Message) => {
@@ -156,6 +158,36 @@ export default function Chat() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/* Placeholder ChatList agar bisa jalan langsung */
+function ChatList({
+  onSelect,
+  selectedUser,
+}: {
+  onSelect: (user: User) => void;
+  selectedUser: User | null;
+}) {
+  const dummyUsers: User[] = [
+    { id: "1", email: "admin@example.com" },
+    { id: "2", email: "user@example.com" },
+  ];
+
+  return (
+    <div>
+      {dummyUsers.map((u) => (
+        <div
+          key={u.id}
+          onClick={() => onSelect(u)}
+          className={`p-3 cursor-pointer hover:bg-blue-100 ${
+            selectedUser?.id === u.id ? "bg-blue-50" : ""
+          }`}
+        >
+          {u.email}
+        </div>
+      ))}
     </div>
   );
 }
