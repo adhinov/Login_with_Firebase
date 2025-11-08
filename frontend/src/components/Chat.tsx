@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import io from "socket.io-client";
+import io from "socket.io-client"; // ✅ versi lama pakai default import
 import ChatList from "./ChatList";
 
 interface Message {
@@ -9,6 +9,8 @@ interface Message {
   receiver_id: string;
   message: string;
   created_at?: string;
+  file_url?: string | null;
+  file_type?: string | null;
 }
 
 interface User {
@@ -20,13 +22,14 @@ export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [receiver, setReceiver] = useState<User | null>(null);
-  const socketRef = useRef<any>(null);
+  const socketRef = useRef<any>(null); // ✅ pakai any supaya lint aman di semua versi
 
   useEffect(() => {
     const token = localStorage.getItem("token");
     const userId = localStorage.getItem("userId");
     if (!userId || !token) return;
 
+    // ✅ koneksi socket
     socketRef.current = io("https://login-app-production-7f54.up.railway.app", {
       transports: ["websocket"],
       query: { token, userId },
@@ -34,9 +37,12 @@ export default function Chat() {
 
     socketRef.current.on("connect", () => {
       console.log("✅ Socket connected:", socketRef.current.id);
+      const username = localStorage.getItem("username") || "User";
+      socketRef.current.emit("join", { userId, username });
     });
 
     socketRef.current.on("receiveMessage", (data: Message) => {
+      console.log("📥 Pesan diterima:", data);
       setMessages((prev) => [...prev, data]);
     });
 
@@ -47,14 +53,16 @@ export default function Chat() {
 
   const sendMessage = () => {
     const sender_id = localStorage.getItem("userId");
-    if (!input.trim() || !receiver || !sender_id) return;
+    if (!input || !receiver || !sender_id) return;
 
     const messageData: Message = {
       sender_id,
       receiver_id: receiver.id,
-      message: input.trim(),
+      message: input,
       created_at: new Date().toISOString(),
     };
+
+    console.log("📤 Mengirim pesan:", messageData);
 
     socketRef.current?.emit("sendMessage", messageData);
     setMessages((prev) => [...prev, messageData]);
