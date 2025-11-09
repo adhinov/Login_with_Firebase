@@ -26,28 +26,21 @@ export const upload = multer({
 });
 
 // ========================
-// Upload Pesan + File (REST API)
+// Kirim Pesan + File (Global Chat)
 // ========================
 export const uploadMessageFile = async (req, res) => {
   try {
-    console.log("📩 BODY:", req.body);
-    console.log("📎 FILE:", req.file);
+    const sender_id = req.user?.id;
+    const { message } = req.body;
 
-    const sender_id = req.user?.id || req.body.sender_id;
-    const { receiver_id, message } = req.body;
-
-    if (!sender_id || !receiver_id) {
-      return res.status(400).json({
-        success: false,
-        message: "Sender dan Receiver wajib diisi.",
-      });
+    if (!sender_id) {
+      return res.status(400).json({ success: false, message: "User belum login." });
     }
 
     let file_url = null;
     let file_type = null;
 
     if (req.file) {
-      console.log("☁️ Uploading ke Cloudinary...");
       const result = await cloudinary.uploader.upload(req.file.path, {
         folder: "chat_uploads",
       });
@@ -56,63 +49,37 @@ export const uploadMessageFile = async (req, res) => {
       fs.unlinkSync(req.file.path);
     }
 
-    console.log("💾 Menyimpan pesan ke database...");
     const query = `
-      INSERT INTO messages (sender_id, receiver_id, message, file_url, file_type, created_at)
-      VALUES ($1, $2, $3, $4, $5, NOW())
+      INSERT INTO messages (sender_id, message, file_url, file_type, created_at)
+      VALUES ($1, $2, $3, $4, NOW())
       RETURNING *;
     `;
-    const values = [sender_id, receiver_id, message || "", file_url, file_type];
-    const result = await pool.query(query, values);
+    const values = [sender_id, message || "", file_url, file_type];
+    const { rows } = await pool.query(query, values);
 
-    const newMessage = result.rows[0];
-    console.log("✅ Pesan tersimpan:", newMessage);
-
-    // Respons sederhana ke frontend
-    res.status(201).json({
-      id: newMessage.id,
-      sender_id: newMessage.sender_id,
-      receiver_id: newMessage.receiver_id,
-      message: newMessage.message,
-      file_url: newMessage.file_url,
-      file_type: newMessage.file_type,
-      created_at: newMessage.created_at,
-    });
+    res.status(201).json(rows[0]);
   } catch (error) {
     console.error("❌ Upload error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Terjadi kesalahan saat mengirim pesan",
-      error: error.message,
-    });
+    res.status(500).json({ success: false, message: "Gagal kirim pesan." });
   }
 };
 
 // ========================
-// Ambil Pesan Antar User (REST API)
+// Ambil Semua Pesan (Global Chat)
 // ========================
-export const getMessages = async (req, res) => {
+export const getAllMessages = async (req, res) => {
   try {
-    const { sender_id, receiver_id } = req.params;
-
     const query = `
-      SELECT *
-      FROM messages
-      WHERE 
-        (sender_id = $1 AND receiver_id = $2)
-        OR 
-        (sender_id = $2 AND receiver_id = $1)
-      ORDER BY created_at ASC;
+      SELECT m.*, u.email AS sender_email
+      FROM messages m
+      JOIN users u ON m.sender_id = u.id
+      ORDER BY m.created_at ASC;
     `;
-    const { rows } = await pool.query(query, [sender_id, receiver_id]);
+    const { rows } = await pool.query(query);
 
     res.status(200).json(rows);
   } catch (error) {
     console.error("❌ Error ambil pesan:", error);
-    res.status(500).json({
-      success: false,
-      message: "Gagal mengambil pesan",
-      error: error.message,
-    });
+    res.status(500).json({ success: false, message: "Gagal ambil pesan." });
   }
 };

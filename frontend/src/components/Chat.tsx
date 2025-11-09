@@ -1,170 +1,109 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import axios from "axios";
 
 interface Message {
-  id?: number;
-  sender_id: string;
-  receiver_id: string;
+  id: number;
+  sender_email: string;
   message: string;
-  created_at?: string;
-  file_url?: string | null;
-  file_type?: string | null;
-}
-
-interface User {
-  id: string;
-  email: string;
+  file_url?: string;
+  file_type?: string;
+  created_at: string;
 }
 
 export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [receiver, setReceiver] = useState<User | null>(null);
-  const [users, setUsers] = useState<User[]>([]);
-  const sender_id = localStorage.getItem("userId");
   const token = localStorage.getItem("token");
 
-  // Ambil daftar user
   useEffect(() => {
-    if (!token) return;
-    axios
-      .get("https://login-app-production-7f54.up.railway.app/api/users", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      .then((res) => {
-        setUsers(res.data);
-      })
-      .catch((err) => console.error("❌ Error get users:", err));
-  }, [token]);
+    fetchMessages();
+    const interval = setInterval(fetchMessages, 2000); // auto refresh tiap 2 detik
+    return () => clearInterval(interval);
+  }, []);
 
-  // Ambil pesan antara user aktif dan receiver
-  useEffect(() => {
-    if (!receiver || !sender_id) return;
-
-    axios
-      .get(
-        `https://login-app-production-7f54.up.railway.app/api/messages/${sender_id}/${receiver.id}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      )
-      .then((res) => {
-        setMessages(res.data);
-      })
-      .catch((err) => console.error("❌ Error get messages:", err));
-  }, [receiver, sender_id, token]);
-
-  // Kirim pesan baru
-  const sendMessage = async () => {
-    if (!input.trim() || !receiver || !sender_id) return;
-
-    const newMsg = {
-      sender_id,
-      receiver_id: receiver.id,
-      message: input.trim(),
-    };
-
+  const fetchMessages = async () => {
     try {
-      const res = await axios.post(
-        "https://login-app-production-7f54.up.railway.app/api/messages/upload",
-        newMsg,
+      const res = await axios.get(
+        `${import.meta.env.VITE_API_URL}/api/messages`,
         {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         }
       );
-
-      setMessages((prev) => [...prev, res.data]);
-      setInput("");
+      setMessages(res.data);
     } catch (err) {
-      console.error("❌ Error send message:", err);
+      console.error("Gagal ambil pesan:", err);
+    }
+  };
+
+  const handleSend = async () => {
+    if (!input.trim()) return;
+
+    try {
+      await axios.post(
+        `${import.meta.env.VITE_API_URL}/api/messages/upload`,
+        { message: input },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      setInput("");
+      fetchMessages();
+    } catch (err) {
+      console.error("Gagal kirim pesan:", err);
     }
   };
 
   return (
-    <div className="flex h-screen bg-gray-50 text-gray-900">
-      {/* Sidebar kiri: daftar user */}
-      <div className="w-64 bg-white border-r shadow-sm">
-        <div className="p-4 text-lg font-semibold border-b">Daftar User</div>
-        <div>
-          {users.map((u) => (
+    <div className="flex flex-col items-center justify-center h-screen bg-[#0d1117] text-white">
+      <div className="w-[500px] bg-[#161b22] rounded-xl shadow-lg flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="p-4 bg-[#1f6feb] text-lg font-semibold">💬 Global Chat Room</div>
+
+        {/* Chat Area */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          {messages.map((msg) => (
             <div
-              key={u.id}
-              onClick={() => setReceiver(u)}
-              className={`p-3 cursor-pointer hover:bg-blue-100 ${
-                receiver?.id === u.id ? "bg-blue-50" : ""
+              key={msg.id}
+              className={`p-2 rounded-lg ${
+                msg.sender_email === localStorage.getItem("email")
+                  ? "bg-[#238636] text-right ml-auto max-w-[75%]"
+                  : "bg-[#30363d] text-left mr-auto max-w-[75%]"
               }`}
             >
-              {u.email}
+              <div className="text-xs opacity-70">{msg.sender_email}</div>
+              <div>{msg.message}</div>
+              {msg.file_url && (
+                <a
+                  href={msg.file_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline text-sm text-blue-400"
+                >
+                  📎 File
+                </a>
+              )}
             </div>
           ))}
         </div>
-      </div>
 
-      {/* Area chat kanan */}
-      <div className="flex flex-col flex-1">
-        {receiver ? (
-          <>
-            {/* Header chat */}
-            <div className="p-4 bg-blue-600 text-white font-semibold shadow-sm">
-              Chat dengan {receiver.email}
-            </div>
-
-            {/* Pesan */}
-            <div className="flex-1 overflow-y-auto p-4 bg-gray-100">
-              {messages.map((msg, idx) => (
-                <div
-                  key={idx}
-                  className={`flex mb-3 ${
-                    msg.sender_id === sender_id
-                      ? "justify-end"
-                      : "justify-start"
-                  }`}
-                >
-                  <div
-                    className={`max-w-[70%] px-3 py-2 rounded-2xl shadow-sm ${
-                      msg.sender_id === sender_id
-                        ? "bg-blue-500 text-white rounded-br-none"
-                        : "bg-white text-gray-800 rounded-bl-none"
-                    }`}
-                  >
-                    <div>{msg.message}</div>
-                    <div className="text-[10px] text-gray-300 text-right mt-1">
-                      {msg.created_at &&
-                        new Date(msg.created_at).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Input pesan */}
-            <div className="flex items-center p-3 border-t bg-white">
-              <input
-                type="text"
-                className="flex-1 p-2 border border-gray-300 rounded-xl bg-gray-50 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Ketik pesan..."
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-              />
-              <button
-                onClick={sendMessage}
-                className="ml-3 px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition"
-              >
-                Kirim
-              </button>
-            </div>
-          </>
-        ) : (
-          <div className="flex items-center justify-center flex-1 text-gray-500">
-            Pilih user untuk memulai chat
-          </div>
-        )}
+        {/* Input */}
+        <div className="p-3 bg-[#161b22] flex gap-2">
+          <input
+            type="text"
+            className="flex-1 p-2 rounded-lg bg-[#0d1117] border border-gray-600 focus:outline-none"
+            placeholder="Ketik pesan..."
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+          />
+          <button
+            onClick={handleSend}
+            className="px-4 py-2 bg-[#1f6feb] rounded-lg hover:bg-[#388bfd]"
+          >
+            Kirim
+          </button>
+        </div>
       </div>
     </div>
   );
