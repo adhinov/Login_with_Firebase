@@ -15,9 +15,18 @@ interface Message {
 export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const token = localStorage.getItem("token");
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const userEmail = typeof window !== "undefined" ? localStorage.getItem("email") : null;
+
+  // ✅ pakai process.env.NEXT_PUBLIC_API_URL untuk Next.js
+  const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
   useEffect(() => {
+    if (!API_URL) {
+      console.error("NEXT_PUBLIC_API_URL tidak ditemukan di environment variables!");
+      return;
+    }
+
     fetchMessages();
     const interval = setInterval(fetchMessages, 2000); // auto refresh tiap 2 detik
     return () => clearInterval(interval);
@@ -25,12 +34,9 @@ export default function Chat() {
 
   const fetchMessages = async () => {
     try {
-      const res = await axios.get(
-        `${import.meta.env.VITE_API_URL}/api/messages`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      const res = await axios.get(`${API_URL}/api/messages`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       setMessages(res.data);
     } catch (err) {
       console.error("Gagal ambil pesan:", err);
@@ -39,10 +45,9 @@ export default function Chat() {
 
   const handleSend = async () => {
     if (!input.trim()) return;
-
     try {
       await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/messages/upload`,
+        `${API_URL}/api/messages/upload`,
         { message: input },
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -67,7 +72,7 @@ export default function Chat() {
             <div
               key={msg.id}
               className={`p-2 rounded-lg ${
-                msg.sender_email === localStorage.getItem("email")
+                msg.sender_email === userEmail
                   ? "bg-[#238636] text-right ml-auto max-w-[75%]"
                   : "bg-[#30363d] text-left mr-auto max-w-[75%]"
               }`}
