@@ -2,12 +2,15 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
-import { Settings } from "lucide-react"; // ✅ pakai icon dari lucide-react (lebih rapi)
+import { Settings } from "lucide-react";
 
 interface Message {
   id?: number;
-  sender?: string;
+  sender_id?: number;
+  sender_email?: string;
   message: string;
+  file_url?: string | null;
+  file_type?: string | null;
   created_at?: string;
 }
 
@@ -57,7 +60,8 @@ export default function Chat() {
 
     const payload = {
       message: input.trim(),
-      sender: user?.username || "You",
+      sender_id: user?.id,
+      sender_email: user?.email,
     };
 
     // update optimistis
@@ -65,7 +69,8 @@ export default function Chat() {
       ...prev,
       {
         id: Date.now(),
-        sender: payload.sender,
+        sender_id: payload.sender_id,
+        sender_email: payload.sender_email,
         message: payload.message,
         created_at: new Date().toISOString(),
       },
@@ -120,7 +125,7 @@ export default function Chat() {
               className="p-2 rounded-full hover:bg-gray-700"
               onClick={() => setShowMenu((s) => !s)}
             >
-              <Settings size={20} className="text-gray-200" /> {/* ✅ ikon rapi */}
+              <Settings size={20} className="text-gray-200" />
             </button>
 
             {showMenu && (
@@ -157,19 +162,33 @@ export default function Chat() {
           ) : (
             messages.map((m, i) => {
               const user = JSON.parse(localStorage.getItem("user") || "{}");
-              const mine = m.sender === user?.username;
+
+              // nama pengirim diambil dari sender_email
+              const senderName = m.sender_email || "Unknown";
+
+              // tentukan apakah pesan milik user sendiri
+              const mine =
+                senderName?.toLowerCase() ===
+                (user?.email || "").toLowerCase();
 
               return (
-                <div key={i} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+                <div
+                  key={i}
+                  className={`flex ${mine ? "justify-end" : "justify-start"}`}
+                >
                   <div
                     className={`max-w-[70%] px-4 py-2 rounded-2xl ${
-                      mine ? "bg-blue-600 text-white" : "bg-gray-700 text-gray-100"
+                      mine
+                        ? "bg-blue-600 text-white"
+                        : "bg-gray-700 text-gray-100"
                     }`}
                   >
-                    {/* ✅ tampilkan nama pengirim */}
-                    <div className="text-xs font-semibold mb-1 text-gray-300">
-                      {m.sender || "Unknown"}
-                    </div>
+                    {/* tampilkan nama pengirim */}
+                    {!mine && (
+                      <div className="text-xs font-semibold mb-1 text-gray-300">
+                        {senderName}
+                      </div>
+                    )}
 
                     <div className="text-sm break-words">{m.message}</div>
 
