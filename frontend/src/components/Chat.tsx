@@ -43,6 +43,7 @@ export default function Chat() {
     return () => clearInterval(poll);
   }, [API_URL]);
 
+  // scroll ke bawah otomatis
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -63,7 +64,7 @@ export default function Chat() {
       sender_email: user?.email,
     };
 
-    // tampilkan pesan langsung (optimistic update)
+    // update optimistis
     setMessages((prev) => [
       ...prev,
       {
@@ -85,7 +86,7 @@ export default function Chat() {
     }
   };
 
-  // actions menu
+  // menu actions
   const handleEditProfile = () => {
     setShowMenu(false);
     window.location.href = "/edit-profile";
@@ -102,21 +103,17 @@ export default function Chat() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-950 p-2 sm:p-6">
-      <div className="w-full sm:max-w-3xl h-[90vh] sm:h-[80vh] bg-gray-900 rounded-none sm:rounded-2xl shadow-xl flex flex-col overflow-hidden">
+    <div className="flex items-center justify-center min-h-screen bg-gray-950 p-2 sm:p-4">
+      <div className="w-full max-w-3xl h-[100vh] sm:h-[85vh] bg-gray-900 rounded-none sm:rounded-2xl shadow-xl flex flex-col overflow-hidden">
         {/* header */}
-        <div className="flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4 bg-gray-800 border-b border-gray-700">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 bg-gray-800 border-b border-gray-700">
           <div className="flex items-center gap-3">
-            <div className="bg-blue-500 w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center font-semibold">
+            <div className="bg-blue-500 w-9 h-9 rounded-full flex items-center justify-center font-semibold text-white">
               A
             </div>
             <div>
-              <div className="text-white font-semibold text-sm sm:text-base">
-                Global Chat Room
-              </div>
-              <div className="text-[10px] sm:text-xs text-gray-400">
-                Saling ngobrol antar user
-              </div>
+              <div className="text-white font-semibold text-sm sm:text-base">Global Chat Room</div>
+              <div className="text-xs text-gray-400">Saling ngobrol antar user</div>
             </div>
           </div>
 
@@ -126,7 +123,7 @@ export default function Chat() {
               className="p-2 rounded-full hover:bg-gray-700"
               onClick={() => setShowMenu((s) => !s)}
             >
-              <Settings size={18} className="text-gray-200" />
+              <Settings size={20} className="text-gray-200" />
             </button>
 
             {showMenu && (
@@ -155,9 +152,9 @@ export default function Chat() {
         </div>
 
         {/* chat area */}
-        <div className="flex-1 p-3 sm:p-6 overflow-y-auto space-y-3 sm:space-y-4 bg-gray-800">
+        <div className="flex-1 px-3 sm:px-6 py-3 sm:py-4 overflow-y-auto space-y-3 bg-gray-800">
           {messages.length === 0 ? (
-            <div className="text-gray-400 text-center mt-6 text-sm sm:text-base">
+            <div className="text-gray-400 text-center mt-8 text-sm sm:text-base">
               Belum ada pesan
             </div>
           ) : (
@@ -171,27 +168,21 @@ export default function Chat() {
               return (
                 <div
                   key={i}
-                  className={`flex ${
-                    mine ? "justify-end" : "justify-start"
-                  } break-words`}
+                  className={`flex ${mine ? "justify-end" : "justify-start"}`}
                 >
                   <div
-                    className={`max-w-[85%] sm:max-w-[70%] px-3 sm:px-4 py-2 rounded-2xl ${
+                    className={`max-w-[85%] sm:max-w-[70%] px-3 sm:px-4 py-2 sm:py-2.5 rounded-2xl ${
                       mine
                         ? "bg-blue-600 text-white"
                         : "bg-gray-700 text-gray-100"
                     }`}
                   >
                     {!mine && (
-                      <div className="text-[10px] sm:text-xs font-semibold mb-1 text-gray-300 truncate">
+                      <div className="text-[11px] sm:text-xs font-semibold mb-1 text-gray-300 break-all">
                         {senderName}
                       </div>
                     )}
-
-                    <div className="text-sm sm:text-base break-words leading-snug sm:leading-normal">
-                      {m.message}
-                    </div>
-
+                    <div className="text-sm sm:text-base break-words">{m.message}</div>
                     {m.created_at && (
                       <div className="text-[9px] sm:text-[10px] text-gray-300 mt-1 text-right">
                         {new Date(m.created_at).toLocaleTimeString([], {
@@ -208,18 +199,18 @@ export default function Chat() {
           <div ref={chatEndRef} />
         </div>
 
-        {/* input area */}
+        {/* input */}
         <div className="px-3 sm:px-6 py-3 bg-gray-800 flex items-center gap-2 sm:gap-3 border-t border-gray-700">
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && sendMessage()}
             placeholder="Ketik pesan..."
-            className="flex-1 rounded-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-700 text-white placeholder-gray-400 focus:outline-none text-sm sm:text-base"
+            className="flex-1 rounded-full px-4 py-2.5 bg-gray-700 text-white placeholder-gray-400 focus:outline-none text-sm sm:text-base"
           />
           <button
             onClick={sendMessage}
-            className="px-4 py-2 sm:px-5 sm:py-2.5 rounded-full bg-blue-600 hover:bg-blue-700 text-sm sm:text-base"
+            className="px-4 py-2 rounded-full bg-blue-600 hover:bg-blue-700 text-sm sm:text-base"
           >
             Kirim
           </button>
