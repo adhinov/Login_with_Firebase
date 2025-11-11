@@ -22,7 +22,7 @@ export default function Chat() {
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
-  // ambil pesan awal dan polling
+  // ambil pesan awal + polling
   useEffect(() => {
     if (!API_URL) return;
 
@@ -43,7 +43,7 @@ export default function Chat() {
     return () => clearInterval(poll);
   }, [API_URL]);
 
-  // scroll ke bawah otomatis
+  // scroll otomatis ke bawah
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -105,15 +105,19 @@ export default function Chat() {
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-950 p-2 sm:p-4">
       <div className="w-full max-w-3xl h-[100vh] sm:h-[85vh] bg-gray-900 rounded-none sm:rounded-2xl shadow-xl flex flex-col overflow-hidden">
-        {/* header */}
-        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 bg-gray-800 border-b border-gray-700">
+        {/* HEADER FIXED */}
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 bg-gray-800 border-b border-gray-700 sticky top-0 z-10">
           <div className="flex items-center gap-3">
             <div className="bg-blue-500 w-9 h-9 rounded-full flex items-center justify-center font-semibold text-white">
               A
             </div>
             <div>
-              <div className="text-white font-semibold text-sm sm:text-base">Global Chat Room</div>
-              <div className="text-xs text-gray-400">Saling ngobrol antar user</div>
+              <div className="text-white font-semibold text-sm sm:text-base">
+                Global Chat Room
+              </div>
+              <div className="text-xs text-gray-400">
+                Saling ngobrol antar user
+              </div>
             </div>
           </div>
 
@@ -151,8 +155,8 @@ export default function Chat() {
           </div>
         </div>
 
-        {/* chat area */}
-        <div className="flex-1 px-3 sm:px-6 py-3 sm:py-4 overflow-y-auto space-y-3 bg-gray-800">
+        {/* CHAT AREA SCROLLABLE */}
+        <div className="flex-1 overflow-y-auto px-3 sm:px-6 py-3 sm:py-4 space-y-3 bg-gray-800">
           {messages.length === 0 ? (
             <div className="text-gray-400 text-center mt-8 text-sm sm:text-base">
               Belum ada pesan
@@ -173,8 +177,8 @@ export default function Chat() {
                   <div
                     className={`max-w-[85%] sm:max-w-[70%] px-3 sm:px-4 py-2 sm:py-2.5 rounded-2xl ${
                       mine
-                        ? "bg-blue-600 text-white"
-                        : "bg-gray-700 text-gray-100"
+                        ? "bg-blue-600 text-white rounded-br-none"
+                        : "bg-gray-700 text-gray-100 rounded-bl-none"
                     }`}
                   >
                     {!mine && (
@@ -182,7 +186,9 @@ export default function Chat() {
                         {senderName}
                       </div>
                     )}
-                    <div className="text-sm sm:text-base break-words">{m.message}</div>
+                    <div className="text-sm sm:text-base break-words">
+                      {m.message}
+                    </div>
                     {m.created_at && (
                       <div className="text-[9px] sm:text-[10px] text-gray-300 mt-1 text-right">
                         {new Date(m.created_at).toLocaleTimeString([], {
@@ -199,7 +205,7 @@ export default function Chat() {
           <div ref={chatEndRef} />
         </div>
 
-        {/* input */}
+        {/* INPUT PESAN */}
         <div className="px-3 sm:px-6 py-3 bg-gray-800 flex items-center gap-2 sm:gap-3 border-t border-gray-700">
           <input
             value={input}
