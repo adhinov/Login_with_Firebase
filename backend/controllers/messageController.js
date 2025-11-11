@@ -22,7 +22,7 @@ const storage = multer.diskStorage({
 
 export const upload = multer({
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 },
+  limits: { fileSize: 10 * 1024 * 1024 }, // maksimal 10MB
 });
 
 // ========================
@@ -34,19 +34,22 @@ export const uploadMessageFile = async (req, res) => {
     const { message } = req.body;
 
     if (!sender_id) {
-      return res.status(400).json({ success: false, message: "User belum login." });
+      return res
+        .status(400)
+        .json({ success: false, message: "User belum login." });
     }
 
     let file_url = null;
     let file_type = null;
 
+    // upload ke Cloudinary jika ada file
     if (req.file) {
       const result = await cloudinary.uploader.upload(req.file.path, {
         folder: "chat_uploads",
       });
       file_url = result.secure_url;
       file_type = req.file.mimetype;
-      fs.unlinkSync(req.file.path);
+      fs.unlinkSync(req.file.path); // hapus file lokal
     }
 
     const query = `
@@ -57,6 +60,7 @@ export const uploadMessageFile = async (req, res) => {
     const values = [sender_id, message || "", file_url, file_type];
     const { rows } = await pool.query(query, values);
 
+    // kirim balik pesan baru
     res.status(201).json(rows[0]);
   } catch (error) {
     console.error("❌ Upload error:", error);
@@ -70,16 +74,27 @@ export const uploadMessageFile = async (req, res) => {
 export const getAllMessages = async (req, res) => {
   try {
     const query = `
-      SELECT m.*, u.email AS sender_email
+      SELECT 
+        m.id,
+        m.sender_id,
+        m.message,
+        m.file_url,
+        m.file_type,
+        m.created_at,
+        u.username AS sender_name,
+        u.email AS sender_email
       FROM messages m
-      JOIN users u ON m.sender_id = u.id
+      LEFT JOIN users u ON m.sender_id = u.id
       ORDER BY m.created_at ASC;
     `;
+
     const { rows } = await pool.query(query);
 
     res.status(200).json(rows);
   } catch (error) {
     console.error("❌ Error ambil pesan:", error);
-    res.status(500).json({ success: false, message: "Gagal ambil pesan." });
+    res
+      .status(500)
+      .json({ success: false, message: "Gagal ambil pesan dari server." });
   }
 };
