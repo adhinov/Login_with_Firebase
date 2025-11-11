@@ -32,7 +32,11 @@ export default function Chat() {
         const res = await axios.get(`${API_URL}/api/messages`, {
           headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         });
-        setMessages(Array.isArray(res.data) ? res.data : res.data?.data ?? []);
+
+        // Pastikan format respons benar (array of messages)
+        const data =
+          Array.isArray(res.data) ? res.data : res.data?.data ?? [];
+        setMessages(data);
       } catch (err) {
         console.error("Gagal ambil pesan:", err);
       }
@@ -64,7 +68,7 @@ export default function Chat() {
       sender_email: user?.email,
     };
 
-    // update optimistis
+    // tampilkan langsung di UI sebelum terkirim ke server
     setMessages((prev) => [
       ...prev,
       {
@@ -103,10 +107,10 @@ export default function Chat() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-950 p-2 sm:p-4">
-      <div className="w-full max-w-3xl h-[100vh] sm:h-[85vh] bg-gray-900 rounded-none sm:rounded-2xl shadow-xl flex flex-col overflow-hidden">
-        {/* HEADER FIXED */}
-        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 bg-gray-800 border-b border-gray-700 sticky top-0 z-10">
+    <div className="flex flex-col h-screen bg-gray-950 text-white">
+      {/* HEADER FIXED */}
+      <header className="sticky top-0 z-20 bg-gray-800 border-b border-gray-700 px-4 sm:px-6 py-3 sm:py-4">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="bg-blue-500 w-9 h-9 rounded-full flex items-center justify-center font-semibold text-white">
               A
@@ -131,7 +135,7 @@ export default function Chat() {
             </button>
 
             {showMenu && (
-              <div className="absolute right-0 mt-2 w-40 sm:w-44 bg-gray-800 border border-gray-700 rounded-md shadow-lg z-20">
+              <div className="absolute right-0 mt-2 w-40 sm:w-44 bg-gray-800 border border-gray-700 rounded-md shadow-lg z-30">
                 <button
                   onClick={handleEditProfile}
                   className="w-full text-left px-4 py-2 hover:bg-gray-700 text-sm"
@@ -154,74 +158,74 @@ export default function Chat() {
             )}
           </div>
         </div>
+      </header>
 
-        {/* CHAT AREA SCROLLABLE */}
-        <div className="flex-1 overflow-y-auto px-3 sm:px-6 py-3 sm:py-4 space-y-3 bg-gray-800">
-          {messages.length === 0 ? (
-            <div className="text-gray-400 text-center mt-8 text-sm sm:text-base">
-              Belum ada pesan
-            </div>
-          ) : (
-            messages.map((m, i) => {
-              const user = JSON.parse(localStorage.getItem("user") || "{}");
-              const senderName = m.sender_email || "Unknown";
-              const mine =
-                senderName?.toLowerCase() ===
-                (user?.email || "").toLowerCase();
+      {/* CHAT AREA (scrollable only here) */}
+      <main className="flex-1 overflow-y-auto px-3 sm:px-6 py-3 sm:py-4 space-y-3 bg-gray-800">
+        {messages.length === 0 ? (
+          <div className="text-gray-400 text-center mt-8 text-sm sm:text-base">
+            Belum ada pesan
+          </div>
+        ) : (
+          messages.map((m, i) => {
+            const user = JSON.parse(localStorage.getItem("user") || "{}");
+            const senderName = m.sender_email || "Unknown";
+            const mine =
+              senderName?.toLowerCase() ===
+              (user?.email || "").toLowerCase();
 
-              return (
+            return (
+              <div
+                key={i}
+                className={`flex ${mine ? "justify-end" : "justify-start"}`}
+              >
                 <div
-                  key={i}
-                  className={`flex ${mine ? "justify-end" : "justify-start"}`}
+                  className={`max-w-[85%] sm:max-w-[70%] px-3 sm:px-4 py-2 sm:py-2.5 rounded-2xl ${
+                    mine
+                      ? "bg-blue-600 text-white rounded-br-none"
+                      : "bg-gray-700 text-gray-100 rounded-bl-none"
+                  }`}
                 >
-                  <div
-                    className={`max-w-[85%] sm:max-w-[70%] px-3 sm:px-4 py-2 sm:py-2.5 rounded-2xl ${
-                      mine
-                        ? "bg-blue-600 text-white rounded-br-none"
-                        : "bg-gray-700 text-gray-100 rounded-bl-none"
-                    }`}
-                  >
-                    {!mine && (
-                      <div className="text-[11px] sm:text-xs font-semibold mb-1 text-gray-300 break-all">
-                        {senderName}
-                      </div>
-                    )}
-                    <div className="text-sm sm:text-base break-words">
-                      {m.message}
+                  {!mine && (
+                    <div className="text-[11px] sm:text-xs font-semibold mb-1 text-gray-300 break-all">
+                      {senderName}
                     </div>
-                    {m.created_at && (
-                      <div className="text-[9px] sm:text-[10px] text-gray-300 mt-1 text-right">
-                        {new Date(m.created_at).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </div>
-                    )}
+                  )}
+                  <div className="text-sm sm:text-base break-words">
+                    {m.message}
                   </div>
+                  {m.created_at && (
+                    <div className="text-[9px] sm:text-[10px] text-gray-300 mt-1 text-right">
+                      {new Date(m.created_at).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </div>
+                  )}
                 </div>
-              );
-            })
-          )}
-          <div ref={chatEndRef} />
-        </div>
+              </div>
+            );
+          })
+        )}
+        <div ref={chatEndRef} />
+      </main>
 
-        {/* INPUT PESAN */}
-        <div className="px-3 sm:px-6 py-3 bg-gray-800 flex items-center gap-2 sm:gap-3 border-t border-gray-700">
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-            placeholder="Ketik pesan..."
-            className="flex-1 rounded-full px-4 py-2.5 bg-gray-700 text-white placeholder-gray-400 focus:outline-none text-sm sm:text-base"
-          />
-          <button
-            onClick={sendMessage}
-            className="px-4 py-2 rounded-full bg-blue-600 hover:bg-blue-700 text-sm sm:text-base"
-          >
-            Kirim
-          </button>
-        </div>
-      </div>
+      {/* INPUT PESAN */}
+      <footer className="px-3 sm:px-6 py-3 bg-gray-800 flex items-center gap-2 sm:gap-3 border-t border-gray-700">
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+          placeholder="Ketik pesan..."
+          className="flex-1 rounded-full px-4 py-2.5 bg-gray-700 text-white placeholder-gray-400 focus:outline-none text-sm sm:text-base"
+        />
+        <button
+          onClick={sendMessage}
+          className="px-4 py-2 rounded-full bg-blue-600 hover:bg-blue-700 text-sm sm:text-base"
+        >
+          Kirim
+        </button>
+      </footer>
     </div>
   );
 }
