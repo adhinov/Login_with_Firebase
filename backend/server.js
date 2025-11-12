@@ -4,8 +4,11 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import pool from "./config/db.js"; // tetap gunakan pool PostgreSQL kamu
+import authRoutes from "./routes/authRoutes.js";
 
 dotenv.config();
+
+app.use("/api/auth", authRoutes);
 
 const app = express();
 const server = http.createServer(app);
