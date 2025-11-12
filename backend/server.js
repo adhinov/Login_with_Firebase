@@ -3,17 +3,20 @@ import { Server } from "socket.io";
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import pool from "./config/db.js"; // tetap gunakan pool PostgreSQL kamu
+import pool from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 
-app.use("/api/auth", authRoutes);
-
+// 1. Panggil dotenv.config() paling atas agar variabel .env siap
 dotenv.config();
 
+// 2. Buat aplikasi Express 'app' SEKARANG
 const app = express();
+
+// 3. Buat server HTTP dari 'app' (dibutuhkan oleh Socket.io)
 const server = http.createServer(app);
 
-// --- CORS SETUP ---
+// --- PENGATURAN CORS ---
+// (Sekarang aman karena 'app' sudah ada)
 const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:5173",
@@ -30,13 +33,16 @@ app.use(
   })
 );
 
+// 4. Terapkan middleware lain (seperti parser JSON)
 app.use(express.json());
 
-// --- Tambahkan route Express kamu di sini ---
-// app.use("/api/auth", authRoutes);
-// app.use("/api/messages", messageRoutes);
+// 5. Daftarkan Routes Anda SEKARANG (setelah app dan middleware siap)
+// Ini adalah baris yang menyebabkan error, sekarang di posisi yang benar.
+app.use("/api/auth", authRoutes);
+// app.use("/api/messages", messageRoutes); // Jika Anda punya ini, aktifkan di sini
 
-// --- SOCKET.IO SETUP ---
+// --- PENGATURAN SOCKET.IO ---
+// (Sekarang aman karena 'server' dan 'allowedOrigins' sudah ada)
 const io = new Server(server, {
   cors: {
     origin: allowedOrigins,
@@ -105,7 +111,7 @@ io.on("connection", (socket) => {
   });
 });
 
-// --- START SERVER ---
+// --- MULAI SERVER ---
 const PORT = process.env.PORT || 8080;
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
