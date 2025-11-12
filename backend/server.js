@@ -5,6 +5,8 @@ import cors from "cors";
 import dotenv from "dotenv";
 import pool from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
+// --- PERBAIKAN 1: Tambahkan import untuk messageRoutes ---
+import messageRoutes from "./routes/messageRoutes.js"; // Asumsi nama filenya 'messageRoutes.js'
 
 // 1. Panggil dotenv.config() paling atas agar variabel .env siap
 dotenv.config();
@@ -16,7 +18,6 @@ const app = express();
 const server = http.createServer(app);
 
 // --- PENGATURAN CORS ---
-// (Sekarang aman karena 'app' sudah ada)
 const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:5173",
@@ -36,20 +37,19 @@ app.use(
 // 4. Terapkan middleware lain (seperti parser JSON)
 app.use(express.json());
 
-// 5. Daftarkan Routes Anda SEKARANG (setelah app dan middleware siap)
-// Ini adalah baris yang menyebabkan error, sekarang di posisi yang benar.
+// 5. Daftarkan Routes Anda
 app.use("/api/auth", authRoutes);
-// app.use("/api/messages", messageRoutes); // Jika Anda punya ini, aktifkan di sini
+// --- PERBAIKAN 2: Aktifkan (uncomment) baris ini ---
+app.use("/api/messages", messageRoutes); // Ini akan memperbaiki error 404
 
 // --- PENGATURAN SOCKET.IO ---
-// (Sekarang aman karena 'server' dan 'allowedOrigins' sudah ada)
 const io = new Server(server, {
   cors: {
     origin: allowedOrigins,
     methods: ["GET", "POST"],
     credentials: true,
   },
-  transports: ["websocket", "polling"], // fallback untuk browser tertentu
+  transports: ["websocket", "polling"],
 });
 
 console.log("⚙️ Socket.io server initialized");
