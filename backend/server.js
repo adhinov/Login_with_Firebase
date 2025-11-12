@@ -9,16 +9,23 @@ dotenv.config();
 const app = express();
 app.use(express.json());
 
-// --- Konfigurasi CORS ---
+// --- ✅ Konfigurasi CORS ---
 const allowedOrigins = [
-  "https://login-app-lovat-one.vercel.app", // frontend kamu di Vercel
-  "http://localhost:5173", // untuk testing lokal
+  "http://localhost:5173", // local dev
+  "https://login-with-firebase-sandy.vercel.app", // frontend Vercel kamu sekarang
 ];
 
 app.use(
   cors({
-    origin: allowedOrigins,
-    methods: ["GET", "POST"],
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        console.warn(`❌ Blocked by CORS: ${origin}`);
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
   })
 );
@@ -65,7 +72,7 @@ io.on("connection", (socket) => {
     console.warn("🔴 Socket disconnected:", socket.id, reason);
   });
 
-  // Log ping/pong untuk debug stabilitas koneksi
+  // Debug stabilitas ping/pong
   socket.conn.on("packet", (packet) => {
     if (packet.type === "ping") console.log("📡 Ping from", socket.id);
   });
@@ -76,9 +83,9 @@ io.on("connection", (socket) => {
 
 // --- Root route ---
 app.get("/", (req, res) => {
-  res.send("🚀 Chat backend is running fine!");
+  res.send("🚀 Chat backend is running fine with CORS fixed!");
 });
 
 // --- Jalankan server ---
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+server.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
