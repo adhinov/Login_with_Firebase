@@ -1,34 +1,23 @@
-// ==================================================
-// 🌍 Imports & Setup
-// ==================================================
-import dotenv from "dotenv";
-dotenv.config();
-
-import express from "express";
 import http from "http";
 import { Server } from "socket.io";
+import express from "express";
 import cors from "cors";
-import multer from "multer";
-import path from "path";
-import { fileURLToPath } from "url";
-import fs from "fs";
-import cloudinary from "cloudinary";
-import pool from "./config/db.js";
+import dotenv from "dotenv";
+import pool from "./config/db.js"; // tetap gunakan pool PostgreSQL kamu
 
-import authRoutes from "./routes/authRoutes.js";
-import userRoutes from "./routes/userRoutes.js";
-import adminRoutes from "./routes/adminRoutes.js";
-import messageRoutes from "./routes/messageRoutes.js";
+dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
 
-// ==================================================
-// 🛠️ CORS
-// ==================================================
-const allowedOrigins = process.env.FRONTEND_URL
-  ? process.env.FRONTEND_URL.split(",").map((o) => o.trim())
-  : ["https://login-with-firebase-sandy.vercel.app", "http://localhost:5173"];
+// --- CORS SETUP ---
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://localhost:5173",
+  ...(process.env.FRONTEND_URL
+    ? process.env.FRONTEND_URL.split(",").map((s) => s.trim())
+    : []),
+];
 
 app.use(
   cors({
@@ -38,157 +27,83 @@ app.use(
   })
 );
 
-// ==================================================
-// 📦 Body Parser
-// ==================================================
-app.use((req, res, next) => {
-  if (req.is("multipart/form-data")) return next();
-  express.json({ limit: "10mb" })(req, res, next);
-});
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+app.use(express.json());
 
-// ==================================================
-// ☁️ Cloudinary
-// ==================================================
-cloudinary.v2.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
+// --- Tambahkan route Express kamu di sini ---
+// app.use("/api/auth", authRoutes);
+// app.use("/api/messages", messageRoutes);
 
-// ==================================================
-// 📂 Uploads
-// ==================================================
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const uploadDir = path.join(__dirname, "uploads");
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
-app.use("/uploads", express.static(uploadDir));
-
-// ==================================================
-// 📦 Routes
-// ==================================================
-app.use("/api/auth", authRoutes);
-app.use("/api/users", userRoutes);
-app.use("/api/admin", adminRoutes);
-app.use("/api/messages", messageRoutes);
-
-// ==================================================
-// ⚡ Socket.io
-// ==================================================
+// --- SOCKET.IO SETUP ---
 const io = new Server(server, {
   cors: {
     origin: allowedOrigins,
     methods: ["GET", "POST"],
     credentials: true,
   },
-  transports: ["websocket"],
+  transports: ["websocket", "polling"], // fallback untuk browser tertentu
 });
 
-app.set("io", io);
+console.log("⚙️ Socket.io server initialized");
 
-// Simpan user yang online
 const onlineUsers = new Map();
 
 io.on("connection", (socket) => {
-  console.log(`🟢 Socket connected: ${socket.id}`);
+  console.log("🟢 Socket connected:", socket.id);
 
-  // ============ User bergabung ============
+  // User bergabung ke chat
   socket.on("join", ({ userId, username }) => {
     if (!userId) return;
-    onlineUsers.set(userId, { socketId: socket.id, username });
-    socket.join(String(userId)); // gunakan string agar konsisten
-    console.log(`👤 ${username} joined (ID: ${userId})`);
-    console.log(`🧑‍🤝‍🧑 Total online: ${onlineUsers.size}`);
+    onlineUsers.set(String(userId), { socketId: socket.id, username });
+    console.log(`👤 ${username || userId} joined (total: ${onlineUsers.size})`);
+    io.emit("onlineUsers", onlineUsers.size);
   });
 
-  // ============ Kirim Pesan ============
+  // Kirim pesan (dan simpan ke DB)
   socket.on("sendMessage", async (msg) => {
-    const {
-      sender_id,
-      receiver_id,
-      message,
-      created_at,
-      file_url,
-      file_type,
-    } = msg;
-
-    if (!sender_id || !receiver_id) {
-      console.log("❌ sender_id / receiver_id kosong");
-      return;
-    }
-
-    console.log("📩 Pesan diterima di server:", msg);
-
     try {
-      // Pastikan sender & receiver ada di tabel users (hindari foreign key error)
-      const checkUsers = await pool.query(
-        `SELECT id FROM users WHERE id IN ($1, $2)`,
-        [sender_id, receiver_id]
-      );
-      if (checkUsers.rows.length < 2) {
-        console.log("⚠️ Salah satu user tidak ditemukan di database");
-        return;
-      }
+      const sender_id = msg.sender_id ?? null;
+      const message = msg.message ?? "";
+      const created_at = msg.created_at ?? new Date().toISOString();
+      const file_url = msg.file_url ?? null;
+      const file_type = msg.file_type ?? null;
 
-      const query = `
-        INSERT INTO messages (sender_id, receiver_id, message, created_at, file_url, file_type)
-        VALUES ($1, $2, $3, $4, $5, $6)
-        RETURNING *;
+      const insertQuery = `
+        INSERT INTO messages (sender_id, message, file_url, file_type, created_at)
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING id, sender_id, message, file_url, file_type, created_at
       `;
-      const values = [
-        sender_id,
-        receiver_id,
-        message || "",
-        created_at || new Date(),
-        file_url || null,
-        file_type || null,
-      ];
-      const result = await pool.query(query, values);
-      const savedMessage = result.rows[0];
+      const values = [sender_id, message, file_url, file_type, created_at];
+      const res = await pool.query(insertQuery, values);
+      const saved = res.rows[0];
 
-      // Kirim ke penerima jika online
-      const receiverData = onlineUsers.get(receiver_id);
-      if (receiverData) {
-        io.to(receiverData.socketId).emit("receiveMessage", savedMessage);
-      }
+      const payload = {
+        ...saved,
+        sender_name: msg.sender_name || null,
+        sender_email: msg.sender_email || null,
+      };
 
-      // Kirim balik ke pengirim (agar muncul langsung)
-      io.to(socket.id).emit("receiveMessage", savedMessage);
-
-      console.log(`💬 Pesan tersimpan dari ${sender_id} → ${receiver_id}`);
+      io.emit("receiveMessage", payload);
+      console.log("💬 Message broadcasted:", payload.message);
     } catch (err) {
-      console.error("❌ Error saving message:", err.message);
+      console.error("❌ sendMessage error:", err.message || err);
     }
   });
 
-  // ============ Disconnect ============
+  // User keluar / tab ditutup
   socket.on("disconnect", () => {
-    for (const [userId, user] of onlineUsers.entries()) {
-      if (user.socketId === socket.id) {
-        console.log(`🔴 ${user.username || "Unknown"} disconnected`);
+    for (const [userId, info] of onlineUsers.entries()) {
+      if (info.socketId === socket.id) {
+        console.log(`🔴 ${info.username || userId} disconnected`);
         onlineUsers.delete(userId);
         break;
       }
     }
+    io.emit("onlineUsers", onlineUsers.size);
   });
 });
 
-// ==================================================
-// 🧭 Default route
-// ==================================================
-app.get("/", (req, res) => {
-  res.json({
-    status: "✅ OK",
-    message: "Backend aktif dengan Socket.io 🚀",
-  });
-});
-
-// ==================================================
-// 🚀 Start Server
-// ==================================================
+// --- START SERVER ---
 const PORT = process.env.PORT || 8080;
-server.listen(PORT, "0.0.0.0", () => {
+server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
-  console.log("✅ Socket.io chat server aktif 🎯");
 });
