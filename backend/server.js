@@ -4,45 +4,49 @@ import { Server } from "socket.io";
 import cors from "cors";
 import dotenv from "dotenv";
 
+// ✅ Import routes
+import authRoutes from "./routes/authRoutes.js"; // pastikan path-nya benar
+import messageRoutes from "./routes/messageRoutes.js"; // kalau kamu pakai fitur chat upload
+
 dotenv.config();
 
 const app = express();
 app.use(express.json());
 
-// --- ✅ Konfigurasi CORS ---
+// --- Konfigurasi CORS ---
 const allowedOrigins = [
-  "http://localhost:5173", // local dev
-  "https://login-with-firebase-sandy.vercel.app", // frontend Vercel kamu sekarang
+  "http://localhost:5173",
+  "https://login-with-firebase-sandy.vercel.app", // frontend vercel kamu
 ];
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        console.warn(`❌ Blocked by CORS: ${origin}`);
-        callback(new Error("Not allowed by CORS"));
-      }
+      if (!origin || allowedOrigins.includes(origin)) callback(null, true);
+      else callback(new Error("Not allowed by CORS"));
     },
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
   })
 );
 
-// --- Setup HTTP Server ---
-const server = http.createServer(app);
+// --- Gunakan routes ---
+app.use("/api/auth", authRoutes);
+app.use("/api/messages", messageRoutes);
+
+// --- Root route ---
+app.get("/", (req, res) => {
+  res.send("🚀 Chat backend + Auth is running fine!");
+});
 
 // --- Setup Socket.IO ---
+const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
     origin: allowedOrigins,
     methods: ["GET", "POST"],
     credentials: true,
   },
-  transports: ["polling", "websocket"], // fallback otomatis
-  pingTimeout: 60000,
-  pingInterval: 25000,
 });
 
 let onlineUsers = 0;
@@ -53,7 +57,7 @@ io.on("connection", (socket) => {
   io.emit("onlineUsers", onlineUsers);
 
   socket.on("join", (user) => {
-    console.log(`👋 ${user.username} joined the chat`);
+    console.log(`👋 ${user.username} joined`);
     socket.broadcast.emit("receiveMessage", {
       sender: "System",
       message: `${user.username} joined the chat`,
@@ -61,31 +65,14 @@ io.on("connection", (socket) => {
     });
   });
 
-  socket.on("sendMessage", (msg) => {
-    console.log("💬 Message received:", msg);
-    io.emit("receiveMessage", msg);
-  });
+  socket.on("sendMessage", (msg) => io.emit("receiveMessage", msg));
 
-  socket.on("disconnect", (reason) => {
+  socket.on("disconnect", () => {
     onlineUsers--;
     io.emit("onlineUsers", onlineUsers);
-    console.warn("🔴 Socket disconnected:", socket.id, reason);
   });
-
-  // Debug stabilitas ping/pong
-  socket.conn.on("packet", (packet) => {
-    if (packet.type === "ping") console.log("📡 Ping from", socket.id);
-  });
-  socket.conn.on("packetCreate", (packet) => {
-    if (packet.type === "pong") console.log("📡 Pong to", socket.id);
-  });
-});
-
-// --- Root route ---
-app.get("/", (req, res) => {
-  res.send("🚀 Chat backend is running fine with CORS fixed!");
 });
 
 // --- Jalankan server ---
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 8080;
 server.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
