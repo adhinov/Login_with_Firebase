@@ -1,29 +1,18 @@
+import express from "express";
 import http from "http";
 import { Server } from "socket.io";
-import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import pool from "./config/db.js";
-import authRoutes from "./routes/authRoutes.js";
-// --- PERBAIKAN 1: Tambahkan import untuk messageRoutes ---
-import messageRoutes from "./routes/messageRoutes.js"; // Asumsi nama filenya 'messageRoutes.js'
 
-// 1. Panggil dotenv.config() paling atas agar variabel .env siap
 dotenv.config();
 
-// 2. Buat aplikasi Express 'app' SEKARANG
 const app = express();
+app.use(express.json());
 
-// 3. Buat server HTTP dari 'app' (dibutuhkan oleh Socket.io)
-const server = http.createServer(app);
-
-// --- PENGATURAN CORS ---
+// --- Konfigurasi CORS ---
 const allowedOrigins = [
-  "http://localhost:3000",
-  "http://localhost:5173",
-  ...(process.env.FRONTEND_URL
-    ? process.env.FRONTEND_URL.split(",").map((s) => s.trim())
-    : []),
+  "https://login-app-lovat-one.vercel.app", // frontend kamu di Vercel
+  "http://localhost:5173", // untuk testing lokal
 ];
 
 app.use(
@@ -34,85 +23,62 @@ app.use(
   })
 );
 
-// 4. Terapkan middleware lain (seperti parser JSON)
-app.use(express.json());
+// --- Setup HTTP Server ---
+const server = http.createServer(app);
 
-// 5. Daftarkan Routes Anda
-app.use("/api/auth", authRoutes);
-// --- PERBAIKAN 2: Aktifkan (uncomment) baris ini ---
-app.use("/api/messages", messageRoutes); // Ini akan memperbaiki error 404
-
-// --- PENGATURAN SOCKET.IO ---
+// --- Setup Socket.IO ---
 const io = new Server(server, {
   cors: {
     origin: allowedOrigins,
     methods: ["GET", "POST"],
     credentials: true,
   },
-  transports: ["websocket", "polling"],
+  transports: ["polling", "websocket"], // fallback otomatis
+  pingTimeout: 60000,
+  pingInterval: 25000,
 });
 
-console.log("⚙️ Socket.io server initialized");
-
-const onlineUsers = new Map();
+let onlineUsers = 0;
 
 io.on("connection", (socket) => {
   console.log("🟢 Socket connected:", socket.id);
+  onlineUsers++;
+  io.emit("onlineUsers", onlineUsers);
 
-  // User bergabung ke chat
-  socket.on("join", ({ userId, username }) => {
-    if (!userId) return;
-    onlineUsers.set(String(userId), { socketId: socket.id, username });
-    console.log(`👤 ${username || userId} joined (total: ${onlineUsers.size})`);
-    io.emit("onlineUsers", onlineUsers.size);
+  socket.on("join", (user) => {
+    console.log(`👋 ${user.username} joined the chat`);
+    socket.broadcast.emit("receiveMessage", {
+      sender: "System",
+      message: `${user.username} joined the chat`,
+      createdAt: new Date().toISOString(),
+    });
   });
 
-  // Kirim pesan (dan simpan ke DB)
-  socket.on("sendMessage", async (msg) => {
-    try {
-      const sender_id = msg.sender_id ?? null;
-      const message = msg.message ?? "";
-      const created_at = msg.created_at ?? new Date().toISOString();
-      const file_url = msg.file_url ?? null;
-      const file_type = msg.file_type ?? null;
-
-      const insertQuery = `
-        INSERT INTO messages (sender_id, message, file_url, file_type, created_at)
-        VALUES ($1, $2, $3, $4, $5)
-        RETURNING id, sender_id, message, file_url, file_type, created_at
-      `;
-      const values = [sender_id, message, file_url, file_type, created_at];
-      const res = await pool.query(insertQuery, values);
-      const saved = res.rows[0];
-
-      const payload = {
-        ...saved,
-        sender_name: msg.sender_name || null,
-        sender_email: msg.sender_email || null,
-      };
-
-      io.emit("receiveMessage", payload);
-      console.log("💬 Message broadcasted:", payload.message);
-    } catch (err) {
-      console.error("❌ sendMessage error:", err.message || err);
-    }
+  socket.on("sendMessage", (msg) => {
+    console.log("💬 Message received:", msg);
+    io.emit("receiveMessage", msg);
   });
 
-  // User keluar / tab ditutup
-  socket.on("disconnect", () => {
-    for (const [userId, info] of onlineUsers.entries()) {
-      if (info.socketId === socket.id) {
-        console.log(`🔴 ${info.username || userId} disconnected`);
-        onlineUsers.delete(userId);
-        break;
-      }
-    }
-    io.emit("onlineUsers", onlineUsers.size);
+  socket.on("disconnect", (reason) => {
+    onlineUsers--;
+    io.emit("onlineUsers", onlineUsers);
+    console.warn("🔴 Socket disconnected:", socket.id, reason);
+  });
+
+  // Log ping/pong untuk debug stabilitas koneksi
+  socket.conn.on("packet", (packet) => {
+    if (packet.type === "ping") console.log("📡 Ping from", socket.id);
+  });
+  socket.conn.on("packetCreate", (packet) => {
+    if (packet.type === "pong") console.log("📡 Pong to", socket.id);
   });
 });
 
-// --- MULAI SERVER ---
-const PORT = process.env.PORT || 8080;
-server.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+// --- Root route ---
+app.get("/", (req, res) => {
+  res.send("🚀 Chat backend is running fine!");
 });
+
+// --- Jalankan server ---
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

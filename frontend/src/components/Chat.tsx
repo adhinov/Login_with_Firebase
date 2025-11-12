@@ -2,8 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
-import socketIOClient from "socket.io-client";
-import type { Socket as SocketType } from "socket.io-client";
+import socket from "@/lib/socket"; // pastikan file src/lib/socket.ts sudah benar
 import { Settings } from "lucide-react";
 
 interface Message {
@@ -17,13 +16,18 @@ interface Message {
   created_at?: string | null;
 }
 
-export default function Chat() {
+interface ChatProps {
+  userId: number;
+  username: string;
+}
+
+export default function Chat({ userId, username }: ChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [showMenu, setShowMenu] = useState(false);
   const [onlineCount, setOnlineCount] = useState<number>(0);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
-  const socketRef = useRef<ReturnType<typeof socketIOClient> | null>(null);
+  const socketRef = useRef<typeof socket | null>(null);
 
   const user =
     typeof window !== "undefined"
@@ -32,7 +36,7 @@ export default function Chat() {
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
-  // --- Fetch pesan pertama kali
+  // --- Ambil pesan awal dari backend
   useEffect(() => {
     const token = localStorage.getItem("token");
     const fetchMessages = async () => {
@@ -51,38 +55,41 @@ export default function Chat() {
     fetchMessages();
   }, [API_URL]);
 
-  // --- Setup Socket.IO
+  // --- Setup socket.io
   useEffect(() => {
-    // ✅ Gunakan default import + opsi transports
-    const socket = socketIOClient(API_URL, {
-      transports: ["websocket"],
-    });
-
+    if (!socket.connected) socket.connect();
     socketRef.current = socket;
 
     socket.on("connect", () => {
       console.log("✅ Socket connected:", socket.id);
       socket.emit("join", {
-        userId: user?.id,
-        username: user?.username || user?.email || "User",
+        userId: userId,
+        username: username || user?.email || "User",
       });
     });
 
-    socket.on("onlineUsers", (count: number) => setOnlineCount(count ?? 0));
-    socket.on("receiveMessage", (msg: Message) =>
-      setMessages((prev) => [...prev, msg])
-    );
+    socket.on("onlineUsers", (count: number) => {
+      setOnlineCount(count ?? 0);
+    });
+
+    socket.on("newMessage", (msg: Message) => {
+      setMessages((prev) => [...prev, msg]);
+    });
 
     socket.on("disconnect", (reason: string) => {
       console.warn("⚠️ Socket disconnected:", reason);
     });
 
     return () => {
+      socket.off("connect");
+      socket.off("disconnect");
+      socket.off("onlineUsers");
+      socket.off("newMessage");
       socket.disconnect();
     };
-  }, [API_URL, user]);
+  }, [userId, username]);
 
-  // --- Auto-scroll
+  // --- Auto scroll ke bawah
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -92,9 +99,9 @@ export default function Chat() {
     if (!input.trim()) return;
     const optimistic: Message = {
       id: Date.now(),
-      sender_id: user?.id ?? null,
+      sender_id: userId,
       sender_email: user?.email ?? null,
-      sender_name: user?.username ?? null,
+      sender_name: username,
       message: input.trim(),
       created_at: new Date().toISOString(),
     };
@@ -146,11 +153,11 @@ export default function Chat() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="bg-blue-500 w-9 h-9 rounded-full flex items-center justify-center font-semibold text-white">
-                {user?.username?.[0]?.toUpperCase() || "U"}
+                {username?.[0]?.toUpperCase() || "U"}
               </div>
               <div>
                 <div className="text-white font-semibold text-sm sm:text-base">
-                  {user?.username || user?.email || "User"}
+                  {username || user?.email || "User"}
                 </div>
                 <div className="text-xs text-gray-400">{onlineCount} online</div>
               </div>
@@ -203,7 +210,10 @@ export default function Chat() {
                 (m.sender_email ?? "").toLowerCase() ===
                 (user?.email ?? "").toLowerCase();
               return (
-                <div key={m.id ?? i} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+                <div
+                  key={m.id ?? i}
+                  className={`flex ${mine ? "justify-end" : "justify-start"}`}
+                >
                   <div
                     className={`max-w-[85%] sm:max-w-[70%] px-3 sm:px-4 py-2 sm:py-2.5 rounded-2xl ${
                       mine
