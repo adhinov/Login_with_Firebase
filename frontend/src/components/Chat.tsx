@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import socketIOClient from "socket.io-client";
+import type { Socket as SocketType } from "socket.io-client";
 import { Settings } from "lucide-react";
 
 interface Message {
@@ -22,19 +23,16 @@ export default function Chat() {
   const [showMenu, setShowMenu] = useState(false);
   const [onlineCount, setOnlineCount] = useState<number>(0);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
+  const socketRef = useRef<ReturnType<typeof socketIOClient> | null>(null);
 
-  const socketRef = useRef<any>(null);
-
-  // ✅ Ambil user dari localStorage
   const user =
     typeof window !== "undefined"
       ? JSON.parse(localStorage.getItem("user") || "{}")
       : {};
 
-  // ✅ Next.js pakai NEXT_PUBLIC_API_URL
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
-  // ✅ Ambil pesan awal
+  // --- Fetch pesan pertama kali
   useEffect(() => {
     const token = localStorage.getItem("token");
     const fetchMessages = async () => {
@@ -53,46 +51,45 @@ export default function Chat() {
     fetchMessages();
   }, [API_URL]);
 
-  // ✅ Setup Socket.IO
+  // --- Setup Socket.IO
   useEffect(() => {
-    const socket = socketIOClient(API_URL, { transports: ["websocket"] });
+    // ✅ Gunakan default import + opsi transports
+    const socket = socketIOClient(API_URL, {
+      transports: ["websocket"],
+    });
+
     socketRef.current = socket;
 
     socket.on("connect", () => {
-      console.log("Socket connected:", socket.id);
+      console.log("✅ Socket connected:", socket.id);
       socket.emit("join", {
         userId: user?.id,
         username: user?.username || user?.email || "User",
       });
     });
 
-    socket.on("onlineUsers", (count: number) => {
-      setOnlineCount(count ?? 0);
+    socket.on("onlineUsers", (count: number) => setOnlineCount(count ?? 0));
+    socket.on("receiveMessage", (msg: Message) =>
+      setMessages((prev) => [...prev, msg])
+    );
+
+    socket.on("disconnect", (reason: string) => {
+      console.warn("⚠️ Socket disconnected:", reason);
     });
 
-    socket.on("receiveMessage", (msg: Message) => {
-      setMessages((prev) => [...prev, msg]);
-    });
-
-    socket.on("disconnect", () => {
-      console.log("Socket disconnected");
-    });
-
-    // ✅ Cleanup: pastikan return tipe void, bukan Socket
     return () => {
       socket.disconnect();
     };
   }, [API_URL, user]);
 
-  // ✅ Auto scroll ke bawah
+  // --- Auto-scroll
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // ✅ Kirim pesan
+  // --- Kirim pesan
   const sendMessage = async () => {
     if (!input.trim()) return;
-
     const optimistic: Message = {
       id: Date.now(),
       sender_id: user?.id ?? null,
@@ -124,7 +121,7 @@ export default function Chat() {
     }
   };
 
-  // ✅ Menu handler
+  // --- Menu handler
   const handleEditProfile = () => {
     setShowMenu(false);
     window.location.href = "/edit-profile";
@@ -140,7 +137,7 @@ export default function Chat() {
     window.location.href = "/login";
   };
 
-  // ✅ UI tetap sama
+  // --- UI
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-950 p-2 sm:p-4">
       <div className="w-full max-w-3xl h-[100vh] sm:h-[85vh] bg-gray-900 rounded-none sm:rounded-2xl shadow-xl flex flex-col overflow-hidden">
