@@ -72,15 +72,15 @@ io.on("connection", (socket) => {
     if (!msg || !msg.message) return;
 
     const fullMessage = {
-      sender_name: msg.sender_name || msg.username || "Unknown",
+      sender_name: msg.sender_name || msg.sender || msg.username || "Unknown",
       sender_email: msg.sender_email || null,
       message: msg.message,
-      createdAt: new Date().toISOString(),
+      createdAt: msg.created_at || new Date().toISOString(),
     };
 
     console.log("💬 Broadcast message:", fullMessage);
 
-    // Broadcast ke semua user (termasuk pengirim)
+    // kirim ke semua user yang online
     io.emit("receiveMessage", fullMessage);
   });
 
