@@ -6,14 +6,16 @@ import socket from "@/lib/socket";
 import { Settings } from "lucide-react";
 
 interface Message {
-  id?: number;
+  id?: number | string;
   sender_id?: number | null;
   sender_email?: string | null;
   sender_name?: string | null;
   message: string;
   file_url?: string | null;
   file_type?: string | null;
+  // support both variants created_at or createdAt
   created_at?: string | null;
+  createdAt?: string | null;
 }
 
 interface ChatProps {
@@ -35,8 +37,9 @@ export default function Chat({ userId, username }: ChatProps) {
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
-  // === Ambil pesan awal dari backend
+  // === Ambil pesan awal dari backend ===
   useEffect(() => {
+    let mounted = true;
     const token = localStorage.getItem("token");
     const fetchMessages = async () => {
       try {
@@ -46,58 +49,83 @@ export default function Chat({ userId, username }: ChatProps) {
         const data: Message[] = Array.isArray(res.data)
           ? res.data
           : res.data?.data ?? [];
-        setMessages(data);
+        if (mounted) setMessages(data);
       } catch (err) {
         console.error("Gagal ambil pesan:", err);
       }
     };
     fetchMessages();
+    return () => {
+      mounted = false;
+    };
   }, [API_URL]);
 
-  // === Setup Socket.IO ===
+  // === Setup Socket.IO (listeners once) ===
   useEffect(() => {
-    // hanya jalankan setup listener sekali
     if (!socket) return;
 
-    socket.on("connect", () => {
-      console.log("✅ Socket connected:", socket.id);
+    // ensure only one join emit (socket may auto-reconnect)
+    const doJoin = () => {
       socket.emit("join", {
         userId,
         username: username || user?.email || "User",
       });
-    });
-
-    // update jumlah user online
-    socket.on("onlineUsers", (count: number) => {
-      setOnlineCount(count ?? 0);
-    });
-
-    // terima pesan global dari backend
-    socket.on("receiveMessage", (msg: Message) => {
-      console.log("📩 receiveMessage:", msg);
-      setMessages((prev) => [...prev, msg]);
-    });
-
-    socket.on("disconnect", (reason: string) => {
-      console.warn("⚠️ Socket disconnected:", reason);
-    });
-
-    // cleanup listener agar tidak double
-    return () => {
-      socket.off("connect");
-      socket.off("onlineUsers");
-      socket.off("receiveMessage");
-      socket.off("disconnect");
     };
-  }, [socket, username, userId, user]);
 
+    if (socket.connected) doJoin();
+    socket.on("connect", doJoin);
 
-  // === Auto scroll ke bawah
+    // online count
+    const onOnline = (count: number) => setOnlineCount(count ?? 0);
+    socket.on("onlineUsers", onOnline);
+
+    // receiveMessage handler: normalize timestamps and avoid duplicates
+    const onReceive = (msg: Message) => {
+      if (!msg) return;
+      // normalize created_at property
+      const normalized: Message = {
+        ...msg,
+        created_at: msg.created_at ?? msg.createdAt ?? new Date().toISOString(),
+      };
+
+      // anti-dup check: consider same sender_email + message + nearly same timestamp
+      setMessages((prev) => {
+        const exists = prev.some((m) => {
+          const t1 = new Date(m.created_at ?? m.createdAt ?? 0).getTime();
+          const t2 = new Date(normalized.created_at ?? normalized.createdAt ?? 0).getTime();
+          return (
+            (m.message === normalized.message || m.message === normalized.message) &&
+            (m.sender_email === normalized.sender_email) &&
+            Math.abs(t1 - t2) < 700 // 700ms tolerance
+          );
+        });
+        return exists ? prev : [...prev, normalized];
+      });
+    };
+    socket.on("receiveMessage", onReceive);
+
+    // disconnect
+    const onDisconnect = (reason?: string) => {
+      console.warn("⚠️ Socket disconnected:", reason);
+    };
+    socket.on("disconnect", onDisconnect);
+
+    // cleanup
+    return () => {
+      socket.off("connect", doJoin);
+      socket.off("onlineUsers", onOnline);
+      socket.off("receiveMessage", onReceive);
+      socket.off("disconnect", onDisconnect);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, username]);
+
+  // === Auto scroll ke bawah ===
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // === Kirim pesan
+  // === Kirim pesan ===
   const sendMessage = async () => {
     if (!input.trim()) return;
 
@@ -110,8 +138,8 @@ export default function Chat({ userId, username }: ChatProps) {
       created_at: new Date().toISOString(),
     };
 
-    // kirim ke server via socket
-    if (socket.connected) {
+    if (socket && socket.connected) {
+      // emit to server and let server broadcast to everyone (including sender)
       socket.emit("sendMessage", msg);
     } else {
       // fallback ke REST API jika socket mati
@@ -131,8 +159,7 @@ export default function Chat({ userId, username }: ChatProps) {
       }
     }
 
-    // tambahkan langsung ke UI (optimistic)
-    setMessages((prev) => [...prev, msg]);
+    // clear input only — DO NOT append locally (server will broadcast)
     setInput("");
   };
 
@@ -217,6 +244,8 @@ export default function Chat({ userId, username }: ChatProps) {
               const mine =
                 (m.sender_email ?? "").toLowerCase() ===
                 (user?.email ?? "").toLowerCase();
+              // normalize created time
+              const ts = m.created_at ?? m.createdAt ?? "";
               return (
                 <div
                   key={m.id ?? i}
@@ -235,14 +264,14 @@ export default function Chat({ userId, username }: ChatProps) {
                       </div>
                     )}
                     <div className="text-sm sm:text-base break-words">{m.message}</div>
-                    {m.created_at && (
-                      <div className="text-[9px] sm:text-[10px] text-gray-300 mt-1 text-right">
-                        {new Date(m.created_at!).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </div>
-                    )}
+                    <div className="text-[9px] sm:text-[10px] text-gray-300 mt-1 text-right">
+                      {ts
+                        ? new Date(ts).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
+                        : ""}
+                    </div>
                   </div>
                 </div>
               );
