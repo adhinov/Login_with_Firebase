@@ -6,6 +6,7 @@ import dotenv from "dotenv";
 
 // ✅ Import routes
 import authRoutes from "./routes/authRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
 import messageRoutes from "./routes/messageRoutes.js";
 
 dotenv.config();
@@ -33,6 +34,7 @@ app.use(
 // --- Gunakan routes ---
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
+app.use("/api/users", userRoutes);
 
 // --- Root route ---
 app.get("/", (req, res) => {
