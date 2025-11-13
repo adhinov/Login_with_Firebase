@@ -16,7 +16,7 @@ app.use(express.json());
 // --- Konfigurasi CORS ---
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://login-with-firebase-sandy.vercel.app", // vercel frontend kamu
+  "https://login-with-firebase-sandy.vercel.app", // frontend vercel kamu
 ];
 
 app.use(
@@ -49,31 +49,25 @@ const io = new Server(server, {
   },
 });
 
-// --- Menyimpan data user yang online ---
-let onlineUsers = {}; // key: socket.id, value: username
+let onlineUsers = 0;
 
 io.on("connection", (socket) => {
   console.log("🟢 Socket connected:", socket.id);
+  onlineUsers++;
+  io.emit("onlineUsers", onlineUsers);
 
-  // Saat user join
+  // --- User join chat ---
   socket.on("join", (user) => {
-    if (user?.username) {
-      onlineUsers[socket.id] = user.username;
-      console.log(`👋 ${user.username} joined`);
-
-      // Broadcast pesan ke semua user bahwa user baru bergabung
-      io.emit("receiveMessage", {
-        sender: "System",
-        message: `${user.username} joined the chat`,
-        createdAt: new Date().toISOString(),
-      });
-
-      // Update jumlah user online
-      io.emit("onlineUsers", Object.keys(onlineUsers).length);
-    }
+    if (!user || !user.username) return;
+    console.log(`👋 ${user.username} joined`);
+    socket.broadcast.emit("receiveMessage", {
+      sender: "System",
+      message: `${user.username} joined the chat`,
+      createdAt: new Date().toISOString(),
+    });
   });
 
-  // Saat user mengirim pesan
+  // --- Kirim pesan global ---
   socket.on("sendMessage", (msg) => {
     if (!msg || !msg.sender || !msg.message) return;
 
@@ -83,27 +77,16 @@ io.on("connection", (socket) => {
       createdAt: new Date().toISOString(),
     };
 
-    // Broadcast ke semua user (termasuk pengirim)
+    console.log("💬 Broadcast message:", fullMessage);
+    // Kirim ke semua user (termasuk pengirim)
     io.emit("receiveMessage", fullMessage);
   });
 
-  // Saat user disconnect
+  // --- User disconnect ---
   socket.on("disconnect", () => {
-    const username = onlineUsers[socket.id];
-    delete onlineUsers[socket.id];
-    console.log("🔴 Disconnected:", username || socket.id);
-
-    // Broadcast info user keluar
-    if (username) {
-      io.emit("receiveMessage", {
-        sender: "System",
-        message: `${username} left the chat`,
-        createdAt: new Date().toISOString(),
-      });
-    }
-
-    // Update jumlah online users
-    io.emit("onlineUsers", Object.keys(onlineUsers).length);
+    onlineUsers--;
+    io.emit("onlineUsers", onlineUsers);
+    console.log("🔴 Socket disconnected:", socket.id);
   });
 });
 
