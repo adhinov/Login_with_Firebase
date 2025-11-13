@@ -56,7 +56,8 @@ export default function Chat({ userId, username }: ChatProps) {
 
   // === Setup Socket.IO ===
   useEffect(() => {
-    if (!socket.connected) socket.connect();
+    // hanya jalankan setup listener sekali
+    if (!socket) return;
 
     socket.on("connect", () => {
       console.log("✅ Socket connected:", socket.id);
@@ -81,14 +82,15 @@ export default function Chat({ userId, username }: ChatProps) {
       console.warn("⚠️ Socket disconnected:", reason);
     });
 
+    // cleanup listener agar tidak double
     return () => {
       socket.off("connect");
-      socket.off("disconnect");
       socket.off("onlineUsers");
       socket.off("receiveMessage");
-      socket.disconnect();
+      socket.off("disconnect");
     };
-  }, [userId, username]);
+  }, [socket, username, userId, user]);
+
 
   // === Auto scroll ke bawah
   useEffect(() => {

@@ -5,10 +5,12 @@ const SOCKET_URL =
   process.env.NEXT_PUBLIC_SOCKET_URL ||
   "https://login-app-production-7f54.up.railway.app";
 
-// pakai as any agar TS tidak rewel terhadap properti 'extraHeaders'
+// Konfigurasi koneksi
 const socket = socketIOClient(SOCKET_URL, {
-  transports: ["websocket", "polling"],
-  extraHeaders: {}, // aman secara runtime
+  transports: ["websocket"], // gunakan websocket untuk kestabilan
+  reconnection: true,
+  reconnectionAttempts: 5,
+  timeout: 10000, // 10 detik
 } as any);
 
 socket.on("connect", () => {
