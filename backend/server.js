@@ -15,7 +15,7 @@ app.use(express.json());
 
 // --- Konfigurasi CORS ---
 const allowedOrigins = [
-  "http://localhost:5173",
+  "http://localhost:3000",
   "https://login-with-firebase-sandy.vercel.app", // frontend vercel kamu
 ];
 
@@ -56,37 +56,36 @@ io.on("connection", (socket) => {
   onlineUsers++;
   io.emit("onlineUsers", onlineUsers);
 
-  // --- User join chat ---
   socket.on("join", (user) => {
-    if (!user || !user.username) return;
     console.log(`👋 ${user.username} joined`);
-    socket.broadcast.emit("receiveMessage", {
+    io.emit("receiveMessage", {
       sender: "System",
       message: `${user.username} joined the chat`,
       createdAt: new Date().toISOString(),
     });
   });
 
-  // --- Kirim pesan global ---
+  // ✅ Fix broadcast pesan user
   socket.on("sendMessage", (msg) => {
-    if (!msg || !msg.sender || !msg.message) return;
+    if (!msg || !msg.message) return;
 
     const fullMessage = {
-      sender: msg.sender,
+      sender_name: msg.sender_name || msg.username || "Unknown",
+      sender_email: msg.sender_email || null,
       message: msg.message,
       createdAt: new Date().toISOString(),
     };
 
     console.log("💬 Broadcast message:", fullMessage);
-    // Kirim ke semua user (termasuk pengirim)
+
+    // Broadcast ke semua user (termasuk pengirim)
     io.emit("receiveMessage", fullMessage);
   });
 
-  // --- User disconnect ---
-  socket.on("disconnect", () => {
+  socket.on("disconnect", (reason) => {
     onlineUsers--;
     io.emit("onlineUsers", onlineUsers);
-    console.log("🔴 Socket disconnected:", socket.id);
+    console.log("🔴 Socket disconnected:", socket.id, reason);
   });
 });
 
