@@ -5,8 +5,8 @@ import cors from "cors";
 import dotenv from "dotenv";
 
 // ✅ Import routes
-import authRoutes from "./routes/authRoutes.js"; // pastikan path-nya benar
-import messageRoutes from "./routes/messageRoutes.js"; // kalau kamu pakai fitur chat upload
+import authRoutes from "./routes/authRoutes.js";
+import messageRoutes from "./routes/messageRoutes.js";
 
 dotenv.config();
 
@@ -16,7 +16,7 @@ app.use(express.json());
 // --- Konfigurasi CORS ---
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://login-with-firebase-sandy.vercel.app", // frontend vercel kamu
+  "https://login-with-firebase-sandy.vercel.app", // vercel frontend kamu
 ];
 
 app.use(
@@ -49,27 +49,61 @@ const io = new Server(server, {
   },
 });
 
-let onlineUsers = 0;
+// --- Menyimpan data user yang online ---
+let onlineUsers = {}; // key: socket.id, value: username
 
 io.on("connection", (socket) => {
   console.log("🟢 Socket connected:", socket.id);
-  onlineUsers++;
-  io.emit("onlineUsers", onlineUsers);
 
+  // Saat user join
   socket.on("join", (user) => {
-    console.log(`👋 ${user.username} joined`);
-    socket.broadcast.emit("receiveMessage", {
-      sender: "System",
-      message: `${user.username} joined the chat`,
-      createdAt: new Date().toISOString(),
-    });
+    if (user?.username) {
+      onlineUsers[socket.id] = user.username;
+      console.log(`👋 ${user.username} joined`);
+
+      // Broadcast pesan ke semua user bahwa user baru bergabung
+      io.emit("receiveMessage", {
+        sender: "System",
+        message: `${user.username} joined the chat`,
+        createdAt: new Date().toISOString(),
+      });
+
+      // Update jumlah user online
+      io.emit("onlineUsers", Object.keys(onlineUsers).length);
+    }
   });
 
-  socket.on("sendMessage", (msg) => io.emit("receiveMessage", msg));
+  // Saat user mengirim pesan
+  socket.on("sendMessage", (msg) => {
+    if (!msg || !msg.sender || !msg.message) return;
 
+    const fullMessage = {
+      sender: msg.sender,
+      message: msg.message,
+      createdAt: new Date().toISOString(),
+    };
+
+    // Broadcast ke semua user (termasuk pengirim)
+    io.emit("receiveMessage", fullMessage);
+  });
+
+  // Saat user disconnect
   socket.on("disconnect", () => {
-    onlineUsers--;
-    io.emit("onlineUsers", onlineUsers);
+    const username = onlineUsers[socket.id];
+    delete onlineUsers[socket.id];
+    console.log("🔴 Disconnected:", username || socket.id);
+
+    // Broadcast info user keluar
+    if (username) {
+      io.emit("receiveMessage", {
+        sender: "System",
+        message: `${username} left the chat`,
+        createdAt: new Date().toISOString(),
+      });
+    }
+
+    // Update jumlah online users
+    io.emit("onlineUsers", Object.keys(onlineUsers).length);
   });
 });
 

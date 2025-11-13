@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
-import socket from "@/lib/socket"; // pastikan file src/lib/socket.ts sudah benar
+import socket from "@/lib/socket";
 import { Settings } from "lucide-react";
 
 interface Message {
@@ -27,7 +27,6 @@ export default function Chat({ userId, username }: ChatProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [onlineCount, setOnlineCount] = useState<number>(0);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
-  const socketRef = useRef<typeof socket | null>(null);
 
   const user =
     typeof window !== "undefined"
@@ -36,7 +35,7 @@ export default function Chat({ userId, username }: ChatProps) {
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
-  // --- Ambil pesan awal dari backend
+  // === Ambil pesan awal dari backend
   useEffect(() => {
     const token = localStorage.getItem("token");
     const fetchMessages = async () => {
@@ -55,24 +54,26 @@ export default function Chat({ userId, username }: ChatProps) {
     fetchMessages();
   }, [API_URL]);
 
-  // --- Setup socket.io
+  // === Setup Socket.IO ===
   useEffect(() => {
     if (!socket.connected) socket.connect();
-    socketRef.current = socket;
 
     socket.on("connect", () => {
       console.log("✅ Socket connected:", socket.id);
       socket.emit("join", {
-        userId: userId,
+        userId,
         username: username || user?.email || "User",
       });
     });
 
+    // update jumlah user online
     socket.on("onlineUsers", (count: number) => {
       setOnlineCount(count ?? 0);
     });
 
-    socket.on("newMessage", (msg: Message) => {
+    // terima pesan global dari backend
+    socket.on("receiveMessage", (msg: Message) => {
+      console.log("📩 receiveMessage:", msg);
       setMessages((prev) => [...prev, msg]);
     });
 
@@ -84,20 +85,21 @@ export default function Chat({ userId, username }: ChatProps) {
       socket.off("connect");
       socket.off("disconnect");
       socket.off("onlineUsers");
-      socket.off("newMessage");
+      socket.off("receiveMessage");
       socket.disconnect();
     };
   }, [userId, username]);
 
-  // --- Auto scroll ke bawah
+  // === Auto scroll ke bawah
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // --- Kirim pesan
+  // === Kirim pesan
   const sendMessage = async () => {
     if (!input.trim()) return;
-    const optimistic: Message = {
+
+    const msg: Message = {
       id: Date.now(),
       sender_id: userId,
       sender_email: user?.email ?? null,
@@ -105,30 +107,34 @@ export default function Chat({ userId, username }: ChatProps) {
       message: input.trim(),
       created_at: new Date().toISOString(),
     };
-    setMessages((prev) => [...prev, optimistic]);
-    setInput("");
 
-    try {
-      if (socketRef.current?.connected) {
-        socketRef.current.emit("sendMessage", optimistic);
-      } else {
-        const token = localStorage.getItem("token");
+    // kirim ke server via socket
+    if (socket.connected) {
+      socket.emit("sendMessage", msg);
+    } else {
+      // fallback ke REST API jika socket mati
+      const token = localStorage.getItem("token");
+      try {
         await axios.post(
           `${API_URL}/api/messages/upload`,
           {
-            message: optimistic.message,
-            sender_id: optimistic.sender_id,
-            sender_email: optimistic.sender_email,
+            message: msg.message,
+            sender_id: msg.sender_id,
+            sender_email: msg.sender_email,
           },
           { headers: token ? { Authorization: `Bearer ${token}` } : undefined }
         );
+      } catch (err) {
+        console.error("Gagal kirim pesan:", err);
       }
-    } catch (err) {
-      console.error("Gagal kirim pesan:", err);
     }
+
+    // tambahkan langsung ke UI (optimistic)
+    setMessages((prev) => [...prev, msg]);
+    setInput("");
   };
 
-  // --- Menu handler
+  // === Menu handler ===
   const handleEditProfile = () => {
     setShowMenu(false);
     window.location.href = "/edit-profile";
@@ -144,7 +150,7 @@ export default function Chat({ userId, username }: ChatProps) {
     window.location.href = "/login";
   };
 
-  // --- UI
+  // === UI ===
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-950 p-2 sm:p-4">
       <div className="w-full max-w-3xl h-[100vh] sm:h-[85vh] bg-gray-900 rounded-none sm:rounded-2xl shadow-xl flex flex-col overflow-hidden">
