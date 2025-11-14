@@ -3,15 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import socket from "@/lib/socket";
-import {
-  Settings,
-  Send,
-  Image as ImageIcon,
-  Video,
-  File,
-  Mic,
-  Plus,
-} from "lucide-react";
+import { Settings, Send, Image as ImageIcon, Video, Plus } from "lucide-react";
 
 interface Message {
   id?: number | string;
@@ -37,7 +29,6 @@ export default function Chat({ userId, username }: ChatProps) {
   const [showUpload, setShowUpload] = useState(false);
   const [onlineCount, setOnlineCount] = useState<number>(0);
 
-  // upload image
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
 
@@ -50,7 +41,9 @@ export default function Chat({ userId, username }: ChatProps) {
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
-  // FETCH AWAL
+  // ======================================================
+  // FETCH PESAN AWAL
+  // ======================================================
   useEffect(() => {
     let mounted = true;
     const token = localStorage.getItem("token");
@@ -77,7 +70,9 @@ export default function Chat({ userId, username }: ChatProps) {
     };
   }, [API_URL]);
 
-  // SOCKET
+  // ======================================================
+  // SOCKET REALTIME
+  // ======================================================
   useEffect(() => {
     if (!socket) return;
 
@@ -108,7 +103,7 @@ export default function Chat({ userId, username }: ChatProps) {
           return (
             m.message === normalized.message &&
             m.sender_email === normalized.sender_email &&
-            Math.abs(t1 - t2) < 800
+            Math.abs(t1 - t2) < 600
           );
         });
 
@@ -123,12 +118,16 @@ export default function Chat({ userId, username }: ChatProps) {
     };
   }, [userId, username]);
 
+  // ======================================================
   // AUTO SCROLL
+  // ======================================================
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // ======================================================
   // KIRIM TEXT
+  // ======================================================
   const sendMessage = async () => {
     if (!input.trim()) return;
 
@@ -141,14 +140,16 @@ export default function Chat({ userId, username }: ChatProps) {
       created_at: new Date().toISOString(),
     };
 
-    if (socket && socket.connected) {
-      socket.emit("sendMessage", msg);
-    }
+    if (socket && socket.connected) socket.emit("sendMessage", msg);
+
+    setMessages((prev) => [...prev, msg]);
 
     setInput("");
   };
 
+  // ======================================================
   // KIRIM GAMBAR
+  // ======================================================
   const sendImage = async () => {
     if (!imageFile) return;
 
@@ -169,9 +170,13 @@ export default function Chat({ userId, username }: ChatProps) {
         },
       });
 
+      // broadcast realtime
       if (socket && socket.connected) {
         socket.emit("sendMessage", res.data);
       }
+
+      // tampilkan langsung ke UI user sendiri tanpa reload
+      setMessages((prev) => [...prev, res.data]);
 
       setImagePreview(null);
       setImageFile(null);
@@ -180,7 +185,9 @@ export default function Chat({ userId, username }: ChatProps) {
     }
   };
 
+  // ======================================================
   // PILIH GAMBAR
+  // ======================================================
   const handleSelectImage = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -190,33 +197,34 @@ export default function Chat({ userId, username }: ChatProps) {
     setShowUpload(false);
   };
 
-  // DOWNLOAD IMAGE (WhatsApp style)
-  const handleDownloadImage = async (url: string) => {
-    try {
-      const fileName = url.split("/").pop() || "image.jpg";
+  // ======================================================
+  // DOWNLOAD GAMBAR (WhatsApp style)
+  // ======================================================
+  const handleDownloadImage = (url: string) => {
+    if (!url) return;
+    const fileName = url.split("/").pop() || "image.jpg";
 
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = fileName;
-      a.target = "_blank";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    } catch (err) {
-      console.error("Gagal download:", err);
-    }
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    a.target = "_blank";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
-  // MENU
+  // ======================================================
+  // LOGOUT
+  // ======================================================
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     window.location.href = "/login";
   };
 
-  // ============================
-  //        UI RENDER
-  // ============================
+  // ======================================================
+  // RENDER UI
+  // ======================================================
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-950 p-2 sm:p-4">
       <div className="w-full max-w-3xl h-[100vh] sm:h-[85vh] bg-gray-900 shadow-xl flex flex-col overflow-hidden">
@@ -224,30 +232,40 @@ export default function Chat({ userId, username }: ChatProps) {
         {/* HEADER */}
         <header className="sticky top-0 z-20 bg-gray-800 border-b border-gray-700 px-4 py-3">
           <div className="flex items-center justify-between">
-
             <div className="flex items-center gap-3">
               <div className="bg-blue-500 w-9 h-9 rounded-full flex items-center justify-center font-semibold text-white">
                 {username?.[0]?.toUpperCase()}
               </div>
               <div>
-                <div className="text-white font-semibold">
-                  {username}
-                </div>
+                <div className="text-white font-semibold">{username}</div>
                 <div className="text-xs text-gray-400">{onlineCount} online</div>
               </div>
             </div>
 
-            <button
-              onClick={handleLogout}
-              className="p-2 hover:bg-gray-700 rounded-full"
-            >
-              <Settings size={20} className="text-white" />
-            </button>
+            {/* GEAR */}
+            <div className="relative">
+              <button
+                onClick={() => setShowMenu((s) => !s)}
+                className="p-2 hover:bg-gray-700 rounded-full"
+              >
+                <Settings size={20} className="text-white" />
+              </button>
 
+              {showMenu && (
+                <div className="absolute right-0 top-11 bg-gray-800 border border-gray-700 shadow-lg rounded-md text-white w-32">
+                  <button
+                    onClick={handleLogout}
+                    className="px-4 py-2 hover:bg-gray-700 w-full text-left"
+                  >
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
-        {/* CHAT */}
+        {/* CHAT AREA */}
         <main className="flex-1 overflow-y-auto px-4 py-3 space-y-3 bg-gray-800">
           {messages.map((m, i) => {
             const mine =
@@ -256,10 +274,16 @@ export default function Chat({ userId, username }: ChatProps) {
 
             const ts = m.created_at ?? m.createdAt ?? "";
 
+            const displayName =
+              m.sender_name ||
+              (m.sender_email ? m.sender_email.split("@")[0] : "User");
+
             return (
               <div
                 key={m.id ?? i}
-                className={`flex flex-col ${mine ? "items-end" : "items-start"}`}
+                className={`flex flex-col ${
+                  mine ? "items-end" : "items-start"
+                }`}
               >
                 <div
                   className={`max-w-[80%] px-4 py-2 rounded-2xl ${
@@ -270,18 +294,19 @@ export default function Chat({ userId, username }: ChatProps) {
                 >
                   {/* NAMA */}
                   <div className="text-xs text-yellow-300 mb-1">
-                    {m.sender_name || "User"}
+                    {displayName}
                   </div>
 
-                  {/* THUMBNAIL GAMBAR (WhatsApp style) */}
+                  {/* GAMBAR */}
                   {m.file_type?.startsWith("image/") && m.file_url && (
                     <div
-                      onClick={() => handleDownloadImage(m.file_url!)}
+                      onClick={() =>
+                        m.file_url && handleDownloadImage(m.file_url)
+                      }
                       className="mb-2 cursor-pointer"
                     >
                       <img
                         src={m.file_url}
-                        alt="thumbnail"
                         className="w-28 h-28 object-cover rounded-lg blur-[1px] brightness-75"
                       />
                       <div className="text-xs text-gray-300 mt-1 text-center">
@@ -291,9 +316,11 @@ export default function Chat({ userId, username }: ChatProps) {
                   )}
 
                   {/* TEXT */}
-                  <div className="text-sm break-words">{m.message}</div>
+                  {m.message && (
+                    <div className="text-sm break-words">{m.message}</div>
+                  )}
 
-                  {/* TIME */}
+                  {/* WAKTU */}
                   <div className="text-[10px] text-gray-300 mt-1 text-right">
                     {ts
                       ? new Date(ts).toLocaleTimeString([], {
@@ -339,8 +366,7 @@ export default function Chat({ userId, username }: ChatProps) {
 
         {/* INPUT */}
         <footer className="px-4 py-3 bg-gray-800 flex items-center gap-3">
-
-          {/* + BUTTON */}
+          {/* + MENU */}
           <div className="relative">
             <button
               className="p-2 hover:bg-gray-700 rounded-full"
@@ -351,6 +377,7 @@ export default function Chat({ userId, username }: ChatProps) {
 
             {showUpload && (
               <div className="absolute bottom-12 left-0 w-40 bg-gray-800 border border-gray-700 rounded-md shadow-lg py-1 z-50">
+                {/* UPLOAD GAMBAR */}
                 <label className="flex items-center gap-2 px-4 py-2 hover:bg-gray-700 text-sm cursor-pointer">
                   <ImageIcon size={18} />
                   Upload Gambar
@@ -369,6 +396,7 @@ export default function Chat({ userId, username }: ChatProps) {
             )}
           </div>
 
+          {/* INPUT TEKS */}
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -377,6 +405,7 @@ export default function Chat({ userId, username }: ChatProps) {
             className="flex-1 rounded-full px-4 py-2 bg-gray-700 text-white"
           />
 
+          {/* SEND */}
           <button
             onClick={sendMessage}
             className="p-3 rounded-full bg-blue-600 hover:bg-blue-700"
