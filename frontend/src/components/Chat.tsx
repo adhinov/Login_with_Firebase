@@ -34,8 +34,13 @@ export default function Chat({ userId, username }: ChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [showMenu, setShowMenu] = useState(false);
-  const [showUpload, setShowUpload] = useState(false); // ⬅ Dropdown Upload
+  const [showUpload, setShowUpload] = useState(false);
   const [onlineCount, setOnlineCount] = useState<number>(0);
+
+  // --- upload image state ---
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 
   const user =
@@ -128,7 +133,7 @@ export default function Chat({ userId, username }: ChatProps) {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // === KIRIM PESAN ===
+  // === KIRIM PESAN TEXT ===
   const sendMessage = async () => {
     if (!input.trim()) return;
 
@@ -163,6 +168,49 @@ export default function Chat({ userId, username }: ChatProps) {
     setInput("");
   };
 
+  // === KIRIM GAMBAR ===
+  const sendImage = async () => {
+    if (!imageFile) return;
+
+    const form = new FormData();
+    form.append("file", imageFile);
+    form.append("message", "");
+    form.append("sender_id", String(userId));
+    form.append("sender_email", user?.email ?? "");
+    form.append("sender_name", username);
+
+    const token = localStorage.getItem("token");
+
+    try {
+      const res = await axios.post(`${API_URL}/api/messages/upload`, form, {
+        headers: {
+          Authorization: token ? `Bearer ${token}` : "",
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      // kirim ke socket
+      if (socket && socket.connected) {
+        socket.emit("sendMessage", res.data);
+      }
+
+      setImagePreview(null);
+      setImageFile(null);
+    } catch (err) {
+      console.error("Gagal upload gambar:", err);
+    }
+  };
+
+  // === Pilih gambar ===
+  const handleSelectImage = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+    setShowUpload(false);
+  };
+
   // === MENU ===
   const handleEditProfile = () => {
     setShowMenu(false);
@@ -181,14 +229,10 @@ export default function Chat({ userId, username }: ChatProps) {
     window.location.href = "/login";
   };
 
-  // ================================================
-  // ======================= UI =====================
-  // ================================================
-
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-950 p-2 sm:p-4">
       <div className="w-full max-w-3xl h-[100vh] sm:h-[85vh] bg-gray-900 rounded-none sm:rounded-2xl shadow-xl flex flex-col overflow-hidden">
-        
+
         {/* HEADER */}
         <header className="sticky top-0 z-20 bg-gray-800 border-b border-gray-700 px-4 sm:px-6 py-3 sm:py-4">
           <div className="flex items-center justify-between">
@@ -269,6 +313,15 @@ export default function Chat({ userId, username }: ChatProps) {
                       {m.sender_name || m.sender_email || "Unknown"}
                     </div>
 
+                    {/* TAMPILKAN GAMBAR */}
+                    {m.file_type?.startsWith("image/") && m.file_url && (
+                      <img
+                        src={m.file_url}
+                        alt="uploaded"
+                        className="w-full rounded-lg mb-2"
+                      />
+                    )}
+
                     <div className="text-sm sm:text-base break-words">
                       {m.message}
                     </div>
@@ -289,6 +342,34 @@ export default function Chat({ userId, username }: ChatProps) {
           <div ref={chatEndRef} />
         </main>
 
+        {/* PREVIEW GAMBAR */}
+        {imagePreview && (
+          <div className="px-4 pb-3 bg-gray-900 border-t border-gray-700">
+            <div className="flex items-center gap-3">
+              <img
+                src={imagePreview}
+                alt="Preview"
+                className="h-24 rounded-lg border border-gray-600"
+              />
+              <button
+                onClick={sendImage}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Kirim Gambar
+              </button>
+              <button
+                onClick={() => {
+                  setImagePreview(null);
+                  setImageFile(null);
+                }}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+              >
+                Batal
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* INPUT */}
         <footer className="px-3 sm:px-6 py-3 bg-gray-800 flex items-center gap-3 border-t border-gray-700">
 
@@ -303,9 +384,17 @@ export default function Chat({ userId, username }: ChatProps) {
 
             {showUpload && (
               <div className="absolute bottom-12 left-0 bg-gray-800 border border-gray-700 rounded-md shadow-lg w-40 z-40 py-1">
-                <button className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-700 text-sm text-gray-200">
+                {/* IMAGE */}
+                <label className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-700 text-sm text-gray-200 cursor-pointer">
                   <ImageIcon size={18} /> Upload Image
-                </button>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleSelectImage}
+                  />
+                </label>
+
                 <button className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-700 text-sm text-gray-200">
                   <Video size={18} /> Upload Video
                 </button>
