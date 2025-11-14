@@ -13,7 +13,6 @@ interface Message {
   message: string;
   file_url?: string | null;
   file_type?: string | null;
-  // support both variants created_at or createdAt
   created_at?: string | null;
   createdAt?: string | null;
 }
@@ -37,34 +36,37 @@ export default function Chat({ userId, username }: ChatProps) {
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
-  // === Ambil pesan awal dari backend ===
+  // === Ambil pesan awal ===
   useEffect(() => {
     let mounted = true;
     const token = localStorage.getItem("token");
+
     const fetchMessages = async () => {
       try {
         const res = await axios.get(`${API_URL}/api/messages`, {
           headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         });
+
         const data: Message[] = Array.isArray(res.data)
           ? res.data
           : res.data?.data ?? [];
+
         if (mounted) setMessages(data);
       } catch (err) {
         console.error("Gagal ambil pesan:", err);
       }
     };
+
     fetchMessages();
     return () => {
       mounted = false;
     };
   }, [API_URL]);
 
-  // === Setup Socket.IO (listeners once) ===
+  // === Socket setup ===
   useEffect(() => {
     if (!socket) return;
 
-    // ensure only one join emit (socket may auto-reconnect)
     const doJoin = () => {
       socket.emit("join", {
         userId,
@@ -75,52 +77,44 @@ export default function Chat({ userId, username }: ChatProps) {
     if (socket.connected) doJoin();
     socket.on("connect", doJoin);
 
-    // online count
-    const onOnline = (count: number) => setOnlineCount(count ?? 0);
-    socket.on("onlineUsers", onOnline);
+    socket.on("onlineUsers", (count: number) => setOnlineCount(count ?? 0));
 
-    // receiveMessage handler: normalize timestamps and avoid duplicates
-    const onReceive = (msg: Message) => {
+    socket.on("receiveMessage", (msg: Message) => {
       if (!msg) return;
-      // normalize created_at property
+
       const normalized: Message = {
         ...msg,
         created_at: msg.created_at ?? msg.createdAt ?? new Date().toISOString(),
       };
 
-      // anti-dup check: consider same sender_email + message + nearly same timestamp
       setMessages((prev) => {
         const exists = prev.some((m) => {
           const t1 = new Date(m.created_at ?? m.createdAt ?? 0).getTime();
-          const t2 = new Date(normalized.created_at ?? normalized.createdAt ?? 0).getTime();
+          const t2 = new Date(normalized.created_at ?? 0).getTime();
           return (
-            (m.message === normalized.message || m.message === normalized.message) &&
-            (m.sender_email === normalized.sender_email) &&
-            Math.abs(t1 - t2) < 700 // 700ms tolerance
+            m.message === normalized.message &&
+            m.sender_email === normalized.sender_email &&
+            Math.abs(t1 - t2) < 700
           );
         });
+
         return exists ? prev : [...prev, normalized];
       });
-    };
-    socket.on("receiveMessage", onReceive);
+    });
 
-    // disconnect
-    const onDisconnect = (reason?: string) => {
-      console.warn("⚠️ Socket disconnected:", reason);
-    };
-    socket.on("disconnect", onDisconnect);
+    socket.on("disconnect", (reason?: string) =>
+      console.warn("⚠️ Socket disconnected:", reason)
+    );
 
-    // cleanup
     return () => {
       socket.off("connect", doJoin);
-      socket.off("onlineUsers", onOnline);
-      socket.off("receiveMessage", onReceive);
-      socket.off("disconnect", onDisconnect);
+      socket.off("onlineUsers");
+      socket.off("receiveMessage");
+      socket.off("disconnect");
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, username]);
 
-  // === Auto scroll ke bawah ===
+  // === Auto scroll ===
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -139,10 +133,8 @@ export default function Chat({ userId, username }: ChatProps) {
     };
 
     if (socket && socket.connected) {
-      // emit to server and let server broadcast to everyone (including sender)
       socket.emit("sendMessage", msg);
     } else {
-      // fallback ke REST API jika socket mati
       const token = localStorage.getItem("token");
       try {
         await axios.post(
@@ -159,19 +151,20 @@ export default function Chat({ userId, username }: ChatProps) {
       }
     }
 
-    // clear input only — DO NOT append locally (server will broadcast)
     setInput("");
   };
 
-  // === Menu handler ===
+  // === MENU ACTIONS ===
   const handleEditProfile = () => {
     setShowMenu(false);
     window.location.href = "/edit-profile";
   };
+
   const handleClearChat = () => {
     setShowMenu(false);
     setMessages([]);
   };
+
   const handleLogout = () => {
     setShowMenu(false);
     localStorage.removeItem("token");
@@ -179,10 +172,13 @@ export default function Chat({ userId, username }: ChatProps) {
     window.location.href = "/login";
   };
 
-  // === UI ===
+  // ============================================================
+  // =======================   UI   ==============================
+  // ============================================================
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-950 p-2 sm:p-4">
       <div className="w-full max-w-3xl h-[100vh] sm:h-[85vh] bg-gray-900 rounded-none sm:rounded-2xl shadow-xl flex flex-col overflow-hidden">
+        
         {/* HEADER */}
         <header className="sticky top-0 z-20 bg-gray-800 border-b border-gray-700 px-4 sm:px-6 py-3 sm:py-4">
           <div className="flex items-center justify-between">
@@ -244,13 +240,20 @@ export default function Chat({ userId, username }: ChatProps) {
               const mine =
                 (m.sender_email ?? "").toLowerCase() ===
                 (user?.email ?? "").toLowerCase();
-              // normalize created time
+
               const ts = m.created_at ?? m.createdAt ?? "";
+
               return (
                 <div
                   key={m.id ?? i}
-                  className={`flex ${mine ? "justify-end" : "justify-start"}`}
+                  className={`flex flex-col ${mine ? "items-end" : "items-start"}`}
                 >
+                  {/* ★★★ (REVISI DI SINI) — tampilkan username juga untuk bubble biru ★★★ */}
+                  <div className="text-[11px] sm:text-xs font-semibold mb-1 text-gray-300 break-all">
+                    {m.sender_name || m.sender_email || "Unknown"}
+                  </div>
+
+                  {/* BUBBLE */}
                   <div
                     className={`max-w-[85%] sm:max-w-[70%] px-3 sm:px-4 py-2 sm:py-2.5 rounded-2xl ${
                       mine
@@ -258,12 +261,10 @@ export default function Chat({ userId, username }: ChatProps) {
                         : "bg-gray-700 text-gray-100 rounded-bl-none"
                     }`}
                   >
-                    {!mine && (
-                      <div className="text-[11px] sm:text-xs font-semibold mb-1 text-gray-300 break-all">
-                        {m.sender_name || m.sender_email || "Unknown"}
-                      </div>
-                    )}
-                    <div className="text-sm sm:text-base break-words">{m.message}</div>
+                    <div className="text-sm sm:text-base break-words">
+                      {m.message}
+                    </div>
+
                     <div className="text-[9px] sm:text-[10px] text-gray-300 mt-1 text-right">
                       {ts
                         ? new Date(ts).toLocaleTimeString([], {
