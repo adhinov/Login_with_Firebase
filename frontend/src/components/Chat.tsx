@@ -41,38 +41,28 @@ export default function Chat({ userId, username }: ChatProps) {
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
-  // ======================================================
+  // ============================
   // FETCH PESAN AWAL
-  // ======================================================
+  // ============================
   useEffect(() => {
-    let mounted = true;
     const token = localStorage.getItem("token");
 
-    const fetchMessages = async () => {
-      try {
-        const res = await axios.get(`${API_URL}/api/messages`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        });
-
+    axios
+      .get(`${API_URL}/api/messages`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      })
+      .then((res) => {
         const data: Message[] = Array.isArray(res.data)
           ? res.data
           : res.data?.data ?? [];
-
-        if (mounted) setMessages(data);
-      } catch (err) {
-        console.error("Gagal ambil pesan:", err);
-      }
-    };
-
-    fetchMessages();
-    return () => {
-      mounted = false;
-    };
+        setMessages(data);
+      })
+      .catch((err) => console.error("Gagal ambil pesan:", err));
   }, [API_URL]);
 
-  // ======================================================
+  // ============================
   // SOCKET REALTIME
-  // ======================================================
+  // ============================
   useEffect(() => {
     if (!socket) return;
 
@@ -103,7 +93,7 @@ export default function Chat({ userId, username }: ChatProps) {
           return (
             m.message === normalized.message &&
             m.sender_email === normalized.sender_email &&
-            Math.abs(t1 - t2) < 600
+            Math.abs(t1 - t2) < 500
           );
         });
 
@@ -118,16 +108,16 @@ export default function Chat({ userId, username }: ChatProps) {
     };
   }, [userId, username]);
 
-  // ======================================================
+  // ============================
   // AUTO SCROLL
-  // ======================================================
+  // ============================
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // ======================================================
+  // ============================
   // KIRIM TEXT
-  // ======================================================
+  // ============================
   const sendMessage = async () => {
     if (!input.trim()) return;
 
@@ -147,9 +137,9 @@ export default function Chat({ userId, username }: ChatProps) {
     setInput("");
   };
 
-  // ======================================================
+  // ============================
   // KIRIM GAMBAR
-  // ======================================================
+  // ============================
   const sendImage = async () => {
     if (!imageFile) return;
 
@@ -170,61 +160,57 @@ export default function Chat({ userId, username }: ChatProps) {
         },
       });
 
-      // broadcast realtime
+      // Pastikan nama langsung benar
+      const finalMsg = {
+        ...res.data,
+        sender_name: username, // <--- FIX UTAMA
+      };
+
+      // kirim realtime
       if (socket && socket.connected) {
-        socket.emit("sendMessage", res.data);
+        socket.emit("sendMessage", finalMsg);
       }
 
-      // tampilkan langsung ke UI user sendiri tanpa reload
-      setMessages((prev) => [...prev, res.data]);
+      // tampilkan ke UI sendiri
+      setMessages((prev) => [...prev, finalMsg]);
 
       setImagePreview(null);
       setImageFile(null);
     } catch (err) {
-      console.error("Gagal upload gambar:", err);
+      console.error("Upload gagal:", err);
     }
   };
 
-  // ======================================================
-  // PILIH GAMBAR
-  // ======================================================
+  // pilih gambar
   const handleSelectImage = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     setImageFile(file);
     setImagePreview(URL.createObjectURL(file));
     setShowUpload(false);
   };
 
-  // ======================================================
-  // DOWNLOAD GAMBAR (WhatsApp style)
-  // ======================================================
+  // download WA style
   const handleDownloadImage = (url: string) => {
-    if (!url) return;
-    const fileName = url.split("/").pop() || "image.jpg";
-
     const a = document.createElement("a");
     a.href = url;
-    a.download = fileName;
+    a.download = url.split("/").pop() || "image.jpg";
     a.target = "_blank";
     document.body.appendChild(a);
     a.click();
-    document.body.removeChild(a);
+    a.remove();
   };
 
-  // ======================================================
-  // LOGOUT
-  // ======================================================
+  // logout
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     window.location.href = "/login";
   };
 
-  // ======================================================
-  // RENDER UI
-  // ======================================================
+  // ============================
+  // RENDER
+  // ============================
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-950 p-2 sm:p-4">
       <div className="w-full max-w-3xl h-[100vh] sm:h-[85vh] bg-gray-900 shadow-xl flex flex-col overflow-hidden">
@@ -265,7 +251,7 @@ export default function Chat({ userId, username }: ChatProps) {
           </div>
         </header>
 
-        {/* CHAT AREA */}
+        {/* CHAT */}
         <main className="flex-1 overflow-y-auto px-4 py-3 space-y-3 bg-gray-800">
           {messages.map((m, i) => {
             const mine =
@@ -281,9 +267,7 @@ export default function Chat({ userId, username }: ChatProps) {
             return (
               <div
                 key={m.id ?? i}
-                className={`flex flex-col ${
-                  mine ? "items-end" : "items-start"
-                }`}
+                className={`flex flex-col ${mine ? "items-end" : "items-start"}`}
               >
                 <div
                   className={`max-w-[80%] px-4 py-2 rounded-2xl ${
@@ -300,13 +284,11 @@ export default function Chat({ userId, username }: ChatProps) {
                   {/* GAMBAR */}
                   {m.file_type?.startsWith("image/") && m.file_url && (
                     <div
-                      onClick={() =>
-                        m.file_url && handleDownloadImage(m.file_url)
-                      }
+                      onClick={() => handleDownloadImage(m.file_url!)}
                       className="mb-2 cursor-pointer"
                     >
                       <img
-                        src={m.file_url}
+                        src={m.file_url!}
                         className="w-28 h-28 object-cover rounded-lg blur-[1px] brightness-75"
                       />
                       <div className="text-xs text-gray-300 mt-1 text-center">
@@ -333,11 +315,10 @@ export default function Chat({ userId, username }: ChatProps) {
               </div>
             );
           })}
-
           <div ref={chatEndRef} />
         </main>
 
-        {/* PREVIEW UPLOAD */}
+        {/* PREVIEW */}
         {imagePreview && (
           <div className="px-4 py-3 bg-gray-900 border-t border-gray-700">
             <div className="flex items-center gap-3">

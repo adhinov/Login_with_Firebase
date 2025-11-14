@@ -1,3 +1,4 @@
+// controllers/messageController.js
 import pool from "../config/db.js";
 import cloudinary from "../config/cloudinary.js";
 import multer from "multer";
@@ -5,7 +6,7 @@ import path from "path";
 import fs from "fs";
 
 // ========================
-// Konfigurasi Multer
+// Konfigurasi Multer (SIMPAN SEMENTARA DI /uploads)
 // ========================
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -22,54 +23,81 @@ const storage = multer.diskStorage({
 
 export const upload = multer({
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // maksimal 10MB
+  limits: { fileSize: 10 * 1024 * 1024 }, // Max 10MB
 });
 
 // ========================
-// Kirim Pesan + File (Global Chat)
+// UPLOAD FILE + SAVE MESSAGE
 // ========================
 export const uploadMessageFile = async (req, res) => {
   try {
     const sender_id = req.user?.id;
+    const sender_email = req.user?.email;
+    const sender_name = req.user?.username;
     const { message } = req.body;
 
     if (!sender_id) {
-      return res
-        .status(400)
-        .json({ success: false, message: "User belum login." });
+      return res.status(400).json({
+        success: false,
+        message: "User belum login.",
+      });
     }
 
     let file_url = null;
     let file_type = null;
 
-    // upload ke Cloudinary jika ada file
+    // ======================
+    // Upload Jika Ada File
+    // ======================
     if (req.file) {
       const result = await cloudinary.uploader.upload(req.file.path, {
         folder: "chat_uploads",
+        resource_type: "auto", // bisa upload image/video
       });
+
       file_url = result.secure_url;
       file_type = req.file.mimetype;
-      fs.unlinkSync(req.file.path); // hapus file lokal
+
+      // hapus file lokal
+      fs.unlinkSync(req.file.path);
     }
 
+    // ======================
+    // Simpan ke Database
+    // ======================
     const query = `
-      INSERT INTO messages (sender_id, message, file_url, file_type, created_at)
+      INSERT INTO messages 
+      (sender_id, message, file_url, file_type, created_at)
       VALUES ($1, $2, $3, $4, NOW())
       RETURNING *;
     `;
+
     const values = [sender_id, message || "", file_url, file_type];
     const { rows } = await pool.query(query, values);
+    const saved = rows[0];
 
-    // kirim balik pesan baru
-    res.status(201).json(rows[0]);
+    // ======================
+    // Gabungkan dengan info user
+    // agar return lengkap
+    // ======================
+    const fullMessage = {
+      ...saved,
+      sender_email,
+      sender_name,
+    };
+
+    res.status(201).json(fullMessage);
   } catch (error) {
     console.error("❌ Upload error:", error);
-    res.status(500).json({ success: false, message: "Gagal kirim pesan." });
+    res.status(500).json({
+      success: false,
+      message: "Gagal mengirim pesan.",
+    });
   }
 };
 
 // ========================
-// Ambil Semua Pesan (Global Chat)
+// GET ALL MESSAGES
 // ========================
 export const getAllMessages = async (req, res) => {
   try {
@@ -93,8 +121,9 @@ export const getAllMessages = async (req, res) => {
     res.status(200).json(rows);
   } catch (error) {
     console.error("❌ Error ambil pesan:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Gagal ambil pesan dari server." });
+    res.status(500).json({
+      success: false,
+      message: "Gagal ambil data pesan.",
+    });
   }
 };
