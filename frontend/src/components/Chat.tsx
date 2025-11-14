@@ -3,7 +3,15 @@
 import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import socket from "@/lib/socket";
-import { Settings } from "lucide-react";
+import {
+  Settings,
+  Send,
+  Image as ImageIcon,
+  Video,
+  File,
+  Mic,
+  Plus,
+} from "lucide-react";
 
 interface Message {
   id?: number | string;
@@ -26,6 +34,7 @@ export default function Chat({ userId, username }: ChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [showMenu, setShowMenu] = useState(false);
+  const [showUpload, setShowUpload] = useState(false); // ⬅ Dropdown Upload
   const [onlineCount, setOnlineCount] = useState<number>(0);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -36,7 +45,7 @@ export default function Chat({ userId, username }: ChatProps) {
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
-  // === Ambil pesan awal ===
+  // === AMBIL PESAN AWAL ===
   useEffect(() => {
     let mounted = true;
     const token = localStorage.getItem("token");
@@ -63,7 +72,7 @@ export default function Chat({ userId, username }: ChatProps) {
     };
   }, [API_URL]);
 
-  // === Socket setup ===
+  // === SOCKET SETUP ===
   useEffect(() => {
     if (!socket) return;
 
@@ -114,12 +123,12 @@ export default function Chat({ userId, username }: ChatProps) {
     };
   }, [userId, username]);
 
-  // === Auto scroll ===
+  // === AUTO SCROLL ===
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // === Kirim pesan ===
+  // === KIRIM PESAN ===
   const sendMessage = async () => {
     if (!input.trim()) return;
 
@@ -154,7 +163,7 @@ export default function Chat({ userId, username }: ChatProps) {
     setInput("");
   };
 
-  // === MENU ACTIONS ===
+  // === MENU ===
   const handleEditProfile = () => {
     setShowMenu(false);
     window.location.href = "/edit-profile";
@@ -172,9 +181,10 @@ export default function Chat({ userId, username }: ChatProps) {
     window.location.href = "/login";
   };
 
-  // ============================================================
-  // =======================   UI   ==============================
-  // ============================================================
+  // ================================================
+  // ======================= UI =====================
+  // ================================================
+
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-950 p-2 sm:p-4">
       <div className="w-full max-w-3xl h-[100vh] sm:h-[85vh] bg-gray-900 rounded-none sm:rounded-2xl shadow-xl flex flex-col overflow-hidden">
@@ -248,19 +258,17 @@ export default function Chat({ userId, username }: ChatProps) {
                   key={m.id ?? i}
                   className={`flex flex-col ${mine ? "items-end" : "items-start"}`}
                 >
-                  {/* ★★★ (REVISI DI SINI) — tampilkan username juga untuk bubble biru ★★★ */}
-                  <div className="text-[11px] sm:text-xs font-semibold mb-1 text-gray-300 break-all">
-                    {m.sender_name || m.sender_email || "Unknown"}
-                  </div>
-
-                  {/* BUBBLE */}
                   <div
-                    className={`max-w-[85%] sm:max-w-[70%] px-3 sm:px-4 py-2 sm:py-2.5 rounded-2xl ${
+                    className={`max-w-[85%] sm:max-w-[70%] px-3 sm:px-4 py-2 rounded-2xl ${
                       mine
                         ? "bg-blue-600 text-white rounded-br-none"
                         : "bg-gray-700 text-gray-100 rounded-bl-none"
                     }`}
                   >
+                    <div className="text-xs font-bold text-yellow-300 mb-1">
+                      {m.sender_name || m.sender_email || "Unknown"}
+                    </div>
+
                     <div className="text-sm sm:text-base break-words">
                       {m.message}
                     </div>
@@ -282,7 +290,35 @@ export default function Chat({ userId, username }: ChatProps) {
         </main>
 
         {/* INPUT */}
-        <footer className="px-3 sm:px-6 py-3 bg-gray-800 flex items-center gap-2 sm:gap-3 border-t border-gray-700">
+        <footer className="px-3 sm:px-6 py-3 bg-gray-800 flex items-center gap-3 border-t border-gray-700">
+
+          {/* BUTTON + */}
+          <div className="relative">
+            <button
+              className="p-2 hover:bg-gray-700 rounded-full"
+              onClick={() => setShowUpload((prev) => !prev)}
+            >
+              <Plus size={22} className="text-white" />
+            </button>
+
+            {showUpload && (
+              <div className="absolute bottom-12 left-0 bg-gray-800 border border-gray-700 rounded-md shadow-lg w-40 z-40 py-1">
+                <button className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-700 text-sm text-gray-200">
+                  <ImageIcon size={18} /> Upload Image
+                </button>
+                <button className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-700 text-sm text-gray-200">
+                  <Video size={18} /> Upload Video
+                </button>
+                <button className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-700 text-sm text-gray-200">
+                  <File size={18} /> Upload File
+                </button>
+                <button className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-700 text-sm text-gray-200">
+                  <Mic size={18} /> Audio
+                </button>
+              </div>
+            )}
+          </div>
+
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -290,11 +326,12 @@ export default function Chat({ userId, username }: ChatProps) {
             placeholder="Ketik pesan..."
             className="flex-1 rounded-full px-4 py-2.5 bg-gray-700 text-white placeholder-gray-400 focus:outline-none text-sm sm:text-base"
           />
+
           <button
             onClick={sendMessage}
-            className="px-4 py-2 rounded-full bg-blue-600 hover:bg-blue-700 text-sm sm:text-base"
+            className="p-3 rounded-full bg-blue-600 hover:bg-blue-700"
           >
-            Kirim
+            <Send size={20} className="text-white" />
           </button>
         </footer>
       </div>
