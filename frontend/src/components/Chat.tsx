@@ -41,9 +41,9 @@ export default function Chat({ userId, username }: ChatProps) {
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
-  // ================================
+  // ===========================================================
   // GET MESSAGES
-  // ================================
+  // ===========================================================
   useEffect(() => {
     const token = localStorage.getItem("token");
 
@@ -60,23 +60,25 @@ export default function Chat({ userId, username }: ChatProps) {
       .catch((err) => console.error("Gagal ambil pesan:", err));
   }, [API_URL]);
 
-  // ================================
-  // SOCKET.IO
-  // ================================
+  // ===========================================================
+  // SOCKET IO HANDLING
+  // ===========================================================
   useEffect(() => {
     if (!socket) return;
 
-    const doJoin = () => {
+    const handleConnect = () => {
       socket.emit("join", {
         userId,
         username: username || user?.email || "User",
       });
     };
 
-    if (socket.connected) doJoin();
-    socket.on("connect", doJoin);
+    if (socket.connected) handleConnect();
+    socket.on("connect", handleConnect);
 
-    socket.on("onlineUsers", (count: number) => setOnlineCount(count ?? 0));
+    socket.on("onlineUsers", (count: number) => {
+      setOnlineCount(count ?? 0);
+    });
 
     socket.on("receiveMessage", (msg: Message) => {
       if (!msg) return;
@@ -90,20 +92,20 @@ export default function Chat({ userId, username }: ChatProps) {
     });
 
     return () => {
-      socket.off("connect", doJoin);
+      socket.off("connect", handleConnect);
       socket.off("onlineUsers");
       socket.off("receiveMessage");
     };
   }, [userId, username]);
 
-  // AUTO SCROLL
+  // AUTO SCROLL BOTTOM
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // ================================
-  // SEND TEXT
-  // ================================
+  // ===========================================================
+  // SEND TEXT (NO LOCAL PUSH)
+  // ===========================================================
   const sendMessage = async () => {
     if (!input.trim()) return;
 
@@ -116,15 +118,16 @@ export default function Chat({ userId, username }: ChatProps) {
       created_at: new Date().toISOString(),
     };
 
-    if (socket && socket.connected) socket.emit("sendMessage", msg);
+    if (socket && socket.connected) {
+      socket.emit("sendMessage", msg);
+    }
 
-    setMessages((prev) => [...prev, msg]);
-    setInput("");
+    setInput(""); // JANGAN push local → biarkan dari server
   };
 
-  // ================================
-  // SEND IMAGE
-  // ================================
+  // ===========================================================
+  // SEND IMAGE (NO LOCAL PUSH)
+  // ===========================================================
   const sendImage = async () => {
     if (!imageFile) return;
 
@@ -151,8 +154,7 @@ export default function Chat({ userId, username }: ChatProps) {
         socket.emit("sendMessage", finalMsg);
       }
 
-      setMessages((prev) => [...prev, finalMsg]);
-
+      // ❌ Tidak push local
       setImagePreview(null);
       setImageFile(null);
     } catch (err) {
@@ -174,11 +176,11 @@ export default function Chat({ userId, username }: ChatProps) {
     window.location.href = "/login";
   };
 
-  // ================================
+  // ===========================================================
   // UI
-  // ================================
+  // ===========================================================
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-950 p-0">
+    <div className="flex min-h-screen bg-gray-950 p-0">
       <div className="w-full max-w-3xl h-[100vh] bg-gray-900 shadow-xl flex flex-col overflow-hidden">
 
         {/* HEADER FIX HP */}
@@ -221,7 +223,7 @@ export default function Chat({ userId, username }: ChatProps) {
           </div>
         </header>
 
-        {/* CHAT AREA */}
+        {/* CHAT */}
         <main className="flex-1 overflow-y-auto px-4 py-3 space-y-3 bg-gray-850">
           {messages.map((m, i) => {
             const mine =
@@ -237,9 +239,7 @@ export default function Chat({ userId, username }: ChatProps) {
             return (
               <div
                 key={m.id ?? i}
-                className={`flex flex-col ${
-                  mine ? "items-end" : "items-start"
-                }`}
+                className={`flex flex-col ${mine ? "items-end" : "items-start"}`}
               >
                 <div
                   className={`max-w-[78%] sm:max-w-[70%] px-4 py-2 rounded-2xl ${
@@ -310,7 +310,7 @@ export default function Chat({ userId, username }: ChatProps) {
           </div>
         )}
 
-        {/* INPUT FIX HP */}
+        {/* INPUT */}
         <div className="sticky bottom-0 bg-gray-850 border-t border-gray-700 px-4 py-3">
           <footer className="flex items-center gap-3">
 
@@ -342,7 +342,6 @@ export default function Chat({ userId, username }: ChatProps) {
               )}
             </div>
 
-            {/* INPUT */}
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -351,7 +350,6 @@ export default function Chat({ userId, username }: ChatProps) {
               className="flex-1 rounded-full px-4 py-3 bg-gray-700 text-white text-sm sm:text-base focus:outline-none"
             />
 
-            {/* SEND BUTTON BIGGER ON MOBILE */}
             <button
               onClick={sendMessage}
               className="p-3 sm:p-3 rounded-full bg-blue-600 hover:bg-blue-700 flex items-center justify-center"
@@ -360,6 +358,7 @@ export default function Chat({ userId, username }: ChatProps) {
             </button>
           </footer>
         </div>
+
       </div>
     </div>
   );
