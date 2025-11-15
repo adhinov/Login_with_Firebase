@@ -98,13 +98,13 @@ export default function Chat({ userId, username }: ChatProps) {
     };
   }, [userId, username]);
 
-  // AUTO SCROLL BOTTOM
+  // AUTO SCROLL
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   // ===========================================================
-  // SEND TEXT (NO LOCAL PUSH)
+  // SEND TEXT
   // ===========================================================
   const sendMessage = async () => {
     if (!input.trim()) return;
@@ -122,11 +122,11 @@ export default function Chat({ userId, username }: ChatProps) {
       socket.emit("sendMessage", msg);
     }
 
-    setInput(""); // JANGAN push local → biarkan dari server
+    setInput(""); // tetap, tidak push local
   };
 
   // ===========================================================
-  // SEND IMAGE (NO LOCAL PUSH)
+  // SEND IMAGE ⭐ (FIX: sekarang muncul di layar sendiri)
   // ===========================================================
   const sendImage = async () => {
     if (!imageFile) return;
@@ -150,11 +150,13 @@ export default function Chat({ userId, username }: ChatProps) {
 
       const finalMsg = { ...res.data, sender_name: username };
 
+      // ⭐ Tambahan: push lokal supaya muncul langsung di layar sendiri
+      setMessages((prev) => [...prev, finalMsg]);
+
       if (socket && socket.connected) {
         socket.emit("sendMessage", finalMsg);
       }
 
-      // ❌ Tidak push local
       setImagePreview(null);
       setImageFile(null);
     } catch (err) {
@@ -239,20 +241,21 @@ export default function Chat({ userId, username }: ChatProps) {
             return (
               <div
                 key={m.id ?? i}
-                className={`flex flex-col ${mine ? "items-end" : "items-start"}`}
+                className={`flex flex-col ${
+                  mine ? "items-start" : "items-end"
+                }`}
               >
                 <div
                   className={`max-w-[78%] sm:max-w-[70%] px-4 py-2 rounded-2xl ${
                     mine
-                      ? "bg-blue-600 text-white rounded-br-none"
-                      : "bg-gray-700 text-gray-200 rounded-bl-none"
+                      ? "bg-blue-600 text-white rounded-bl-none"
+                      : "bg-gray-700 text-gray-200 rounded-br-none"
                   }`}
                 >
                   <div className="text-xs text-yellow-300 mb-1">
                     {displayName}
                   </div>
 
-                  {/* IMAGE */}
                   {m.file_type?.startsWith("image/") && m.file_url && (
                     <img
                       src={m.file_url}
