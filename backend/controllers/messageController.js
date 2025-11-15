@@ -46,25 +46,20 @@ export const uploadMessageFile = async (req, res) => {
     let file_url = null;
     let file_type = null;
 
-    // ======================
-    // Upload Jika Ada File
-    // ======================
+    // UPLOAD FILE
     if (req.file) {
       const result = await cloudinary.uploader.upload(req.file.path, {
         folder: "chat_uploads",
-        resource_type: "auto", // bisa upload image/video
+        resource_type: "auto",
       });
 
       file_url = result.secure_url;
       file_type = req.file.mimetype;
 
-      // hapus file lokal
       fs.unlinkSync(req.file.path);
     }
 
-    // ======================
-    // Simpan ke Database
-    // ======================
+    // SIMPAN DB
     const query = `
       INSERT INTO messages 
       (sender_id, message, file_url, file_type, created_at)
@@ -76,17 +71,20 @@ export const uploadMessageFile = async (req, res) => {
     const { rows } = await pool.query(query, values);
     const saved = rows[0];
 
-    // ======================
-    // Gabungkan dengan info user
-    // agar return lengkap
-    // ======================
     const fullMessage = {
       ...saved,
       sender_email,
       sender_name,
     };
 
-    res.status(201).json(fullMessage);
+    // 💥 BROADCAST REALTIME KE SEMUA USER (SOLUSI UTAMA)
+    const io = req.app.get("io");
+    if (io) {
+      io.emit("receiveMessage", fullMessage);
+    }
+
+    // RETURN KE PENGUPLOAD
+    return res.status(201).json(fullMessage);
   } catch (error) {
     console.error("❌ Upload error:", error);
     res.status(500).json({
