@@ -41,7 +41,9 @@ export default function Chat({ userId, username }: ChatProps) {
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
-  // FETCH PESAN
+  // ================================
+  // GET MESSAGES
+  // ================================
   useEffect(() => {
     const token = localStorage.getItem("token");
 
@@ -58,7 +60,9 @@ export default function Chat({ userId, username }: ChatProps) {
       .catch((err) => console.error("Gagal ambil pesan:", err));
   }, [API_URL]);
 
-  // SOCKET
+  // ================================
+  // SOCKET.IO
+  // ================================
   useEffect(() => {
     if (!socket) return;
 
@@ -82,19 +86,7 @@ export default function Chat({ userId, username }: ChatProps) {
         created_at: msg.created_at ?? msg.createdAt ?? new Date().toISOString(),
       };
 
-      setMessages((prev) => {
-        const exists = prev.some((m) => {
-          const t1 = new Date(m.created_at ?? m.createdAt ?? 0).getTime();
-          const t2 = new Date(normalized.created_at ?? 0).getTime();
-          return (
-            m.message === normalized.message &&
-            m.sender_email === normalized.sender_email &&
-            Math.abs(t1 - t2) < 500
-          );
-        });
-
-        return exists ? prev : [...prev, normalized];
-      });
+      setMessages((prev) => [...prev, normalized]);
     });
 
     return () => {
@@ -109,7 +101,9 @@ export default function Chat({ userId, username }: ChatProps) {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // ================================
   // SEND TEXT
+  // ================================
   const sendMessage = async () => {
     if (!input.trim()) return;
 
@@ -125,11 +119,12 @@ export default function Chat({ userId, username }: ChatProps) {
     if (socket && socket.connected) socket.emit("sendMessage", msg);
 
     setMessages((prev) => [...prev, msg]);
-
     setInput("");
   };
 
+  // ================================
   // SEND IMAGE
+  // ================================
   const sendImage = async () => {
     if (!imageFile) return;
 
@@ -165,7 +160,6 @@ export default function Chat({ userId, username }: ChatProps) {
     }
   };
 
-  // SELECT IMAGE
   const handleSelectImage = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -174,40 +168,34 @@ export default function Chat({ userId, username }: ChatProps) {
     setShowUpload(false);
   };
 
-  // DOWNLOAD WA STYLE
-  const handleDownloadImage = (url: string) => {
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = url?.split("/").pop() || "image.jpg";
-    a.target = "_blank";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  };
-
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     window.location.href = "/login";
   };
 
-  // ==========================
-  // RETURN UI
-  // ==========================
+  // ================================
+  // UI
+  // ================================
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-950 p-2 sm:p-4">
-      <div className="w-full max-w-3xl h-[100vh] sm:h-[85vh] bg-gray-900 shadow-xl flex flex-col overflow-hidden">
+    <div className="flex items-center justify-center min-h-screen bg-gray-950 p-0">
+      <div className="w-full max-w-3xl h-[100vh] bg-gray-900 shadow-xl flex flex-col overflow-hidden">
 
-        {/* HEADER STICKY */}
-        <header className="sticky top-0 z-20 bg-gray-800 border-b border-gray-700 px-4 py-3">
-          <div className="flex items-center justify-between">
+        {/* HEADER FIX HP */}
+        <header className="sticky top-0 z-20 bg-gray-850 border-b border-gray-700 px-4 py-3">
+          <div className="flex items-center justify-between w-full">
             <div className="flex items-center gap-3">
-              <div className="bg-blue-500 w-9 h-9 rounded-full flex items-center justify-center font-semibold text-white">
+              <div className="bg-blue-600 w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-semibold text-white text-lg">
                 {username?.[0]?.toUpperCase()}
               </div>
+
               <div>
-                <div className="text-white font-semibold">{username}</div>
-                <div className="text-xs text-gray-400">{onlineCount} online</div>
+                <div className="text-white font-semibold text-base sm:text-lg">
+                  {username}
+                </div>
+                <div className="text-xs text-gray-400">
+                  {onlineCount} online
+                </div>
               </div>
             </div>
 
@@ -216,11 +204,11 @@ export default function Chat({ userId, username }: ChatProps) {
                 onClick={() => setShowMenu((s) => !s)}
                 className="p-2 hover:bg-gray-700 rounded-full"
               >
-                <Settings size={20} className="text-white" />
+                <Settings size={22} className="text-white" />
               </button>
 
               {showMenu && (
-                <div className="absolute right-0 top-11 bg-gray-800 border border-gray-700 shadow-lg rounded-md text-white w-32">
+                <div className="absolute right-0 top-12 bg-gray-800 border border-gray-600 shadow-lg rounded-md text-white w-36">
                   <button
                     onClick={handleLogout}
                     className="px-4 py-2 hover:bg-gray-700 w-full text-left"
@@ -233,8 +221,8 @@ export default function Chat({ userId, username }: ChatProps) {
           </div>
         </header>
 
-        {/* CHAT */}
-        <main className="flex-1 overflow-y-auto px-4 py-3 space-y-3 bg-gray-800">
+        {/* CHAT AREA */}
+        <main className="flex-1 overflow-y-auto px-4 py-3 space-y-3 bg-gray-850">
           {messages.map((m, i) => {
             const mine =
               (m.sender_email ?? "").toLowerCase() ===
@@ -249,36 +237,34 @@ export default function Chat({ userId, username }: ChatProps) {
             return (
               <div
                 key={m.id ?? i}
-                className={`flex flex-col ${mine ? "items-end" : "items-start"}`}
+                className={`flex flex-col ${
+                  mine ? "items-end" : "items-start"
+                }`}
               >
                 <div
-                  className={`max-w-[80%] px-4 py-2 rounded-2xl ${
+                  className={`max-w-[78%] sm:max-w-[70%] px-4 py-2 rounded-2xl ${
                     mine
                       ? "bg-blue-600 text-white rounded-br-none"
-                      : "bg-gray-700 text-gray-100 rounded-bl-none"
+                      : "bg-gray-700 text-gray-200 rounded-bl-none"
                   }`}
                 >
                   <div className="text-xs text-yellow-300 mb-1">
                     {displayName}
                   </div>
 
+                  {/* IMAGE */}
                   {m.file_type?.startsWith("image/") && m.file_url && (
-                    <div
-                      onClick={() => handleDownloadImage(m.file_url!)}
-                      className="mb-2 cursor-pointer"
-                    >
-                      <img
-                        src={m.file_url!}
-                        className="w-28 h-28 object-cover rounded-lg blur-[1px] brightness-75"
-                      />
-                      <div className="text-xs text-gray-300 mt-1 text-center">
-                        Klik untuk Download
-                      </div>
-                    </div>
+                    <img
+                      src={m.file_url}
+                      className="w-32 h-32 sm:w-40 sm:h-40 object-cover rounded-lg mb-2 cursor-pointer"
+                      onClick={() => window.open(m.file_url!, "_blank")}
+                    />
                   )}
 
                   {m.message && (
-                    <div className="text-sm break-words">{m.message}</div>
+                    <div className="text-sm break-words leading-snug">
+                      {m.message}
+                    </div>
                   )}
 
                   <div className="text-[10px] text-gray-300 mt-1 text-right">
@@ -293,10 +279,11 @@ export default function Chat({ userId, username }: ChatProps) {
               </div>
             );
           })}
+
           <div ref={chatEndRef} />
         </main>
 
-        {/* PREVIEW */}
+        {/* PREVIEW IMAGE */}
         {imagePreview && (
           <div className="px-4 py-3 bg-gray-900 border-t border-gray-700">
             <div className="flex items-center gap-3">
@@ -323,17 +310,16 @@ export default function Chat({ userId, username }: ChatProps) {
           </div>
         )}
 
-        {/* INPUT FIX TOMBOL KETUTUP HP */}
-        <div className="fixed bottom-0 left-0 right-0 bg-gray-800 border-t border-gray-700 px-4 py-3 pb-[env(safe-area-inset-bottom)]">
-          <footer className="flex items-center gap-3 max-w-3xl mx-auto">
+        {/* INPUT FIX HP */}
+        <div className="sticky bottom-0 bg-gray-850 border-t border-gray-700 px-4 py-3">
+          <footer className="flex items-center gap-3">
 
-            {/* + MENU */}
             <div className="relative">
               <button
                 className="p-2 hover:bg-gray-700 rounded-full"
                 onClick={() => setShowUpload((s) => !s)}
               >
-                <Plus size={22} className="text-white" />
+                <Plus size={24} className="text-white" />
               </button>
 
               {showUpload && (
@@ -356,21 +342,21 @@ export default function Chat({ userId, username }: ChatProps) {
               )}
             </div>
 
-            {/* INPUT TEKS */}
+            {/* INPUT */}
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && sendMessage()}
               placeholder="Ketik pesan..."
-              className="flex-1 rounded-full px-4 py-2 bg-gray-700 text-white"
+              className="flex-1 rounded-full px-4 py-3 bg-gray-700 text-white text-sm sm:text-base focus:outline-none"
             />
 
-            {/* SEND */}
+            {/* SEND BUTTON BIGGER ON MOBILE */}
             <button
               onClick={sendMessage}
-              className="p-3 rounded-full bg-blue-600 hover:bg-blue-700"
+              className="p-3 sm:p-3 rounded-full bg-blue-600 hover:bg-blue-700 flex items-center justify-center"
             >
-              <Send size={20} />
+              <Send size={20} className="text-white" />
             </button>
           </footer>
         </div>
