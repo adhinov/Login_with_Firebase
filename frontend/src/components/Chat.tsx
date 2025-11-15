@@ -41,6 +41,36 @@ export default function Chat({ userId, username }: ChatProps) {
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
+  // Helper: deduplicate and add message safely
+  const addMessageIfNotExists = (msg: Message) => {
+    setMessages((prev) => {
+      // check by id
+      if (msg.id && prev.some((m) => m.id === msg.id)) return prev;
+
+      // check by file_url (most reliable for uploads)
+      if (msg.file_url && prev.some((m) => m.file_url === msg.file_url))
+        return prev;
+
+      // check by exact text + sender + near timestamp (within 5s)
+      if (msg.message) {
+        const msgTime = new Date(msg.created_at ?? msg.createdAt ?? Date.now()).getTime();
+        const exists = prev.some((m) => {
+          if (!m.message) return false;
+          const mt = new Date(m.created_at ?? m.createdAt ?? 0).getTime();
+          return (
+            m.message === msg.message &&
+            (m.sender_email ?? "") === (msg.sender_email ?? "") &&
+            Math.abs(mt - msgTime) < 5000
+          );
+        });
+        if (exists) return prev;
+      }
+
+      // otherwise add
+      return [...prev, msg];
+    });
+  };
+
   // GET MESSAGES
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -84,7 +114,8 @@ export default function Chat({ userId, username }: ChatProps) {
         created_at: msg.created_at ?? msg.createdAt ?? new Date().toISOString(),
       };
 
-      setMessages((prev) => [...prev, normalized]);
+      // use dedupe add
+      addMessageIfNotExists(normalized);
     });
 
     return () => {
@@ -92,6 +123,7 @@ export default function Chat({ userId, username }: ChatProps) {
       socket.off("onlineUsers");
       socket.off("receiveMessage");
     };
+    // note: keep userId, username in deps as before
   }, [userId, username]);
 
   // AUTO SCROLL
@@ -113,15 +145,24 @@ export default function Chat({ userId, username }: ChatProps) {
     };
 
     if (socket && socket.connected) {
+      // emit to server and let server broadcast (server should send receiveMessage back to everyone or others)
       socket.emit("sendMessage", msg);
     }
 
-    setMessages((prev) => [...prev, msg]);
+    // DO NOT push local here — rely on receiveMessage to avoid duplicates
     setInput("");
   };
 
-  // UPLOAD OTOMATIS
+  // UPLOAD OTOMATIS (with token check, progress init, dedupe)
   const sendImageAuto = async (file: File) => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      console.error("Token tidak ditemukan — silakan login ulang sebelum upload.");
+      // optional: redirect to login
+      alert("Sesi berakhir. Silakan login ulang.");
+      return;
+    }
+
     const form = new FormData();
     form.append("file", file);
     form.append("message", "");
@@ -129,35 +170,42 @@ export default function Chat({ userId, username }: ChatProps) {
     form.append("sender_email", user?.email ?? "");
     form.append("sender_name", username);
 
-    const token = localStorage.getItem("token");
-
     try {
+      // start progress indicator immediately (0%)
+      setUploadProgress(0);
+
       const res = await axios.post(`${API_URL}/api/messages/upload`, form, {
         headers: {
-          Authorization: token ? `Bearer ${token}` : "",
+          Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",
         },
-
-        // NEW — PROGRESS BAR
         onUploadProgress: (evt) => {
-          const percent = Math.round(
-            (evt.loaded * 100) / (evt.total ?? 1)
-          );
+          const percent = Math.round((evt.loaded * 100) / (evt.total ?? 1));
           setUploadProgress(percent);
         },
       });
 
-      const finalMsg = { ...res.data, sender_name: username };
+      // success
+      const finalMsg: Message = { ...res.data, sender_name: username };
 
-      setUploadProgress(null); // reset progress ketika selesai
+      // reset progress
+      setUploadProgress(null);
 
-      setMessages((prev) => [...prev, finalMsg]);
+      // add message safely (dedupe)
+      addMessageIfNotExists(finalMsg);
 
+      // inform server (emit) — if server broadcasts to everyone including sender, dedupe prevents duplicate
       if (socket && socket.connected) {
         socket.emit("sendMessage", finalMsg);
       }
-    } catch (err) {
-      console.error("Upload gagal:", err);
+    } catch (err: any) {
+      // network / server error
+      console.error("Upload gagal:", err?.response ?? err);
+      // handle 401 explicitly
+      if (err?.response?.status === 401) {
+        console.error("Upload gagal: 401 Unauthorized — token mungkin kedaluwarsa.");
+        alert("Sesi berakhir. Silakan login ulang.");
+      }
       setUploadProgress(null);
     }
   };
@@ -223,17 +271,15 @@ export default function Chat({ userId, username }: ChatProps) {
         {/* CHAT */}
         <main className="flex-1 overflow-y-auto px-4 py-3 space-y-3 bg-gray-850">
 
-          {/* ---- NEW PROGRESS BUBBLE ---- */}
+          {/* ---- UPLOAD PROGRESS BUBBLE (WhatsApp-like) ---- */}
           {uploadProgress !== null && (
             <div className="flex items-end justify-end pr-2">
               <div className="bg-blue-600 text-white px-4 py-3 rounded-2xl rounded-br-none relative">
-
                 <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full border-2 border-gray-100 flex items-center justify-center bg-blue-500">
                   <span className="text-[10px] font-bold text-white">
                     {uploadProgress}%
                   </span>
                 </div>
-
                 <div className="text-xs text-gray-200">Mengunggah...</div>
               </div>
             </div>
