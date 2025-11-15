@@ -29,7 +29,7 @@ export default function Chat({ userId, username }: ChatProps) {
   const [showUpload, setShowUpload] = useState(false);
   const [onlineCount, setOnlineCount] = useState<number>(0);
 
-  // NEW → progress upload lingkaran
+  // upload progress (null = idle, 0-100 = uploading)
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
 
   const chatEndRef = useRef<HTMLDivElement | null>(null);
@@ -224,6 +224,60 @@ export default function Chat({ userId, username }: ChatProps) {
     window.location.href = "/login";
   };
 
+  // ===== helpers for circular SVG progress =====
+  const CircleProgress = ({ percent }: { percent: number }) => {
+    // circle params
+    const size = 36;
+    const stroke = 3;
+    const radius = (size - stroke) / 2; // inner radius
+    const circumference = 2 * Math.PI * radius;
+    const offset = circumference * (1 - percent / 100);
+
+    return (
+      <svg
+        width={size}
+        height={size}
+        viewBox={`0 0 ${size} ${size}`}
+        className="block"
+      >
+        {/* background circle */}
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke="rgba(255,255,255,0.15)"
+          strokeWidth={stroke}
+          fill="none"
+        />
+        {/* progress circle */}
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke="white"
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          fill="none"
+          strokeDasharray={`${circumference}`}
+          strokeDashoffset={`${offset}`}
+          style={{ transition: "stroke-dashoffset 150ms linear" }}
+        />
+        {/* percent text */}
+        <text
+          x="50%"
+          y="50%"
+          dominantBaseline="middle"
+          textAnchor="middle"
+          fontSize="10"
+          fill="white"
+          fontWeight={700}
+        >
+          {percent}%
+        </text>
+      </svg>
+    );
+  };
+
   return (
     <div className="flex justify-center h-screen bg-gray-950 p-0">
       <div className="w-full max-w-3xl h-full bg-gray-900 shadow-xl flex flex-col overflow-hidden">
@@ -271,14 +325,13 @@ export default function Chat({ userId, username }: ChatProps) {
         {/* CHAT */}
         <main className="flex-1 overflow-y-auto px-4 py-3 space-y-3 bg-gray-850">
 
-          {/* ---- UPLOAD PROGRESS BUBBLE (WhatsApp-like) ---- */}
+          {/* ---- UPLOAD PROGRESS CIRCLE (WhatsApp-like) ---- */}
           {uploadProgress !== null && (
             <div className="flex items-end justify-end pr-2">
               <div className="bg-blue-600 text-white px-4 py-3 rounded-2xl rounded-br-none relative">
-                <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full border-2 border-gray-100 flex items-center justify-center bg-blue-500">
-                  <span className="text-[10px] font-bold text-white">
-                    {uploadProgress}%
-                  </span>
+                <div className="absolute -bottom-5 -right-5 w-9 h-9 rounded-full flex items-center justify-center bg-transparent">
+                  {/* Circular SVG showing percent */}
+                  <CircleProgress percent={Math.max(0, Math.min(100, uploadProgress))} />
                 </div>
                 <div className="text-xs text-gray-200">Mengunggah...</div>
               </div>
