@@ -6,7 +6,7 @@ import path from "path";
 import fs from "fs";
 
 // ========================
-// Konfigurasi Multer (SIMPAN SEMENTARA DI /uploads)
+// Konfigurasi Multer
 // ========================
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -23,11 +23,11 @@ const storage = multer.diskStorage({
 
 export const upload = multer({
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // Max 10MB
+  limits: { fileSize: 10 * 1024 * 1024 },
 });
 
 // ========================
-// UPLOAD FILE + SAVE MESSAGE
+// Upload File + Broadcast
 // ========================
 export const uploadMessageFile = async (req, res) => {
   try {
@@ -46,7 +46,6 @@ export const uploadMessageFile = async (req, res) => {
     let file_url = null;
     let file_type = null;
 
-    // UPLOAD FILE
     if (req.file) {
       const result = await cloudinary.uploader.upload(req.file.path, {
         folder: "chat_uploads",
@@ -59,7 +58,6 @@ export const uploadMessageFile = async (req, res) => {
       fs.unlinkSync(req.file.path);
     }
 
-    // SIMPAN DB
     const query = `
       INSERT INTO messages 
       (sender_id, message, file_url, file_type, created_at)
@@ -77,13 +75,14 @@ export const uploadMessageFile = async (req, res) => {
       sender_name,
     };
 
-    // 💥 BROADCAST REALTIME KE SEMUA USER (SOLUSI UTAMA)
+    // ====================
+    // 🔥 BROADCAST CORRECT EVENT
+    // ====================
     const io = req.app.get("io");
     if (io) {
-      io.emit("receiveMessage", fullMessage);
+      io.emit("receive_message", fullMessage); // ← event harus sama dengan frontend
     }
 
-    // RETURN KE PENGUPLOAD
     return res.status(201).json(fullMessage);
   } catch (error) {
     console.error("❌ Upload error:", error);
@@ -95,7 +94,7 @@ export const uploadMessageFile = async (req, res) => {
 };
 
 // ========================
-// GET ALL MESSAGES
+// GET ALL
 // ========================
 export const getAllMessages = async (req, res) => {
   try {
