@@ -171,10 +171,10 @@ export default function Chat({ userId, username }: ChatProps) {
   };
 
   return (
-    <div className="flex justify-center min-h-screen bg-gray-950 p-0">
-      <div className="w-full max-w-3xl min-h-screen bg-gray-900 shadow-xl flex flex-col overflow-hidden">
+    <div className="flex justify-center h-screen bg-gray-950 p-0">
+      <div className="w-full max-w-3xl h-full bg-gray-900 shadow-xl flex flex-col overflow-hidden">
 
-        {/* HEADER FIX HP */}
+        {/* HEADER */}
         <header className="sticky top-0 z-20 bg-gray-850 border-b border-gray-700 px-4 py-3 flex-shrink-0">
           <div className="flex items-center justify-between w-full">
             <div className="flex items-center gap-3">
