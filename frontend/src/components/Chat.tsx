@@ -41,9 +41,7 @@ export default function Chat({ userId, username }: ChatProps) {
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
-  // ===========================================================
   // GET MESSAGES
-  // ===========================================================
   useEffect(() => {
     const token = localStorage.getItem("token");
 
@@ -60,9 +58,7 @@ export default function Chat({ userId, username }: ChatProps) {
       .catch((err) => console.error("Gagal ambil pesan:", err));
   }, [API_URL]);
 
-  // ===========================================================
-  // SOCKET IO HANDLING
-  // ===========================================================
+  // SOCKET IO
   useEffect(() => {
     if (!socket) return;
 
@@ -103,9 +99,7 @@ export default function Chat({ userId, username }: ChatProps) {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // ===========================================================
-  // SEND TEXT
-  // ===========================================================
+  // SEND TEXT MESSAGE
   const sendMessage = async () => {
     if (!input.trim()) return;
 
@@ -122,12 +116,10 @@ export default function Chat({ userId, username }: ChatProps) {
       socket.emit("sendMessage", msg);
     }
 
-    setInput(""); // tetap, tidak push local
+    setInput("");
   };
 
-  // ===========================================================
-  // SEND IMAGE ⭐ (FIX: sekarang muncul di layar sendiri)
-  // ===========================================================
+  // SEND IMAGE
   const sendImage = async () => {
     if (!imageFile) return;
 
@@ -150,7 +142,7 @@ export default function Chat({ userId, username }: ChatProps) {
 
       const finalMsg = { ...res.data, sender_name: username };
 
-      // ⭐ Tambahan: push lokal supaya muncul langsung di layar sendiri
+      // push lokal agar muncul langsung
       setMessages((prev) => [...prev, finalMsg]);
 
       if (socket && socket.connected) {
@@ -178,15 +170,12 @@ export default function Chat({ userId, username }: ChatProps) {
     window.location.href = "/login";
   };
 
-  // ===========================================================
-  // UI
-  // ===========================================================
   return (
-    <div className="flex min-h-screen bg-gray-950 p-0">
-      <div className="w-full max-w-3xl h-[100vh] bg-gray-900 shadow-xl flex flex-col overflow-hidden">
+    <div className="flex justify-center min-h-screen bg-gray-950 p-0">
+      <div className="w-full max-w-3xl min-h-screen bg-gray-900 shadow-xl flex flex-col overflow-hidden">
 
         {/* HEADER FIX HP */}
-        <header className="sticky top-0 z-20 bg-gray-850 border-b border-gray-700 px-4 py-3">
+        <header className="sticky top-0 z-20 bg-gray-850 border-b border-gray-700 px-4 py-3 flex-shrink-0">
           <div className="flex items-center justify-between w-full">
             <div className="flex items-center gap-3">
               <div className="bg-blue-600 w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-semibold text-white text-lg">
@@ -225,7 +214,7 @@ export default function Chat({ userId, username }: ChatProps) {
           </div>
         </header>
 
-        {/* CHAT */}
+        {/* CHAT MESSAGES */}
         <main className="flex-1 overflow-y-auto px-4 py-3 space-y-3 bg-gray-850">
           {messages.map((m, i) => {
             const mine =
@@ -242,14 +231,14 @@ export default function Chat({ userId, username }: ChatProps) {
               <div
                 key={m.id ?? i}
                 className={`flex flex-col ${
-                  mine ? "items-start" : "items-end"
+                  mine ? "items-end" : "items-start"
                 }`}
               >
                 <div
                   className={`max-w-[78%] sm:max-w-[70%] px-4 py-2 rounded-2xl ${
                     mine
-                      ? "bg-blue-600 text-white rounded-bl-none"
-                      : "bg-gray-700 text-gray-200 rounded-br-none"
+                      ? "bg-blue-600 text-white rounded-br-none"
+                      : "bg-gray-700 text-gray-200 rounded-bl-none"
                   }`}
                 >
                   <div className="text-xs text-yellow-300 mb-1">
@@ -286,7 +275,7 @@ export default function Chat({ userId, username }: ChatProps) {
           <div ref={chatEndRef} />
         </main>
 
-        {/* PREVIEW IMAGE */}
+        {/* IMAGE PREVIEW */}
         {imagePreview && (
           <div className="px-4 py-3 bg-gray-900 border-t border-gray-700">
             <div className="flex items-center gap-3">
@@ -313,7 +302,7 @@ export default function Chat({ userId, username }: ChatProps) {
           </div>
         )}
 
-        {/* INPUT */}
+        {/* INPUT AREA */}
         <div className="sticky bottom-0 bg-gray-850 border-t border-gray-700 px-4 py-3">
           <footer className="flex items-center gap-3">
 
