@@ -29,8 +29,8 @@ export default function Chat({ userId, username }: ChatProps) {
   const [showUpload, setShowUpload] = useState(false);
   const [onlineCount, setOnlineCount] = useState<number>(0);
 
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [imageFile, setImageFile] = useState<File | null>(null);
+  // NEW → progress upload lingkaran
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
 
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -116,15 +116,14 @@ export default function Chat({ userId, username }: ChatProps) {
       socket.emit("sendMessage", msg);
     }
 
+    setMessages((prev) => [...prev, msg]);
     setInput("");
   };
 
-  // SEND IMAGE
-  const sendImage = async () => {
-    if (!imageFile) return;
-
+  // UPLOAD OTOMATIS
+  const sendImageAuto = async (file: File) => {
     const form = new FormData();
-    form.append("file", imageFile);
+    form.append("file", file);
     form.append("message", "");
     form.append("sender_id", String(userId));
     form.append("sender_email", user?.email ?? "");
@@ -138,30 +137,37 @@ export default function Chat({ userId, username }: ChatProps) {
           Authorization: token ? `Bearer ${token}` : "",
           "Content-Type": "multipart/form-data",
         },
+
+        // NEW — PROGRESS BAR
+        onUploadProgress: (evt) => {
+          const percent = Math.round(
+            (evt.loaded * 100) / (evt.total ?? 1)
+          );
+          setUploadProgress(percent);
+        },
       });
 
       const finalMsg = { ...res.data, sender_name: username };
 
-      // push lokal agar muncul langsung
+      setUploadProgress(null); // reset progress ketika selesai
+
       setMessages((prev) => [...prev, finalMsg]);
 
       if (socket && socket.connected) {
         socket.emit("sendMessage", finalMsg);
       }
-
-      setImagePreview(null);
-      setImageFile(null);
     } catch (err) {
       console.error("Upload gagal:", err);
+      setUploadProgress(null);
     }
   };
 
   const handleSelectImage = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setImageFile(file);
-    setImagePreview(URL.createObjectURL(file));
+
     setShowUpload(false);
+    sendImageAuto(file);
   };
 
   const handleLogout = () => {
@@ -214,8 +220,26 @@ export default function Chat({ userId, username }: ChatProps) {
           </div>
         </header>
 
-        {/* CHAT MESSAGES */}
+        {/* CHAT */}
         <main className="flex-1 overflow-y-auto px-4 py-3 space-y-3 bg-gray-850">
+
+          {/* ---- NEW PROGRESS BUBBLE ---- */}
+          {uploadProgress !== null && (
+            <div className="flex items-end justify-end pr-2">
+              <div className="bg-blue-600 text-white px-4 py-3 rounded-2xl rounded-br-none relative">
+
+                <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full border-2 border-gray-100 flex items-center justify-center bg-blue-500">
+                  <span className="text-[10px] font-bold text-white">
+                    {uploadProgress}%
+                  </span>
+                </div>
+
+                <div className="text-xs text-gray-200">Mengunggah...</div>
+              </div>
+            </div>
+          )}
+
+          {/* NORMAL MESSAGES */}
           {messages.map((m, i) => {
             const mine =
               (m.sender_email ?? "").toLowerCase() ===
@@ -230,9 +254,7 @@ export default function Chat({ userId, username }: ChatProps) {
             return (
               <div
                 key={m.id ?? i}
-                className={`flex flex-col ${
-                  mine ? "items-end" : "items-start"
-                }`}
+                className={`flex flex-col ${mine ? "items-end" : "items-start"}`}
               >
                 <div
                   className={`max-w-[78%] sm:max-w-[70%] px-4 py-2 rounded-2xl ${
@@ -245,6 +267,7 @@ export default function Chat({ userId, username }: ChatProps) {
                     {displayName}
                   </div>
 
+                  {/* IMAGE */}
                   {m.file_type?.startsWith("image/") && m.file_url && (
                     <img
                       src={m.file_url}
@@ -253,12 +276,14 @@ export default function Chat({ userId, username }: ChatProps) {
                     />
                   )}
 
+                  {/* TEXT */}
                   {m.message && (
                     <div className="text-sm break-words leading-snug">
                       {m.message}
                     </div>
                   )}
 
+                  {/* TIME */}
                   <div className="text-[10px] text-gray-300 mt-1 text-right">
                     {ts
                       ? new Date(ts).toLocaleTimeString([], {
@@ -275,34 +300,7 @@ export default function Chat({ userId, username }: ChatProps) {
           <div ref={chatEndRef} />
         </main>
 
-        {/* IMAGE PREVIEW */}
-        {imagePreview && (
-          <div className="px-4 py-3 bg-gray-900 border-t border-gray-700">
-            <div className="flex items-center gap-3">
-              <img
-                src={imagePreview}
-                className="h-24 rounded-lg border border-gray-600"
-              />
-              <button
-                onClick={sendImage}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg"
-              >
-                Kirim Gambar
-              </button>
-              <button
-                onClick={() => {
-                  setImagePreview(null);
-                  setImageFile(null);
-                }}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg"
-              >
-                Batal
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* INPUT AREA */}
+        {/* INPUT */}
         <div className="sticky bottom-0 bg-gray-850 border-t border-gray-700 px-4 py-3">
           <footer className="flex items-center gap-3">
 
