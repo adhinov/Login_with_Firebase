@@ -43,13 +43,15 @@ export default function Chat({ userId, username }: ChatProps) {
     (user?.email ? String(user.email).split("@")[0] : undefined) ||
     "User";
 
+  // avatar support (placeholder)
+  const avatar = user?.avatar || null;
+
   // add message if not exists
   const addMessageIfNotExists = (msg: Message) => {
     setMessages((prev) => {
       if (!msg) return prev;
 
       if (msg.id && prev.some((m) => m.id === msg.id)) return prev;
-
       if (msg.file_url && prev.some((m) => m.file_url === msg.file_url)) return prev;
 
       if (msg.message) {
@@ -73,6 +75,7 @@ export default function Chat({ userId, username }: ChatProps) {
   // fetch messages
   useEffect(() => {
     const token = localStorage.getItem("token");
+
     axios
       .get(`${API_URL}/api/messages`, {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
@@ -232,22 +235,40 @@ export default function Chat({ userId, username }: ChatProps) {
         <div className="sticky top-0 z-20 bg-gray-850 px-4 py-2 border-b border-gray-700">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="bg-blue-600 w-9 h-9 rounded-full flex items-center justify-center text-white text-lg">
-                {displayName?.[0]?.toUpperCase()}
+
+              {/* AVATAR */}
+              <div className="w-9 h-9 rounded-full overflow-hidden bg-blue-600 flex items-center justify-center text-white text-lg">
+                {avatar ? (
+                  <img src={avatar} className="w-full h-full object-cover" />
+                ) : (
+                  displayName?.[0]?.toUpperCase()
+                )}
               </div>
+
               <div>
                 <div className="text-white font-semibold text-sm">{displayName}</div>
                 <div className="text-xs text-gray-400">{onlineCount} online</div>
               </div>
             </div>
 
+            {/* MENU */}
             <div className="relative">
               <button onClick={() => setShowMenu(!showMenu)} className="p-2 hover:bg-gray-700 rounded-full">
                 <Settings size={18} className="text-white" />
               </button>
 
               {showMenu && (
-                <div className="absolute right-0 top-10 bg-gray-800 w-36 rounded-md shadow-lg">
+                <div className="absolute right-0 top-10 bg-gray-800 w-40 rounded-md shadow-lg overflow-hidden">
+
+                  {/* EDIT PROFILE */}
+                  <button
+                    onClick={() => (window.location.href = "/edit-profile")}
+                    className="px-4 py-2 w-full hover:bg-gray-700 text-white text-sm text-left border-b border-gray-700"
+                  >
+                    Edit Profile
+                  </button>
+
+                  {/* LOGOUT */}
                   <button
                     onClick={() => {
                       localStorage.removeItem("token");
@@ -267,9 +288,7 @@ export default function Chat({ userId, username }: ChatProps) {
         {/* MESSAGES */}
         <main className="flex-1 min-h-0 overflow-y-auto px-4 py-2 space-y-4">
           {messages.map((m, i) => {
-            const mine =
-              (m.sender_email ?? "").toLowerCase() === (user?.email ?? "").toLowerCase();
-
+            const mine = (m.sender_email ?? "").toLowerCase() === (user?.email ?? "").toLowerCase();
             const ts = m.created_at ?? m.createdAt ?? "";
 
             const display =
@@ -280,7 +299,7 @@ export default function Chat({ userId, username }: ChatProps) {
 
             return (
               <div key={m.id ?? i} className={`flex flex-col ${mine ? "items-end" : "items-start"}`}>
-                
+
                 {/* BUBBLE */}
                 <div
                   className={`max-w-[80%] px-3 py-2 rounded-2xl text-sm ${
@@ -289,7 +308,7 @@ export default function Chat({ userId, username }: ChatProps) {
                       : "bg-gray-700 text-gray-200 rounded-bl-none"
                   }`}
                 >
-                  {/* USERNAME IN BUBBLE */}
+                  {/* USERNAME */}
                   <div className="text-xs font-semibold mb-1" style={{ color: "#39ff14" }}>
                     {display}
                   </div>
@@ -320,6 +339,7 @@ export default function Chat({ userId, username }: ChatProps) {
               </div>
             );
           })}
+
           <div ref={chatEndRef} />
         </main>
 
@@ -371,6 +391,7 @@ export default function Chat({ userId, username }: ChatProps) {
             className="flex-1 px-3 py-2 bg-gray-800 rounded-xl text-white outline-none border border-gray-700 text-sm"
           />
 
+          {/* Send */}
           <button onClick={sendMessage} className="p-3 bg-blue-600 rounded-full text-white">
             <Send size={18} />
           </button>
