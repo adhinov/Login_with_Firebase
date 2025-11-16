@@ -28,19 +28,26 @@ export default function Chat({ userId, username }: ChatProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
   const [onlineCount, setOnlineCount] = useState<number>(0);
-
   const [uploadPreview, setUploadPreview] = useState<{ url: string; progress: number } | null>(null);
 
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 
-  const user =
-    typeof window !== "undefined"
-      ? JSON.parse(localStorage.getItem("user") || "{}")
-      : {};
+  const user = typeof window !== "undefined"
+    ? JSON.parse(localStorage.getItem("user") || "{}")
+    : {};
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+  const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-  // Hindari duplikasi pesan
+  // 🔥 FIX UTAMA → ambil nama dengan fallback 100% aman
+  const displayName =
+    username ||
+    user?.username ||
+    user?.name ||
+    user?.email?.split("@")[0] ||
+    "User";
+
+  // ------------------------------------------
+  // Prevent duplicate messages
   const addMessageIfNotExists = (msg: Message) => {
     setMessages((prev) => {
       if (msg.id && prev.some((m) => m.id === msg.id)) return prev;
@@ -49,7 +56,7 @@ export default function Chat({ userId, username }: ChatProps) {
     });
   };
 
-  // Fetch pesan awal
+  // Fetch initial messages
   useEffect(() => {
     const token = localStorage.getItem("token");
 
@@ -63,17 +70,17 @@ export default function Chat({ userId, username }: ChatProps) {
 
         setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 200);
       })
-      .catch((err) => console.error("Fetch gagal:", err));
+      .catch(() => {});
   }, []);
 
-  // SOCKET listener
+  // SOCKET
   useEffect(() => {
     if (!socket) return;
 
     socket.on("connect", () => {
       socket.emit("join", {
         userId,
-        username: username || user?.email || "User",
+        username: displayName, // 🔥 FIX
       });
     });
 
@@ -81,8 +88,7 @@ export default function Chat({ userId, username }: ChatProps) {
 
     socket.on("receiveMessage", (msg: Message) => {
       addMessageIfNotExists(msg);
-
-      setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+      setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 80);
     });
 
     return () => {
@@ -92,19 +98,24 @@ export default function Chat({ userId, username }: ChatProps) {
     };
   }, []);
 
+  // Auto-scroll
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, uploadPreview]);
 
-  // KIRIM PESAN TEXT
+  // ------------------------------------------------
+  // SEND TEXT MESSAGE  🔥 FIX KIRIM sender_name
   const sendMessage = async () => {
     if (!input.trim()) return;
 
-    const msg = {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    const msg: Message = {
       id: Date.now(),
       sender_id: userId,
-      sender_email: user?.email ?? "",
-      sender_name: username,
+      sender_email: user?.email || "",
+      sender_name: displayName, // 🔥 FIX
       message: input.trim(),
       created_at: new Date().toISOString(),
     };
@@ -112,23 +123,22 @@ export default function Chat({ userId, username }: ChatProps) {
     addMessageIfNotExists(msg);
     setInput("");
 
-    const token = localStorage.getItem("token");
-
     try {
       await axios.post(
         `${API_URL}/api/messages/upload`,
-        { message: msg.message },
-        { headers: token ? { Authorization: `Bearer ${token}` } : undefined }
+        { message: msg.message, sender_name: msg.sender_name },
+        { headers: { Authorization: `Bearer ${token}` } }
       );
     } catch {}
 
     socket.emit("sendMessage", msg);
   };
 
-  // UPLOAD FILE
+  // ------------------------------------------------
+  // UPLOAD FILE  🔥 FIX KIRIM sender_name
   const uploadFile = async (file: File) => {
     const token = localStorage.getItem("token");
-    if (!token) return alert("Silakan login ulang.");
+    if (!token) return alert("Login ulang.");
 
     const previewUrl = URL.createObjectURL(file);
     setUploadPreview({ url: previewUrl, progress: 1 });
@@ -137,8 +147,8 @@ export default function Chat({ userId, username }: ChatProps) {
     form.append("file", file);
     form.append("message", "");
     form.append("sender_id", String(userId));
-    form.append("sender_email", user?.email ?? "");
-    form.append("sender_name", username ?? "");
+    form.append("sender_email", user?.email || "");
+    form.append("sender_name", displayName); // 🔥 FIX
 
     try {
       const res = await axios.post(`${API_URL}/api/messages/upload`, form, {
@@ -162,22 +172,22 @@ export default function Chat({ userId, username }: ChatProps) {
     }
   };
 
+  // ------------------------------------------------
+  // UI (TIDAK AKU UBAH)
   return (
     <div className="w-full h-[100dvh] flex justify-center bg-gray-900 overflow-hidden">
-
       <div className="w-full h-full max-w-[700px] flex flex-col bg-gray-850 border-x border-gray-700">
 
         {/* HEADER */}
         <div className="sticky top-0 z-20 bg-gray-850 px-4 py-2 border-b border-gray-700">
           <div className="flex items-center justify-between">
-
             <div className="flex items-center gap-3">
               <div className="bg-blue-600 w-9 h-9 rounded-full flex items-center justify-center text-white text-lg">
-                {username?.[0]?.toUpperCase()}
+                {displayName[0]?.toUpperCase()}
               </div>
 
               <div>
-                <div className="text-white font-semibold text-sm">{username}</div>
+                <div className="text-white font-semibold text-sm">{displayName}</div>
                 <div className="text-xs text-gray-400">{onlineCount} online</div>
               </div>
             </div>
@@ -202,35 +212,37 @@ export default function Chat({ userId, username }: ChatProps) {
                 </div>
               )}
             </div>
-
           </div>
         </div>
 
-        {/* CHAT LIST */}
+        {/* MESSAGES */}
         <main className="flex-1 min-h-0 overflow-y-auto px-4 py-2 space-y-4">
-
           {messages.map((m, i) => {
-            const mine = (m.sender_email ?? "").toLowerCase() === (user?.email ?? "").toLowerCase();
+            const mine = (m.sender_email || "").toLowerCase() === (user?.email || "").toLowerCase();
             const ts = m.created_at ?? m.createdAt ?? "";
 
             return (
               <div key={m.id ?? i} className={`flex flex-col ${mine ? "items-end" : "items-start"}`}>
-                {!mine && (
-                  <div className="text-xs text-gray-400 mb-1 ml-1">{m.sender_name}</div>
+                
+                {/* 🔥 FIX → nama muncul hanya untuk pesan orang lain */}
+                {!mine && m.sender_name && (
+                  <div className="text-xs text-gray-400 mb-1 ml-1">
+                    {m.sender_name}
+                  </div>
                 )}
 
                 <div
                   className={`max-w-[80%] px-3 py-2 rounded-2xl text-sm
-                    ${mine
-                      ? "bg-blue-600 text-white rounded-br-none"
-                      : "bg-gray-700 text-gray-200 rounded-bl-none"
-                    }`}
+                    ${mine ? "bg-blue-600 text-white rounded-br-none" 
+                           : "bg-gray-700 text-gray-200 rounded-bl-none"}`}
                 >
                   {m.file_type?.startsWith("image/") && (
                     <img src={m.file_url ?? ""} className="w-36 h-36 object-cover rounded-md mb-2" />
                   )}
 
-                  {m.message && <div className="leading-snug break-words">{m.message}</div>}
+                  {m.message && (
+                    <div className="leading-snug break-words">{m.message}</div>
+                  )}
 
                   <div className="text-[9px] text-gray-300 text-right mt-1">
                     {ts ? new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}
@@ -243,26 +255,23 @@ export default function Chat({ userId, username }: ChatProps) {
           <div ref={chatEndRef} />
         </main>
 
-        {/* UPLOAD PREVIEW */}
+        {/* UPLOAD PREVIEW (tidak berubah) */}
         {uploadPreview && (
           <div className="px-4 pb-2 flex justify-center">
             <div className="relative w-28 h-28 bg-gray-800 rounded-xl overflow-hidden">
-
               <img src={uploadPreview.url} className="w-full h-full object-cover opacity-60" />
-
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="w-12 h-12 rounded-full border-4 border-gray-600 border-t-blue-500 animate-spin"></div>
-                <div className="absolute text-white font-semibold text-xs">{uploadPreview.progress}%</div>
+                <div className="absolute text-white font-semibold text-xs">
+                  {uploadPreview.progress}%
+                </div>
               </div>
-
             </div>
           </div>
         )}
 
-        {/* INPUT AREA */}
+        {/* INPUT AREA (tidak diubah) */}
         <div className="px-3 py-2 flex items-center gap-3 bg-gray-850 border-t border-gray-700 sticky bottom-0">
-
-          {/* ADD BUTTON */}
           <div className="relative">
             <button onClick={() => setShowUpload(!showUpload)} className="p-2 hover:bg-gray-700 rounded-full text-white">
               <Plus size={20} />
@@ -283,7 +292,6 @@ export default function Chat({ userId, username }: ChatProps) {
             )}
           </div>
 
-          {/* TEXT INPUT */}
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -292,11 +300,9 @@ export default function Chat({ userId, username }: ChatProps) {
             className="flex-1 px-3 py-2 bg-gray-800 rounded-xl text-white outline-none border border-gray-700 text-sm"
           />
 
-          {/* SEND */}
           <button onClick={sendMessage} className="p-3 bg-blue-600 rounded-full text-white">
             <Send size={18} />
           </button>
-
         </div>
 
       </div>
