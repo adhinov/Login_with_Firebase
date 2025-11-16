@@ -290,7 +290,7 @@ export default function Chat({ userId, username }: ChatProps) {
                   }`}
                 >
                   {/* USERNAME IN BUBBLE */}
-                  <div className="text-xs font-semibold mb-1" style={{ color: "#FFD938" }}>
+                  <div className="text-xs font-semibold mb-1" style={{ color: "#39ff14" }}>
                     {display}
                   </div>
 
