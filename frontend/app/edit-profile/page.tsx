@@ -1,92 +1,123 @@
 "use client";
 
-import React, { useState } from "react";
-import { ArrowLeft, Upload } from "lucide-react";
+import { useEffect, useState } from "react";
+import axios from "axios";
 
-export default function EditProfile() {
-  const user = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("user") || "{}") : {};
+export default function EditProfilePage() {
+  const [username, setUsername] = useState("");
+  const [avatar, setAvatar] = useState<string | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
-  const [username, setUsername] = useState(user.username || "");
-  const [email, setEmail] = useState(user.email || "");
-  const [phone, setPhone] = useState(user.phone || "");
-  const [avatar, setAvatar] = useState(user.avatar || "");
+  const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-  const previewAvatar = (e: any) => {
-    const file = e.target.files[0];
-    if (!file) return;
+  // ambil user dari localStorage
+  useEffect(() => {
+    const u = localStorage.getItem("user");
+    if (u) {
+      const parsed = JSON.parse(u);
+      setUsername(parsed.username || parsed.name || "");
+      setAvatar(parsed.avatar || null);
+    }
+  }, []);
+
+  // handle upload avatar
+  const handleAvatarSelect = (file: File) => {
+    setAvatarFile(file);
+
+    // preview langsung
     const url = URL.createObjectURL(file);
     setAvatar(url);
   };
 
+  // save changes
+  const saveChanges = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return alert("Session expired, please login again.");
+
+    const form = new FormData();
+    form.append("username", username);
+    if (avatarFile) form.append("avatar", avatarFile);
+
+    try {
+      const res = await axios.put(`${API_URL}/api/users/update-profile`, form, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      // update local user
+      localStorage.setItem("user", JSON.stringify(res.data.user));
+
+      alert("Profile updated successfully!");
+      window.location.href = "/chat";
+    } catch (err) {
+      console.error(err);
+      alert("Failed to update profile.");
+    }
+  };
+
   return (
-    <div className="w-full min-h-screen bg-gray-900 flex justify-center items-center px-4">
-      <div className="bg-gray-850 w-full max-w-3xl rounded-2xl shadow-xl p-6 border border-gray-700">
+    <div className="w-full min-h-screen flex items-center justify-center bg-gray-900 px-4 py-6">
+      <div className="bg-gray-850 border border-gray-700 p-6 rounded-xl shadow-xl w-full max-w-md">
 
-        {/* HEADER */}
-        <div className="flex items-center gap-3 mb-6">
-          <button onClick={() => history.back()} className="text-green-400 hover:text-green-300">
-            <ArrowLeft size={22} />
-          </button>
-          <h1 className="text-green-400 font-bold text-xl">User Profile</h1>
-        </div>
+        {/* Back to chat */}
+        <button
+          onClick={() => (window.location.href = "/chat")}
+          className="text-blue-400 text-sm mb-3 hover:underline"
+        >
+          ← Back to chat
+        </button>
 
-        {/* MAIN */}
-        <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
+        <h2 className="text-white text-xl font-semibold text-center mb-5">
+          Edit Profile
+        </h2>
 
-          {/* Avatar */}
-          <div className="flex flex-col items-center">
-            <div className="w-40 h-40 rounded-full bg-green-400 flex items-center justify-center text-5xl font-bold overflow-hidden">
+        {/* Avatar */}
+        <div className="flex justify-center mb-6">
+          <div className="relative">
+            <div className="w-28 h-28 rounded-full bg-gray-700 overflow-hidden border border-gray-600 flex items-center justify-center">
               {avatar ? (
-                <img src={avatar} className="w-full h-full object-cover" />
+                <img
+                  src={avatar}
+                  className="w-full h-full object-cover"
+                />
               ) : (
-                (username || email || "U")[0].toUpperCase()
+                <span className="text-gray-400 text-sm">No Photo</span>
               )}
             </div>
 
-            <label className="mt-3 px-4 py-2 bg-gray-700 text-white rounded-lg cursor-pointer hover:bg-gray-600 flex items-center gap-2">
-              <Upload size={18} />
-              Upload
-              <input type="file" className="hidden" accept="image/*" onChange={previewAvatar} />
+            {/* Upload button */}
+            <label className="absolute bottom-0 right-0 bg-blue-600 p-2 rounded-full cursor-pointer hover:bg-blue-700">
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => e.target.files && handleAvatarSelect(e.target.files[0])}
+              />
+              <span className="text-white text-xs">📷</span>
             </label>
           </div>
-
-          {/* FORM */}
-          <div className="flex-1 w-full space-y-4">
-
-            <div>
-              <label className="text-gray-400 text-sm">Username</label>
-              <input
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="w-full mt-1 px-3 py-2 bg-gray-800 rounded-xl text-white outline-none border border-gray-700"
-              />
-            </div>
-
-            <div>
-              <label className="text-gray-400 text-sm">Email</label>
-              <input
-                value={email}
-                readOnly
-                className="w-full mt-1 px-3 py-2 bg-gray-800 rounded-xl text-white outline-none border border-gray-700 opacity-70"
-              />
-            </div>
-
-            <div>
-              <label className="text-gray-400 text-sm">Phone Number</label>
-              <input
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full mt-1 px-3 py-2 bg-gray-800 rounded-xl text-white outline-none border border-gray-700"
-              />
-            </div>
-          </div>
         </div>
 
-        <div className="mt-6 flex justify-end">
-          <button className="px-6 py-2 bg-green-400 hover:bg-green-300 text-gray-900 font-semibold rounded-xl">
-            Save Changes
-          </button>
+        {/* Username */}
+        <div className="mb-4">
+          <label className="text-gray-300 text-sm">Username</label>
+          <input
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            className="w-full mt-1 px-3 py-2 rounded-md bg-gray-800 text-white border border-gray-700 outline-none"
+          />
         </div>
+
+        {/* Save button */}
+        <button
+          onClick={saveChanges}
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-semibold mt-4"
+        >
+          Save Changes
+        </button>
 
       </div>
     </div>
