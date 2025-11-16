@@ -29,7 +29,7 @@ export default function Chat({ userId, username }: ChatProps) {
   const [showUpload, setShowUpload] = useState(false);
   const [onlineCount, setOnlineCount] = useState<number>(0);
 
-  // upload preview state (WhatsApp style, 130px)
+  // WA-style preview upload
   const [uploadPreview, setUploadPreview] = useState<{ url: string; progress: number } | null>(null);
 
   const chatEndRef = useRef<HTMLDivElement | null>(null);
@@ -41,16 +41,18 @@ export default function Chat({ userId, username }: ChatProps) {
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
-  // dedupe add message helper
+  // =====================================================
+  // HELPER prevent duplicate
+  // =====================================================
   const addMessageIfNotExists = (msg: Message) => {
     setMessages((prev) => {
       // by id
       if (msg.id && prev.some((m) => m.id === msg.id)) return prev;
 
-      // by file_url
+      // by file
       if (msg.file_url && prev.some((m) => m.file_url === msg.file_url)) return prev;
 
-      // by identical text + sender + near timestamp (~5s)
+      // by identical content
       if (msg.message) {
         const msgTime = new Date(msg.created_at ?? msg.createdAt ?? Date.now()).getTime();
         const exists = prev.some((m) => {
@@ -59,7 +61,7 @@ export default function Chat({ userId, username }: ChatProps) {
           return (
             m.message === msg.message &&
             (m.sender_email ?? "") === (msg.sender_email ?? "") &&
-            Math.abs(mt - msgTime) < 5000
+            Math.abs(mt - msgTime) < 3000
           );
         });
         if (exists) return prev;
@@ -69,7 +71,9 @@ export default function Chat({ userId, username }: ChatProps) {
     });
   };
 
-  // fetch messages on mount
+  // =====================================================
+  // FETCH MESSAGE ON MOUNT
+  // =====================================================
   useEffect(() => {
     const token = localStorage.getItem("token");
     axios
@@ -79,13 +83,15 @@ export default function Chat({ userId, username }: ChatProps) {
       .then((res) => {
         const data: Message[] = Array.isArray(res.data) ? res.data : res.data?.data ?? [];
         setMessages(data);
-        // scroll after short delay to ensure DOM painted
-        setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+
+        setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 80);
       })
-      .catch((err) => console.error("Gagal ambil pesan:", err));
+      .catch((err) => console.error("Fetch gagal:", err));
   }, [API_URL]);
 
-  // socket listeners
+  // =====================================================
+  // SOCKET EVENTS
+  // =====================================================
   useEffect(() => {
     if (!socket) return;
 
@@ -103,13 +109,13 @@ export default function Chat({ userId, username }: ChatProps) {
 
     socket.on("receiveMessage", (msg: Message) => {
       if (!msg) return;
-      const normalized: Message = {
+      const normalized = {
         ...msg,
         created_at: msg.created_at ?? msg.createdAt ?? new Date().toISOString(),
       };
       addMessageIfNotExists(normalized);
-      // scroll to bottom when new message arrives
-      setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 30);
+
+      setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 60);
     });
 
     return () => {
@@ -117,60 +123,55 @@ export default function Chat({ userId, username }: ChatProps) {
       socket.off("onlineUsers");
       socket.off("receiveMessage");
     };
-    // keep deps minimal to avoid reconnect loops
   }, [userId, username]);
 
-  // auto scroll on messages or preview changes
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, uploadPreview]);
 
-  // send text message (emit to server; server will broadcast)
+  // =====================================================
+  // SEND MESSAGE (FIXED: NOW SHOW IN OWN SCREEN)
+  // =====================================================
   const sendMessage = async () => {
     if (!input.trim()) return;
 
-    const msg: Message = {
+    const myLocalMsg: Message = {
       id: Date.now(),
       sender_id: userId,
-      sender_email: user?.email ?? null,
+      sender_email: user?.email ?? "",
       sender_name: username,
       message: input.trim(),
       created_at: new Date().toISOString(),
     };
 
+    // ❗ FIX UTAMA 1 — tampil langsung
+    addMessageIfNotExists(myLocalMsg);
+
+    setInput("");
+
     try {
-      // send to server endpoint to have consistent DB save + broadcast
       const token = localStorage.getItem("token");
-      // If your backend accepts a plain text message endpoint, use it.
-      // Here we reuse the /upload endpoint with empty file for consistency (if backend supports)
-      // Otherwise you may have a dedicated text/send endpoint - adjust accordingly.
-      const res = await axios.post(
+
+      await axios.post(
         `${API_URL}/api/messages/upload`,
-        // sending as JSON fallback (some backends accept text via body)
-        // If your backend expects form-data even for text, adjust accordingly.
-        { message: msg.message },
+        { message: myLocalMsg.message },
         { headers: token ? { Authorization: `Bearer ${token}` } : undefined }
       );
 
-      // if backend returns saved message, it will broadcast; dedupe will prevent duplication
-      setInput("");
+      // server broadcast akan masuk via receiveMessage → dedupe cegah double
     } catch (err) {
-      // fallback: still emit via socket if API fails (keeps previous behaviour)
-      console.error("Kirim teks via API gagal, emit socket sebagai fallback:", err);
-      socket.emit("sendMessage", msg);
-      setInput("");
+      console.error("API gagal, fallback socket:", err);
+      socket.emit("sendMessage", myLocalMsg);
     }
   };
 
-  // upload file with progress and WhatsApp style thumbnail above input
+  // =====================================================
+  // UPLOAD FILE
+  // =====================================================
   const uploadFile = async (file: File) => {
     const token = localStorage.getItem("token");
-    if (!token) {
-      alert("Sesi berakhir. Silakan login ulang.");
-      return;
-    }
+    if (!token) return alert("Silakan login ulang.");
 
-    // show local thumbnail immediately (130px)
     const previewUrl = URL.createObjectURL(file);
     setUploadPreview({ url: previewUrl, progress: 1 });
 
@@ -189,27 +190,20 @@ export default function Chat({ userId, username }: ChatProps) {
         },
         onUploadProgress: (e) => {
           const percent = Math.round((e.loaded * 100) / (e.total || 1));
-          setUploadPreview((prev) => (prev ? { ...prev, progress: percent } : { url: previewUrl, progress: percent }));
+          setUploadPreview((prev) =>
+            prev ? { ...prev, progress: percent } : { url: previewUrl, progress: percent }
+          );
         },
       });
 
-      // server returned saved message
-      const finalMsg: Message = { ...res.data };
-
-      // add locally safely (dedupe prevents duplicate if server broadcasts receiveMessage)
+      const finalMsg = { ...res.data };
       addMessageIfNotExists(finalMsg);
 
-      // clear preview (slight delay so user sees 100%)
-      setTimeout(() => setUploadPreview(null), 400);
-
-      // NOTE: do NOT emit here if your backend already broadcasts from upload handler.
-      // Emitting here may cause duplicates unless dedupe is used. We already added message locally.
-    } catch (err: any) {
-      console.error("Upload gagal:", err?.response ?? err);
+      setTimeout(() => setUploadPreview(null), 300);
+    } catch (err) {
+      console.error("Upload gagal:", err);
       setUploadPreview(null);
-      if (err?.response?.status === 401) {
-        alert("Sesi berakhir. Silakan login ulang.");
-      }
+      if ((err as any)?.response?.status === 401) alert("Silakan login ulang.");
     }
   };
 
@@ -226,140 +220,186 @@ export default function Chat({ userId, username }: ChatProps) {
     window.location.href = "/login";
   };
 
-  // small circular SVG used inside thumbnail overlay (we'll render percent text separately)
-  const SmallCircle = ({ percent }: { percent: number }) => {
-    const size = 48;
-    const stroke = 4;
-    const radius = (size - stroke) / 2;
-    const circumference = 2 * Math.PI * radius;
-    const offset = circumference * (1 - Math.max(0, Math.min(100, percent)) / 100);
-    return (
-      <svg width={size} height={size}>
-        <circle cx={size / 2} cy={size / 2} r={radius} stroke="rgba(255,255,255,0.18)" strokeWidth={stroke} fill="none" />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke="#fff"
-          strokeWidth={stroke}
-          fill="none"
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          style={{ transition: "stroke-dashoffset 150ms linear" }}
-        />
-      </svg>
-    );
-  };
-
   return (
-    <div className="chat-container">
+    <div
+      className="
+        w-full h-screen flex justify-center bg-gray-900
+        overflow-hidden
+      "
+    >
+      {/* FIX FULLSCREEN DI LAPTOP */}
+      <div className="w-full h-full max-w-[500px] flex flex-col bg-gray-850 border-x border-gray-700">
 
-      {/* HEADER */}
-      <div className="sticky top-0 z-20 bg-gray-850 px-4 py-3 border-b border-gray-700">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="bg-blue-600 w-10 h-10 rounded-full flex items-center justify-center text-white text-lg">
-              {username?.[0]?.toUpperCase()}
-            </div>
-            <div>
-              <div className="text-white font-semibold">{username}</div>
-              <div className="text-xs text-gray-400">{onlineCount} online</div>
-            </div>
-          </div>
-
-          <div className="relative">
-            <button onClick={() => setShowMenu((s) => !s)} className="p-2 hover:bg-gray-700 rounded-full">
-              <Settings className="text-white" />
-            </button>
-
-            {showMenu && (
-              <div className="absolute right-0 top-12 bg-gray-800 w-36 rounded-md shadow-lg">
-                <button onClick={handleLogout} className="px-4 py-2 w-full hover:bg-gray-700 text-white text-left">
-                  Logout
-                </button>
+        {/* ==================== HEADER ==================== */}
+        <div className="sticky top-0 z-20 bg-gray-850 px-4 py-3 border-b border-gray-700">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="bg-blue-600 w-10 h-10 rounded-full flex items-center justify-center text-white text-lg">
+                {username?.[0]?.toUpperCase()}
               </div>
-            )}
+              <div>
+                <div className="text-white font-semibold">{username}</div>
+                <div className="text-xs text-gray-400">{onlineCount} online</div>
+              </div>
+            </div>
+
+            <div className="relative">
+              <button
+                onClick={() => setShowMenu((s) => !s)}
+                className="p-2 hover:bg-gray-700 rounded-full"
+              >
+                <Settings className="text-white" />
+              </button>
+
+              {showMenu && (
+                <div className="absolute right-0 top-12 bg-gray-800 w-36 rounded-md shadow-lg">
+                  <button
+                    onClick={handleLogout}
+                    className="px-4 py-2 w-full hover:bg-gray-700 text-white text-left"
+                  >
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* CHAT LIST */}
-      <main className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+        {/* ==================== CHAT LIST ==================== */}
+        <main className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
 
-        {/* Messages */}
-        {messages.map((m, i) => {
-          const mine = (m.sender_email ?? "").toLowerCase() === (user?.email ?? "").toLowerCase();
-          const ts = m.created_at ?? m.createdAt ?? "";
-          const displayName = m.sender_name || (m.sender_email ? m.sender_email.split("@")[0] : "User");
+          {messages.map((m, i) => {
+            const mine =
+              (m.sender_email ?? "").toLowerCase() ===
+              (user?.email ?? "").toLowerCase();
 
-          return (
-            <div key={m.id ?? i} className={`flex flex-col ${mine ? "items-end" : "items-start"}`}>
-              <div className={`max-w-[78%] sm:max-w-[70%] px-4 py-2 rounded-2xl ${mine ? "bg-blue-600 text-white rounded-br-none" : "bg-gray-700 text-gray-200 rounded-bl-none"}`}>
-                <div className="text-xs text-yellow-300 mb-1">{displayName}</div>
+            const ts = m.created_at ?? m.createdAt ?? "";
+            const name =
+              m.sender_name || (m.sender_email ? m.sender_email.split("@")[0] : "User");
 
-                {m.file_type?.startsWith("image/") && m.file_url && (
-                  <img src={m.file_url} className="w-32 h-32 sm:w-40 sm:h-40 object-cover rounded-lg mb-2 cursor-pointer" onClick={() => window.open(m.file_url!, "_blank")} />
-                )}
+            return (
+              <div
+                key={m.id ?? i}
+                className={`flex flex-col ${mine ? "items-end" : "items-start"}`}
+              >
+                <div
+                  className={`
+                    max-w-[78%] sm:max-w-[70%] px-4 py-2 rounded-2xl 
+                    ${mine ? "bg-blue-600 text-white rounded-br-none" : "bg-gray-700 text-gray-200 rounded-bl-none"}
+                  `}
+                >
+                  <div className="text-xs text-yellow-300 mb-1">{name}</div>
 
-                {m.message && <div className="text-sm break-words leading-snug">{m.message}</div>}
+                  {m.file_type?.startsWith("image/") && m.file_url && (
+                    <img
+                      src={m.file_url}
+                      className="w-32 h-32 sm:w-40 sm:h-40 object-cover rounded-lg mb-2"
+                    />
+                  )}
 
-                <div className="text-[10px] text-gray-300 mt-1 text-right">
-                  {ts ? new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}
+                  {m.message && (
+                    <div className="text-sm break-words leading-snug">{m.message}</div>
+                  )}
+
+                  <div className="text-[10px] text-gray-300 mt-1 text-right">
+                    {ts
+                      ? new Date(ts).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                      : ""}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Upload Preview */}
+          {uploadPreview && (
+            <div className="flex justify-end pr-2">
+              <div className="relative w-[130px] h-[130px] rounded-xl overflow-hidden border border-gray-600">
+                <img
+                  src={uploadPreview.url}
+                  className="w-full h-full object-cover opacity-60"
+                />
+
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <svg width="48" height="48">
+                    <circle
+                      cx="24"
+                      cy="24"
+                      r="20"
+                      stroke="rgba(255,255,255,0.2)"
+                      strokeWidth="4"
+                      fill="none"
+                    />
+                    <circle
+                      cx="24"
+                      cy="24"
+                      r="20"
+                      stroke="#fff"
+                      strokeWidth="4"
+                      fill="none"
+                      strokeDasharray={2 * Math.PI * 20}
+                      strokeDashoffset={
+                        (2 * Math.PI * 20 * (100 - uploadPreview.progress)) / 100
+                      }
+                      style={{ transition: "stroke-dashoffset 120ms linear" }}
+                    />
+                  </svg>
+                </div>
+
+                <div className="absolute bottom-1 w-full text-center text-white font-semibold text-xs">
+                  {uploadPreview.progress}%
                 </div>
               </div>
             </div>
-          );
-        })}
-
-        {/* Upload preview — rendered near bottom so it's above input (WhatsApp style) */}
-        {uploadPreview && (
-          <div className="flex justify-end pr-2">
-            <div className="relative w-[130px] h-[130px] rounded-xl overflow-hidden border border-gray-600">
-              <img src={uploadPreview.url} className="w-full h-full object-cover opacity-60" />
-
-              <div className="absolute inset-0 flex items-center justify-center">
-                <SmallCircle percent={uploadPreview.progress} />
-              </div>
-
-              <div className="absolute bottom-1 w-full text-center text-white font-semibold text-xs">
-                {uploadPreview.progress}%
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div ref={chatEndRef} />
-      </main>
-
-      {/* INPUT AREA (sticky bottom) */}
-      <div className="chat-input-wrapper">
-        <div className="relative">
-          <button className="p-2 hover:bg-gray-700 rounded-full addfile-btn" onClick={() => setShowUpload((s) => !s)}>
-            <Plus />
-          </button>
-
-          {showUpload && (
-            <div className="absolute bottom-12 left-0 w-40 bg-gray-800 border border-gray-700 rounded-md shadow-lg py-1 z-50">
-              <label className="flex items-center gap-2 px-4 py-2 hover:bg-gray-700 text-sm cursor-pointer text-white">
-                <ImageIcon size={18} /> Upload Gambar
-                <input type="file" accept="image/*" className="hidden" onChange={handleSelectImage} />
-              </label>
-            </div>
           )}
+
+          <div ref={chatEndRef} />
+        </main>
+
+        {/* ==================== INPUT AREA ==================== */}
+        <div className="px-3 py-3 flex items-center gap-3 bg-gray-850 border-t border-gray-700">
+          <div className="relative">
+            <button
+              onClick={() => setShowUpload((s) => !s)}
+              className="p-2 hover:bg-gray-700 rounded-full text-white"
+            >
+              <Plus />
+            </button>
+
+            {showUpload && (
+              <div className="absolute bottom-12 left-0 w-40 bg-gray-800 border border-gray-700 rounded-md shadow-lg py-1 z-50">
+                <label className="flex items-center gap-2 px-4 py-2 hover:bg-gray-700 cursor-pointer text-white text-sm">
+                  <ImageIcon size={18} />
+                  Upload Gambar
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleSelectImage}
+                  />
+                </label>
+              </div>
+            )}
+          </div>
+
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+            placeholder="Ketik pesan..."
+            className="flex-1 px-4 py-2 bg-gray-800 rounded-lg text-white outline-none border border-gray-700"
+          />
+
+          <button
+            onClick={sendMessage}
+            className="p-2 bg-blue-600 rounded-full text-white"
+          >
+            <Send />
+          </button>
         </div>
-
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-          placeholder="Ketik pesan..."
-          className="chat-input"
-        />
-
-        <button onClick={sendMessage} className="send-btn" aria-label="Kirim pesan">
-          <Send className="text-white" />
-        </button>
       </div>
     </div>
   );
