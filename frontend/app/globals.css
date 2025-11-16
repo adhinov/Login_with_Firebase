@@ -124,4 +124,105 @@ select:-webkit-autofill:focus {
   transition: background-color 5000s ease-in-out 0s;
 }
 
+/* Chat Container Fullscreen */
+.chat-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #0d1117;
+}
 
+/* LIST PESAN */
+.messages-wrapper {
+  flex: 1;
+  padding: 12px;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+}
+
+/* PREVIEW UPLOAD (WhatsApp style) */
+.upload-preview-wrapper {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 10px 0;
+}
+
+.preview-box {
+  position: relative;
+  width: 130px;
+  height: 130px;
+}
+
+.preview-thumb {
+  width: 130px;
+  height: 130px;
+  border-radius: 12px;
+  object-fit: cover;
+}
+
+.progress-circle {
+  position: absolute;
+  top: 25px;
+  left: 25px;
+}
+
+.progress-text {
+  position: absolute;
+  top: 52px;
+  left: 55px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+/* BUTTON KIRIM SETELAH 100% */
+.send-upload-btn {
+  position: absolute;
+  bottom: -35px;
+  left: 0;
+  width: 100%;
+  background: #238636;
+  padding: 6px 0;
+  color: white;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+}
+
+/* INPUT CHAT */
+.chat-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: #010409;
+  position: sticky;
+  bottom: 0;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.chat-input {
+  flex: 1;
+  padding: 10px 14px;
+  border-radius: 20px;
+  background: #161b22;
+  border: 1px solid #30363d;
+  color: white;
+}
+
+.addfile-btn {
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.send-btn {
+  background: #1d9bf0;
+  color: white;
+  border: none;
+  padding: 10px 14px;
+  border-radius: 50%;
+  font-size: 18px;
+  cursor: pointer;
+}
