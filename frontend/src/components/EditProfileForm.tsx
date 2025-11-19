@@ -1,5 +1,3 @@
-// src/components/EditProfileForm.tsx
-
 "use client";
 
 import { ArrowLeft, Upload } from "lucide-react";
@@ -30,7 +28,6 @@ export default function EditProfileForm() {
   const handleAvatarChange = (e: any) => {
     const file = e.target.files[0];
     if (!file) return;
-
     setNewAvatar(file);
     setAvatarUrl(URL.createObjectURL(file));
   };
@@ -49,9 +46,7 @@ export default function EditProfileForm() {
       const res = await axios.put(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/users/update-profile`,
         form,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
       localStorage.setItem("user", JSON.stringify(res.data.user));
@@ -63,96 +58,86 @@ export default function EditProfileForm() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#071422] flex justify-center items-start py-16 px-4">
-
+    <div className="min-h-screen w-full bg-[#071422] flex justify-center items-center py-10 px-4">
       <div className="relative bg-[#0D1B2A] border border-gray-700 rounded-2xl shadow-xl 
-                      w-full max-w-2xl p-10">
+                      w-full max-w-md p-6 sm:p-8">
 
         {/* TITLE LEFT TOP */}
-        <h2 className="text-3xl font-bold text-green-400 mb-10">
-          Edit Profile
-        </h2>
+        <h2 className="text-2xl font-bold text-green-400 mb-6">Edit Profile</h2>
 
-        {/* FLEX: AVATAR LEFT — FORM RIGHT */}
-        <div className="flex flex-col md:flex-row gap-10">
-
-          {/* AVATAR SECTION */}
-          <div className="flex flex-col items-center">
-            <div className="w-32 h-32 bg-green-400 rounded-full overflow-hidden shadow-xl 
-                            flex items-center justify-center text-4xl font-bold text-black">
-              {avatarUrl ? (
-                <img src={avatarUrl} className="w-full h-full object-cover" />
-              ) : (
-                username.charAt(0).toUpperCase()
-              )}
-            </div>
-
-            <label className="mt-4 bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 
-                               rounded-lg cursor-pointer flex items-center gap-2 shadow-md">
-              <Upload size={16} /> Upload
-              <input type="file" className="hidden" onChange={handleAvatarChange} />
-            </label>
+        {/* AVATAR CENTER */}
+        <div className="flex flex-col items-center mb-6">
+          <div className="w-24 h-24 bg-green-400 rounded-full overflow-hidden flex items-center 
+                          justify-center text-black text-3xl font-bold shadow-lg">
+            {avatarUrl ? (
+              <img src={avatarUrl} className="w-full h-full object-cover" />
+            ) : (
+              username.charAt(0).toUpperCase()
+            )}
           </div>
 
-          {/* INPUT FORM */}
-          <div className="flex-1 flex flex-col gap-6">
+          <label className="mt-3 bg-blue-600 hover:bg-blue-500 px-3 py-2 rounded-lg 
+                             text-white flex items-center gap-2 cursor-pointer text-sm">
+            <Upload size={15} /> Upload
+            <input type="file" className="hidden" onChange={handleAvatarChange} />
+          </label>
+        </div>
 
-            <div>
-              <label className="text-gray-300 text-sm">Username</label>
-              <input
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="w-full mt-1 p-3 bg-[#1B263B] border border-green-400 
-                           rounded-lg text-white"
-              />
-            </div>
+        {/* FORM INPUTS */}
+        <div className="flex flex-col gap-4">
 
-            <div>
-              <label className="text-gray-300 text-sm">Email</label>
-              <input
-                value={email}
-                disabled
-                className="w-full mt-1 p-3 bg-[#1B263B] border border-gray-500 
-                           rounded-lg text-gray-400"
-              />
-            </div>
+          <div>
+            <label className="text-gray-300 text-sm">Username</label>
+            <input
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="w-full mt-1 p-2.5 rounded-lg bg-[#1B263B] border 
+                         border-green-400 text-white text-sm"
+            />
+          </div>
 
-            <div>
-              <label className="text-gray-300 text-sm">Phone Number</label>
-              <input
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full mt-1 p-3 bg-[#1B263B] border border-green-400 
-                           rounded-lg text-white"
-              />
-            </div>
+          <div>
+            <label className="text-gray-300 text-sm">Email</label>
+            <input
+              value={email}
+              disabled
+              className="w-full mt-1 p-2.5 rounded-lg bg-[#1B263B] border 
+                         border-gray-500 text-gray-400 text-sm"
+            />
+          </div>
 
+          <div>
+            <label className="text-gray-300 text-sm">Phone Number</label>
+            <input
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="w-full mt-1 p-2.5 rounded-lg bg-[#1B263B] border 
+                         border-green-400 text-white text-sm"
+            />
           </div>
         </div>
 
-        {/* FOOTER BUTTONS (BOTTOM LEFT + RIGHT) */}
-        <div className="flex justify-between items-center mt-12">
-
-          {/* BACK LEFT BOTTOM */}
+        {/* FOOTER BUTTONS */}
+        <div className="flex justify-between items-center mt-8">
+          {/* BACK LEFT */}
           <button
             onClick={() => router.push("/chat")}
-            className="flex items-center gap-2 text-green-400 hover:text-green-300"
+            className="text-gray-300 hover:text-gray-100 flex items-center gap-2 text-sm"
           >
-            <ArrowLeft size={18} /> Back to Chat
+            <ArrowLeft size={16} /> Back to Chat
           </button>
 
-          {/* SAVE BUTTON RIGHT BOTTOM */}
+          {/* SAVE RIGHT */}
           <button
             onClick={handleSave}
             className="bg-blue-600 hover:bg-blue-500 text-white font-semibold 
-                       px-8 py-3 rounded-lg shadow-lg"
+                       px-5 py-2.5 rounded-lg shadow-lg text-sm"
           >
             Save Changes
           </button>
-
         </div>
-      </div>
 
+      </div>
     </div>
   );
 }
