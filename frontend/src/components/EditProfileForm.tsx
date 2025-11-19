@@ -1,3 +1,4 @@
+// src/components/EditProfileForm.tsx
 "use client";
 
 import { ArrowLeft, Upload } from "lucide-react";
@@ -14,17 +15,19 @@ export default function EditProfileForm() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [newAvatar, setNewAvatar] = useState<File | null>(null);
 
+  // Load user data from localStorage
   useEffect(() => {
     const stored = localStorage.getItem("user");
     if (!stored) return;
-    const u = JSON.parse(stored);
 
+    const u = JSON.parse(stored);
     setUsername(u.username || "");
     setEmail(u.email || "");
     setPhone(u.phone || "");
     setAvatarUrl(u.avatar || null);
   }, []);
 
+  // Handle avatar preview
   const handleAvatarChange = (e: any) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -32,6 +35,7 @@ export default function EditProfileForm() {
     setAvatarUrl(URL.createObjectURL(file));
   };
 
+  // Save profile update
   const handleSave = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -46,92 +50,134 @@ export default function EditProfileForm() {
       const res = await axios.put(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/users/update-profile`,
         form,
-        { headers: { Authorization: `Bearer ${token}` } }
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
       );
 
       localStorage.setItem("user", JSON.stringify(res.data.user));
-      alert("Updated!");
+      alert("Profile updated!");
       router.push("/chat");
     } catch (err) {
-      alert("Failed to update");
+      alert("Failed to update profile");
+      console.log(err);
     }
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#071422] flex justify-center items-center py-10 px-4">
-      <div className="relative bg-[#0D1B2A] border border-gray-700 rounded-2xl shadow-xl 
-                      w-full max-w-md p-6 sm:p-8">
+    <div className="min-h-screen w-full flex justify-center items-center bg-[#071422] py-10 px-4">
 
-        {/* TITLE LEFT TOP */}
-        <h2 className="text-2xl font-bold text-green-400 mb-6">Edit Profile</h2>
+      <div className="relative bg-[#0D1B2A] rounded-2xl border border-gray-700 shadow-xl 
+                      w-full max-w-lg p-8">
 
-        {/* AVATAR CENTER */}
-        <div className="flex flex-col items-center mb-6">
-          <div className="w-24 h-24 bg-green-400 rounded-full overflow-hidden flex items-center 
-                          justify-center text-black text-3xl font-bold shadow-lg">
-            {avatarUrl ? (
-              <img src={avatarUrl} className="w-full h-full object-cover" />
-            ) : (
-              username.charAt(0).toUpperCase()
-            )}
+        {/* TITLE TOP LEFT */}
+        <h2 className="text-xl font-semibold text-green-400 mb-6">Edit Profile</h2>
+
+        {/* MAIN CONTENT ROW */}
+        <div className="flex gap-6">
+
+          {/* LEFT – AVATAR BOX */}
+          <div className="flex flex-col items-center">
+            <div className="w-24 h-24 rounded-full bg-green-400 overflow-hidden 
+                            flex items-center justify-center text-black text-4xl font-bold shadow-md">
+              {avatarUrl ? (
+                <img src={avatarUrl} className="w-full h-full object-cover" />
+              ) : (
+                username.charAt(0).toUpperCase()
+              )}
+            </div>
+
+            {/* Upload Button */}
+            <label className="mt-4 bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg 
+                              text-white flex items-center gap-2 cursor-pointer text-sm shadow-md">
+              <Upload size={16} /> Upload
+              <input type="file" className="hidden" onChange={handleAvatarChange} />
+            </label>
           </div>
 
-          <label className="mt-3 bg-blue-600 hover:bg-blue-500 px-3 py-2 rounded-lg 
-                             text-white flex items-center gap-2 cursor-pointer text-sm">
-            <Upload size={15} /> Upload
-            <input type="file" className="hidden" onChange={handleAvatarChange} />
-          </label>
-        </div>
+          {/* RIGHT – FORM INPUTS */}
+          <div className="flex-1 flex flex-col gap-6">
 
-        {/* FORM INPUTS */}
-        <div className="flex flex-col gap-4">
+            {/* Username */}
+            <div className="relative">
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="
+                  w-full px-2 py-3 bg-transparent border-b border-gray-600 text-white 
+                  focus:outline-none focus:border-blue-500 transition-all text-sm peer
+                "
+              />
+              <label
+                className={`
+                  absolute left-2 text-gray-400 pointer-events-none transition-all
+                  duration-200 
+                  ${username ? "-top-3 text-xs text-blue-400" : "top-3 text-sm"}
+                  peer-focus:-top-3 peer-focus:text-xs peer-focus:text-blue-400
+                `}
+              >
+                Username
+              </label>
+            </div>
 
-          <div>
-            <label className="text-gray-300 text-sm">Username</label>
-            <input
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full mt-1 p-2.5 rounded-lg bg-[#1B263B] border 
-                         border-green-400 text-white text-sm"
-            />
-          </div>
+            {/* Email */}
+            <div className="relative opacity-60">
+              <input
+                type="text"
+                value={email}
+                disabled
+                className="
+                  w-full px-2 py-3 bg-transparent border-b border-gray-700 text-gray-400
+                  focus:outline-none text-sm peer
+                "
+              />
+              <label className="absolute left-2 -top-3 text-xs text-gray-500">
+                Email
+              </label>
+            </div>
 
-          <div>
-            <label className="text-gray-300 text-sm">Email</label>
-            <input
-              value={email}
-              disabled
-              className="w-full mt-1 p-2.5 rounded-lg bg-[#1B263B] border 
-                         border-gray-500 text-gray-400 text-sm"
-            />
-          </div>
-
-          <div>
-            <label className="text-gray-300 text-sm">Phone Number</label>
-            <input
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="w-full mt-1 p-2.5 rounded-lg bg-[#1B263B] border 
-                         border-green-400 text-white text-sm"
-            />
+            {/* Phone */}
+            <div className="relative">
+              <input
+                type="text"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="
+                  w-full px-2 py-3 bg-transparent border-b border-gray-600 text-white 
+                  focus:outline-none focus:border-blue-500 transition-all text-sm peer
+                "
+              />
+              <label
+                className={`
+                  absolute left-2 text-gray-400 pointer-events-none transition-all
+                  duration-200 
+                  ${phone ? "-top-3 text-xs text-blue-400" : "top-3 text-sm"}
+                  peer-focus:-top-3 peer-focus:text-xs peer-focus:text-blue-400
+                `}
+              >
+                Phone Number
+              </label>
+            </div>
           </div>
         </div>
 
         {/* FOOTER BUTTONS */}
-        <div className="flex justify-between items-center mt-8">
-          {/* BACK LEFT */}
+        <div className="flex justify-between items-center mt-10">
+
+          {/* Back to chat */}
           <button
             onClick={() => router.push("/chat")}
-            className="text-gray-300 hover:text-gray-100 flex items-center gap-2 text-sm"
+            className="flex items-center gap-2 text-gray-300 hover:text-white text-sm"
           >
             <ArrowLeft size={16} /> Back to Chat
           </button>
 
-          {/* SAVE RIGHT */}
+          {/* Save Changes */}
           <button
             onClick={handleSave}
             className="bg-blue-600 hover:bg-blue-500 text-white font-semibold 
-                       px-5 py-2.5 rounded-lg shadow-lg text-sm"
+                       px-6 py-2 rounded-lg shadow-md"
           >
             Save Changes
           </button>
