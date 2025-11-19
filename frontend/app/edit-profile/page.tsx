@@ -1,126 +1,172 @@
-// app/edit-profile/page.tsx
-
 "use client";
 
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, Upload } from "lucide-react";
 
-export default function EditProfilePage() {
+export default function EditProfile() {
+  const router = useRouter();
+
   const [username, setUsername] = useState("");
-  const [avatar, setAvatar] = useState<string | null>(null);
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL;
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [newAvatar, setNewAvatar] = useState<File | null>(null);
 
-  // ambil user dari localStorage
+  // ----------------------------------------------------
+  // 1. Ambil data user dari localStorage
+  // ----------------------------------------------------
   useEffect(() => {
-    const u = localStorage.getItem("user");
-    if (u) {
-      const parsed = JSON.parse(u);
-      setUsername(parsed.username || parsed.name || "");
-      setAvatar(parsed.avatar || null);
-    }
+    const userData = localStorage.getItem("user");
+    if (!userData) return;
+
+    const parsed = JSON.parse(userData);
+
+    setUsername(parsed.username || "");
+    setEmail(parsed.email || "");
+    setPhone(parsed.phone || "");
+    setAvatarUrl(parsed.avatar || null);
   }, []);
 
-  // handle upload avatar
-  const handleAvatarSelect = (file: File) => {
-    setAvatarFile(file);
+  // ----------------------------------------------------
+  // 2. Upload dan preview avatar baru
+  // ----------------------------------------------------
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
 
-    // preview langsung
-    const url = URL.createObjectURL(file);
-    setAvatar(url);
+    setNewAvatar(file);
+    setAvatarUrl(URL.createObjectURL(file)); // preview langsung
   };
 
-  // save changes
-  const saveChanges = async () => {
-    const token = localStorage.getItem("token");
-    if (!token) return alert("Session expired, please login again.");
-
-    const form = new FormData();
-    form.append("username", username);
-    if (avatarFile) form.append("avatar", avatarFile);
-
+  // ----------------------------------------------------
+  // 3. Simpan Data
+  // ----------------------------------------------------
+  const handleSave = async () => {
     try {
-      const res = await axios.put(`${API_URL}/api/users/update-profile`, form, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data",
-        },
-      });
+      const token = localStorage.getItem("token");
+      if (!token) return alert("Login expired!");
 
-      // update local user
+      const formData = new FormData();
+      formData.append("username", username);
+      formData.append("email", email);
+      formData.append("phone", phone);
+
+      if (newAvatar) {
+        formData.append("avatar", newAvatar);
+      }
+
+      const res = await axios.put(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/users/update-profile`,
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      // Update localStorage biar langsung tampil di header chat
       localStorage.setItem("user", JSON.stringify(res.data.user));
 
-      alert("Profile updated successfully!");
-      window.location.href = "/chat";
+      alert("Profile updated!");
+      router.push("/chat");
     } catch (err) {
-      console.error(err);
-      alert("Failed to update profile.");
+      alert("Failed to update profile!");
+      console.log(err);
     }
   };
 
   return (
-    <div className="w-full min-h-screen flex items-center justify-center bg-gray-900 px-4 py-6">
-      <div className="bg-gray-850 border border-gray-700 p-6 rounded-xl shadow-xl w-full max-w-md">
+    <div className="w-full min-h-screen flex justify-center items-center px-4 py-10 bg-[#071422]">
 
-        {/* Back to chat */}
-        <button
-          onClick={() => (window.location.href = "/chat")}
-          className="text-blue-400 text-sm mb-3 hover:underline"
-        >
-          ← Back to chat
-        </button>
+      {/* CARD */}
+      <div className="w-full max-w-3xl bg-[#0d1b2a] p-8 rounded-xl shadow-lg border border-gray-700">
 
-        <h2 className="text-white text-xl font-semibold text-center mb-5">
-          Edit Profile
-        </h2>
+        {/* HEADER */}
+        <div className="flex justify-between items-center mb-6">
+          <button
+            className="flex items-center gap-2 text-green-400 hover:text-green-300"
+            onClick={() => router.push("/chat")}
+          >
+            <ArrowLeft size={20} />
+            Back to chat
+          </button>
 
-        {/* Avatar */}
-        <div className="flex justify-center mb-6">
-          <div className="relative">
-            <div className="w-28 h-28 rounded-full bg-gray-700 overflow-hidden border border-gray-600 flex items-center justify-center">
-              {avatar ? (
-                <img
-                  src={avatar}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <span className="text-gray-400 text-sm">No Photo</span>
-              )}
-            </div>
+          <h1 className="text-2xl font-bold text-green-400 text-center w-full">
+            Edit Profile
+          </h1>
+        </div>
 
-            {/* Upload button */}
-            <label className="absolute bottom-0 right-0 bg-blue-600 p-2 rounded-full cursor-pointer hover:bg-blue-700">
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => e.target.files && handleAvatarSelect(e.target.files[0])}
+        {/* AVATAR */}
+        <div className="w-full flex flex-col items-center mb-6">
+          <div className="w-40 h-40 rounded-full bg-green-500 flex items-center justify-center text-6xl font-bold text-black overflow-hidden border-4 border-green-300 shadow-lg">
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt="avatar"
+                className="w-full h-full object-cover"
               />
-              <span className="text-white text-xs">📷</span>
-            </label>
+            ) : (
+              username.charAt(0).toUpperCase()
+            )}
+          </div>
+
+          <label
+            className="mt-4 flex items-center gap-2 bg-blue-600 text-white px-6 py-2 rounded-lg cursor-pointer hover:bg-blue-500"
+          >
+            <Upload size={18} />
+            Upload
+            <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+          </label>
+        </div>
+
+        {/* FORM */}
+        <div className="space-y-4 mt-4">
+
+          {/* Username */}
+          <div className="flex flex-col">
+            <label className="text-gray-300 mb-1">Username</label>
+            <input
+              className="w-full bg-[#1b263b] p-3 rounded-lg border border-green-400 text-white"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+            />
+          </div>
+
+          {/* Email */}
+          <div className="flex flex-col">
+            <label className="text-gray-300 mb-1">Email</label>
+            <input
+              disabled
+              className="w-full bg-[#1b263b] p-3 rounded-lg border border-green-400 text-white opacity-60"
+              value={email}
+            />
+          </div>
+
+          {/* Phone */}
+          <div className="flex flex-col">
+            <label className="text-gray-300 mb-1">Phone Number</label>
+            <input
+              className="w-full bg-[#1b263b] p-3 rounded-lg border border-green-400 text-white"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+            />
           </div>
         </div>
 
-        {/* Username */}
-        <div className="mb-4">
-          <label className="text-gray-300 text-sm">Username</label>
-          <input
-            type="text"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            className="w-full mt-1 px-3 py-2 rounded-md bg-gray-800 text-white border border-gray-700 outline-none"
-          />
+        {/* SAVE BUTTON */}
+        <div className="mt-8 flex justify-center">
+          <button
+            onClick={handleSave}
+            className="bg-green-400 hover:bg-green-300 text-black font-semibold px-10 py-3 rounded-full shadow-lg"
+          >
+            Save Changes
+          </button>
         </div>
-
-        {/* Save button */}
-        <button
-          onClick={saveChanges}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-semibold mt-4"
-        >
-          Save Changes
-        </button>
-
       </div>
     </div>
   );
