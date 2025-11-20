@@ -3,6 +3,7 @@ import http from "http";
 import { Server } from "socket.io";
 import cors from "cors";
 import dotenv from "dotenv";
+import path from "path";
 
 import authRoutes from "./routes/authRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
@@ -12,34 +13,59 @@ dotenv.config();
 
 const app = express();
 
-// ❗ FIX: Matikan konflik HTTP/2 di Railway
+/* ============================================================
+   🚫 FIX Railway HTTP/2 issues
+   ============================================================ */
 app.use((req, res, next) => {
   res.setHeader("Connection", "close");
   next();
 });
 
-// ❗ FIX: Besarkan limit body untuk upload cloudinary
+/* ============================================================
+   📦 Body Parser (besar biar aman untuk upload)
+   ============================================================ */
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-// CORS
+/* ============================================================
+   🎯 CORS CONFIG — FIX PUT & preflight
+   ============================================================ */
 const allowedOrigins = [
   "http://localhost:3000",
+  "http://localhost:5173",
   "https://login-with-firebase-sandy.vercel.app",
 ];
 
+// CORS utama
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) callback(null, true);
-      else callback(new Error("Not allowed by CORS"));
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Blocked by CORS"));
+      }
     },
-    methods: ["GET", "POST"],
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
   })
 );
 
-// Routes
+// WAJIB: biar OPTIONS ngakak
+app.options("*", cors());
+
+/* ============================================================
+   🖼 Serve Static Avatar Folder
+   ============================================================ */
+
+const __dirname = process.cwd();
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+/* ============================================================
+   🛣 Routes
+   ============================================================ */
+
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/users", userRoutes);
@@ -48,18 +74,21 @@ app.get("/", (req, res) => {
   res.send("🚀 Chat backend + Auth is running fine!");
 });
 
-// HTTP & Socket
+/* ============================================================
+   🔥 HTTP + SOCKET.IO
+   ============================================================ */
+
 const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
     origin: allowedOrigins,
-    methods: ["GET", "POST"],
+    methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
   },
 });
 
-// ❗ FIX PENTING: biar controller bisa broadcast upload file
+// biar controller bisa broadcast upload file
 app.set("io", io);
 
 let onlineUsers = 0;
@@ -80,7 +109,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("sendMessage", (msg) => {
-    console.log("💬 Incoming from client:", msg);
+    console.log("💬 Incoming message:", msg);
 
     const fullMessage = {
       id: msg.id || Date.now(),
@@ -103,6 +132,11 @@ io.on("connection", (socket) => {
   });
 });
 
-// Listen
+/* ============================================================
+   🚀 START SERVER
+   ============================================================ */
+
 const PORT = process.env.PORT || 8080;
-server.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
+server.listen(PORT, () =>
+  console.log(`✅ Server running on port ${PORT}`)
+);
