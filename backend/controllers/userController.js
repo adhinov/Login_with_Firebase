@@ -1,8 +1,6 @@
 // controllers/userController.js
 import pool from "../config/db.js";
-import path from "path";
-import fs from "fs";
-import multer from "multer";
+import cloudinary from "../config/cloudinary.js";
 
 /* ============================================================
    📌 Konversi tanggal ke UTC+7 (Jakarta)
@@ -15,52 +13,16 @@ export const toJakartaISO = (date) => {
 };
 
 /* ============================================================
-   📌 Default Avatar + Safe Avatar Checker
+   📌 DEFAULT AVATAR
    ============================================================ */
-const DEFAULT_AVATAR = "/uploads/avatars/default.svg";
+const DEFAULT_AVATAR =
+  "https://res.cloudinary.com/ddoqewccs/image/upload/v1733640000/login-app/avatars/default.svg";
 
-export const safeAvatar = (avatarPath) => {
-  if (!avatarPath) return DEFAULT_AVATAR;
-  const filePath = path.join(process.cwd(), avatarPath.replace(/^\//, ""));
-  return fs.existsSync(filePath) ? avatarPath : DEFAULT_AVATAR;
+/* Cloudinary URLs always valid → return directly */
+export const safeAvatar = (url) => {
+  if (!url) return DEFAULT_AVATAR;
+  return url;
 };
-
-/* ============================================================
-   📌 Konfigurasi Upload Avatar (multer)
-   ============================================================ */
-const avatarsDir = path.join(process.cwd(), "uploads", "avatars");
-
-if (!fs.existsSync(avatarsDir)) {
-  fs.mkdirSync(avatarsDir, { recursive: true });
-  console.log("📁 Avatar folder created:", avatarsDir);
-}
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, avatarsDir),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    const name = `avatar_${Date.now()}_${Math.round(Math.random() * 1e9)}${ext}`;
-    cb(null, name);
-  },
-});
-
-const fileFilter = (req, file, cb) => {
-  const allowedExt = /\.(jpg|jpeg|png|webp|svg)$/;
-  const allowedMime =
-    /(image\/jpeg|image\/jpg|image\/png|image\/webp|image\/svg\+xml)/;
-
-  const isExtValid = allowedExt.test(file.originalname.toLowerCase());
-  const isMimeValid = allowedMime.test(file.mimetype);
-
-  if (isExtValid && isMimeValid) cb(null, true);
-  else cb(new Error("Invalid file type. Image only."), false);
-};
-
-export const uploadAvatar = multer({
-  storage,
-  fileFilter,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
-});
 
 /* ============================================================
    🔹 GET ALL USERS (ADMIN)
@@ -71,9 +33,7 @@ export const getAllUsers = async (req, res) => {
       "SELECT id, username, email, role, avatar FROM users ORDER BY id ASC"
     );
 
-    const rows = result.rows;
-
-    const users = rows.map((u) => ({
+    const users = result.rows.map((u) => ({
       ...u,
       avatar: safeAvatar(u.avatar),
     }));
@@ -86,7 +46,7 @@ export const getAllUsers = async (req, res) => {
 };
 
 /* ============================================================
-   🔹 GET CHAT USERS (FOR CHAT LIST)
+   🔹 GET CHAT USERS
    ============================================================ */
 export const getChatUsers = async (req, res) => {
   try {
@@ -94,9 +54,7 @@ export const getChatUsers = async (req, res) => {
       "SELECT id, username, email, avatar FROM users ORDER BY id ASC"
     );
 
-    const rows = result.rows;
-
-    const users = rows.map((u) => ({
+    const users = result.rows.map((u) => ({
       ...u,
       avatar: safeAvatar(u.avatar),
     }));
@@ -109,38 +67,59 @@ export const getChatUsers = async (req, res) => {
 };
 
 /* ============================================================
-   PUT /api/users/update-profile
-   logged user: update username, phone, avatar
+   🔹 UPDATE PROFILE + UPLOAD AVATAR (CLOUDINARY)
    ============================================================ */
 export const updateProfile = async (req, res) => {
   try {
     const userId = req.user.id;
     const { username, phone } = req.body;
 
-    // new avatar path (if uploaded)
-    const newAvatar = req.file ? `/uploads/avatars/${req.file.filename}` : null;
+    // Ambil data user lama
+    const oldRes = await pool.query(
+      "SELECT avatar FROM users WHERE id = $1",
+      [userId]
+    );
 
-    // ambil avatar lama dari DB
-    const oldRes = await pool.query("SELECT avatar FROM users WHERE id = $1", [userId]);
-    if (!oldRes.rows.length) {
+    if (oldRes.rows.length === 0) {
       return res.status(404).json({ message: "User not found" });
     }
-    const oldAvatar = oldRes.rows[0].avatar;
 
-    // jika ada avatar baru dan ada old avatar (bukan default) → hapus file lama
-    if (newAvatar && oldAvatar && oldAvatar !== DEFAULT_AVATAR) {
-      try {
-        const oldFull = path.join(process.cwd(), oldAvatar.startsWith("/") ? oldAvatar.slice(1) : oldAvatar);
-        if (fs.existsSync(oldFull)) fs.unlinkSync(oldFull);
-      } catch (e) {
-        // jangan crash kalau hapus gagal — hanya log
-        console.warn("Warn: gagal hapus old avatar:", e);
+    const oldAvatar = oldRes.rows[0].avatar;
+    let newAvatarURL = oldAvatar || DEFAULT_AVATAR;
+
+    /* ========================================================
+       🚀 Upload avatar ke Cloudinary kalau ada file
+       ======================================================== */
+    if (req.file) {
+      const uploadResult = await cloudinary.uploader.upload(req.file.path, {
+        folder: "login-app/avatars",
+        transformation: [{ width: 300, height: 300, crop: "fill" }],
+      });
+
+      newAvatarURL = uploadResult.secure_url;
+
+      /* ===========================
+         🚮 Hapus avatar lama di Cloudinary
+         ============================ */
+      if (oldAvatar && oldAvatar !== DEFAULT_AVATAR) {
+        try {
+          const publicId = oldAvatar
+            .split("/")
+            .slice(-1)[0]
+            .split(".")[0]; // ambil nama file tanpa ext
+
+          await cloudinary.uploader.destroy(
+            `login-app/avatars/${publicId}`
+          );
+        } catch (err) {
+          console.log("⚠️ Gagal hapus avatar lama:", err.message);
+        }
       }
     }
 
-    const finalAvatar = newAvatar || oldAvatar || DEFAULT_AVATAR;
-
-    // update user — gunakan parameterized query postgres ($1..)
+    /* ========================================================
+       🔄 Update data user di PostgreSQL
+       ======================================================== */
     const updateQuery = `
       UPDATE users
       SET 
@@ -154,13 +133,13 @@ export const updateProfile = async (req, res) => {
     const { rows } = await pool.query(updateQuery, [
       username || null,
       phone || null,
-      finalAvatar,
+      newAvatarURL,
       userId,
     ]);
 
     const updated = rows[0];
 
-    res.json({
+    return res.json({
       message: "Profile updated",
       user: {
         id: updated.id,
@@ -177,4 +156,3 @@ export const updateProfile = async (req, res) => {
     res.status(500).json({ message: "Gagal update profile" });
   }
 };
-
