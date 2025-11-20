@@ -24,7 +24,7 @@ const pool = new Pool({
     console.log("✅ Database connected to Neon PostgreSQL");
     client.release();
   } catch (err) {
-    console.error("❌ Database connection error:", err.message);
+    console.error("❌ Database connection error:", err);
   }
 })();
 
