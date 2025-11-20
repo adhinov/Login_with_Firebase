@@ -22,13 +22,13 @@ app.use((req, res, next) => {
 });
 
 /* ============================================================
-   📦 Body Parser (besar biar aman untuk upload)
+   📦 Body Parser
    ============================================================ */
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 /* ============================================================
-   🎯 CORS CONFIG — FIX PUT & preflight
+   🎯 CORS CONFIG — FIX PUT + no-origin requests
    ============================================================ */
 const allowedOrigins = [
   "http://localhost:3000",
@@ -36,7 +36,6 @@ const allowedOrigins = [
   "https://login-with-firebase-sandy.vercel.app",
 ];
 
-// CORS utama
 app.use(
   cors({
     origin: (origin, callback) => {
@@ -52,30 +51,27 @@ app.use(
   })
 );
 
-// WAJIB: biar OPTIONS ngakak
 app.options("*", cors());
 
 /* ============================================================
-   🖼 Serve Static Avatar Folder
+   🖼 STATIC UPLOADS (FIX 404 Avatar)
    ============================================================ */
-
-const __dirname = process.cwd();
+const __dirname = process.cwd(); // FIX
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 /* ============================================================
-   🛣 Routes
+   🔗 ROUTES
    ============================================================ */
-
 app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes); // FIX: update profile
 app.use("/api/messages", messageRoutes);
-app.use("/api/users", userRoutes);
 
 app.get("/", (req, res) => {
   res.send("🚀 Chat backend + Auth is running fine!");
 });
 
 /* ============================================================
-   🔥 HTTP + SOCKET.IO
+   🔥 SOCKET.IO
    ============================================================ */
 
 const server = http.createServer(app);
@@ -99,8 +95,6 @@ io.on("connection", (socket) => {
   io.emit("onlineUsers", onlineUsers);
 
   socket.on("join", (user) => {
-    console.log(`👋 ${user.username} joined`);
-
     io.emit("receiveMessage", {
       sender_name: "System",
       message: `${user.username} joined the chat`,
@@ -109,8 +103,6 @@ io.on("connection", (socket) => {
   });
 
   socket.on("sendMessage", (msg) => {
-    console.log("💬 Incoming message:", msg);
-
     const fullMessage = {
       id: msg.id || Date.now(),
       sender_id: msg.sender_id || null,
