@@ -12,8 +12,9 @@ export default function EditProfileForm() {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [newAvatar, setNewAvatar] = useState<File | null>(null);
+
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null); // preview avatar
+  const [newAvatar, setNewAvatar] = useState<File | null>(null); // file untuk backend
 
   // Load user data from localStorage
   useEffect(() => {
@@ -24,15 +25,31 @@ export default function EditProfileForm() {
     setUsername(u.username || "");
     setEmail(u.email || "");
     setPhone(u.phone || "");
-    setAvatarUrl(u.avatar || null);
+
+    // avatar fallback
+    setAvatarUrl(
+      u.avatar && u.avatar.trim() !== "" ? u.avatar : "/default.svg"
+    );
   }, []);
 
   // Handle avatar preview
   const handleAvatarChange = (e: any) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (!file) return;
+
+    // basic validation
+    if (!file.type.startsWith("image/")) {
+      alert("Only image files are allowed.");
+      return;
+    }
+
+    if (file.size > 3 * 1024 * 1024) {
+      alert("Max image size is 3MB.");
+      return;
+    }
+
     setNewAvatar(file);
-    setAvatarUrl(URL.createObjectURL(file));
+    setAvatarUrl(URL.createObjectURL(file)); // preview otomatis
   };
 
   // Save profile update
@@ -45,6 +62,7 @@ export default function EditProfileForm() {
       form.append("username", username);
       form.append("email", email);
       form.append("phone", phone);
+
       if (newAvatar) form.append("avatar", newAvatar);
 
       const res = await axios.put(
@@ -55,6 +73,7 @@ export default function EditProfileForm() {
         }
       );
 
+      // update local user
       localStorage.setItem("user", JSON.stringify(res.data.user));
       alert("Profile updated!");
       router.push("/chat");
@@ -81,7 +100,11 @@ export default function EditProfileForm() {
             <div className="w-24 h-24 rounded-full bg-green-400 overflow-hidden 
                             flex items-center justify-center text-black text-4xl font-bold shadow-md">
               {avatarUrl ? (
-                <img src={avatarUrl} className="w-full h-full object-cover" />
+                <img
+                  src={avatarUrl}
+                  className="w-full h-full object-cover"
+                  onError={() => setAvatarUrl("/default.svg")}
+                />
               ) : (
                 username.charAt(0).toUpperCase()
               )}
