@@ -239,7 +239,15 @@ export default function Chat({ userId, username }: ChatProps) {
               {/* AVATAR */}
               <div className="w-9 h-9 rounded-full overflow-hidden bg-blue-600 flex items-center justify-center text-white text-lg">
                 {avatar ? (
-                  <img src={avatar} className="w-full h-full object-cover" />
+                  <img
+                    src={avatar}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none"; // sembunyikan gambar rusak
+                      (e.currentTarget.parentNode as HTMLElement).innerHTML =
+                        `<span style='color:white;font-size:16px;font-weight:bold;'>${displayName?.[0]?.toUpperCase()}</span>`;
+                    }}
+                  />
                 ) : (
                   displayName?.[0]?.toUpperCase()
                 )}
