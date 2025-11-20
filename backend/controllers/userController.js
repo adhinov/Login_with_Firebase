@@ -105,55 +105,72 @@ export const getChatUsers = async (req, res) => {
 };
 
 /* ============================================================
-   🔹 UPDATE PROFILE (username + phone + avatar)
+   PUT /api/users/update-profile
+   logged user: update username, phone, avatar
    ============================================================ */
 export const updateProfile = async (req, res) => {
   try {
     const userId = req.user.id;
     const { username, phone } = req.body;
 
-    let newAvatarUrl = req.file
-      ? `/uploads/avatars/${req.file.filename}`
-      : null;
+    // new avatar path (if uploaded)
+    const newAvatar = req.file ? `/uploads/avatars/${req.file.filename}` : null;
 
-    // Ambil avatar lama
-    const [oldRows] = await db.query(
-      "SELECT avatar FROM users WHERE id = ?",
-      [userId]
-    );
+    // ambil avatar lama dari DB
+    const oldRes = await pool.query("SELECT avatar FROM users WHERE id = $1", [userId]);
+    if (!oldRes.rows.length) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    const oldAvatar = oldRes.rows[0].avatar;
 
-    let oldAvatar = oldRows[0]?.avatar;
-
-    // Hapus avatar lama jika upload avatar baru (kecuali default)
-    if (
-      newAvatarUrl &&
-      oldAvatar &&
-      oldAvatar !== DEFAULT_AVATAR &&
-      fs.existsSync("." + oldAvatar)
-    ) {
-      fs.unlinkSync("." + oldAvatar);
+    // jika ada avatar baru dan ada old avatar (bukan default) → hapus file lama
+    if (newAvatar && oldAvatar && oldAvatar !== DEFAULT_AVATAR) {
+      try {
+        const oldFull = path.join(process.cwd(), oldAvatar.startsWith("/") ? oldAvatar.slice(1) : oldAvatar);
+        if (fs.existsSync(oldFull)) fs.unlinkSync(oldFull);
+      } catch (e) {
+        // jangan crash kalau hapus gagal — hanya log
+        console.warn("Warn: gagal hapus old avatar:", e);
+      }
     }
 
-    const finalAvatar = newAvatarUrl || oldAvatar;
+    const finalAvatar = newAvatar || oldAvatar || DEFAULT_AVATAR;
 
-    // Update ke DB
-    await db.query(
-      `
-      UPDATE users SET 
-        username = COALESCE(?, username),
-        phone_number = COALESCE(?, phone_number),
-        avatar = ?
-      WHERE id = ?
-      `,
-      [username || null, phone || null, finalAvatar, userId]
-    );
+    // update user — gunakan parameterized query postgres ($1..)
+    const updateQuery = `
+      UPDATE users
+      SET 
+        username = COALESCE($1, username),
+        phone_number = COALESCE($2, phone_number),
+        avatar = $3
+      WHERE id = $4
+      RETURNING id, email, username, phone_number, avatar, created_at, last_login
+    `;
+
+    const { rows } = await pool.query(updateQuery, [
+      username || null,
+      phone || null,
+      finalAvatar,
+      userId,
+    ]);
+
+    const updated = rows[0];
 
     res.json({
       message: "Profile updated",
-      avatar: finalAvatar,
+      user: {
+        id: updated.id,
+        email: updated.email,
+        username: updated.username,
+        phone: updated.phone_number,
+        avatar: safeAvatar(updated.avatar),
+        createdAt: toJakartaISO(updated.created_at),
+        lastLogin: toJakartaISO(updated.last_login),
+      },
     });
   } catch (error) {
     console.error("❌ Error updateProfile:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Gagal update profile" });
   }
 };
+
