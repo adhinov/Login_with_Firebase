@@ -1,5 +1,5 @@
 // controllers/userController.js
-import db from "../config/db.js";
+import pool from "../config/db.js";
 import path from "path";
 import fs from "fs";
 import multer from "multer";
@@ -67,9 +67,11 @@ export const uploadAvatar = multer({
    ============================================================ */
 export const getAllUsers = async (req, res) => {
   try {
-    const [rows] = await db.query(
+    const result = await pool.query(
       "SELECT id, username, email, role, avatar FROM users ORDER BY id ASC"
     );
+
+    const rows = result.rows;
 
     const users = rows.map((u) => ({
       ...u,
@@ -88,9 +90,11 @@ export const getAllUsers = async (req, res) => {
    ============================================================ */
 export const getChatUsers = async (req, res) => {
   try {
-    const [rows] = await db.query(
+    const result = await pool.query(
       "SELECT id, username, email, avatar FROM users ORDER BY id ASC"
     );
+
+    const rows = result.rows;
 
     const users = rows.map((u) => ({
       ...u,
