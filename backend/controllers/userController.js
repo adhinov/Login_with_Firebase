@@ -1,5 +1,5 @@
 // controllers/userController.js
-import pool from "../config/db.js";
+import db from "../config/db.js";
 import path from "path";
 import fs from "fs";
 import multer from "multer";
@@ -26,11 +26,10 @@ export const safeAvatar = (avatarPath) => {
 };
 
 /* ============================================================
-   📌 Konfigurasi Upload Avatar (Multer)
+   📌 Konfigurasi Upload Avatar (multer)
    ============================================================ */
 const avatarsDir = path.join(process.cwd(), "uploads", "avatars");
 
-// Pastikan folder ada
 if (!fs.existsSync(avatarsDir)) {
   fs.mkdirSync(avatarsDir, { recursive: true });
   console.log("📁 Avatar folder created:", avatarsDir);
@@ -45,7 +44,6 @@ const storage = multer.diskStorage({
   },
 });
 
-// Validasi gambar
 const fileFilter = (req, file, cb) => {
   const allowedExt = /\.(jpg|jpeg|png|webp|svg)$/;
   const allowedMime =
@@ -65,125 +63,97 @@ export const uploadAvatar = multer({
 });
 
 /* ============================================================
-   🔹 GET /api/users
-   🔒 Admin: melihat semua user
+   🔹 GET ALL USERS (ADMIN)
    ============================================================ */
 export const getAllUsers = async (req, res) => {
   try {
-    const result = await pool.query(
-      `SELECT 
-         u.id, 
-         u.email, 
-         COALESCE(u.username, '') AS username,
-         r.name AS role, 
-         u.created_at,
-         COALESCE(u.phone_number, '') AS phone_number,
-         u.last_login,
-         u.avatar
-       FROM users u
-       LEFT JOIN roles r ON u.role_id = r.id
-       ORDER BY u.id ASC`
+    const [rows] = await db.query(
+      "SELECT id, username, email, role, avatar FROM users ORDER BY id ASC"
     );
 
-    const users = result.rows.map((u) => ({
+    const users = rows.map((u) => ({
       ...u,
       avatar: safeAvatar(u.avatar),
-      created_at: toJakartaISO(u.created_at),
-      last_login: toJakartaISO(u.last_login),
     }));
 
     res.json(users);
   } catch (error) {
-    console.error("❌ Error getAllUsers:", error.message);
-    res.status(500).json({ message: "Gagal mengambil data users" });
+    console.error("❌ Error getAllUsers:", error);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
 /* ============================================================
-   🔹 GET /api/users/chat-users
-   🔒 User login: melihat daftar user lain
+   🔹 GET CHAT USERS (FOR CHAT LIST)
    ============================================================ */
 export const getChatUsers = async (req, res) => {
   try {
-    const userId = req.user.id;
-
-    const result = await pool.query(
-      `SELECT id, email, COALESCE(username, '') AS username, avatar
-       FROM users
-       WHERE id != $1
-       AND email != 'admin@example.com'
-       ORDER BY id ASC`,
-      [userId]
+    const [rows] = await db.query(
+      "SELECT id, username, email, avatar FROM users ORDER BY id ASC"
     );
 
-    const formatted = result.rows.map((u) => ({
+    const users = rows.map((u) => ({
       ...u,
       avatar: safeAvatar(u.avatar),
     }));
 
-    res.json(formatted);
+    res.json(users);
   } catch (error) {
-    console.error("❌ Error getChatUsers:", error.message);
-    res.status(500).json({ message: "Gagal mengambil daftar user untuk chat" });
+    console.error("❌ Error getChatUsers:", error);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
 /* ============================================================
-   🔹 PUT /api/users/update-profile
-   🔒 User login: update username, phone, avatar
+   🔹 UPDATE PROFILE (username + phone + avatar)
    ============================================================ */
 export const updateProfile = async (req, res) => {
   try {
     const userId = req.user.id;
-
     const { username, phone } = req.body;
 
-    const newAvatar = req.file
+    let newAvatarUrl = req.file
       ? `/uploads/avatars/${req.file.filename}`
       : null;
 
     // Ambil avatar lama
-    const oldUser = await pool.query(
-      "SELECT avatar FROM users WHERE id=$1",
+    const [oldRows] = await db.query(
+      "SELECT avatar FROM users WHERE id = ?",
       [userId]
     );
 
-    const oldAvatar = oldUser.rows[0]?.avatar;
+    let oldAvatar = oldRows[0]?.avatar;
 
-    // Hapus avatar lama jika upload baru
-    if (newAvatar && oldAvatar) {
-      const oldPath = path.join(
-        process.cwd(),
-        oldAvatar.replace(/^\//, "")
-      );
-      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+    // Hapus avatar lama jika upload avatar baru (kecuali default)
+    if (
+      newAvatarUrl &&
+      oldAvatar &&
+      oldAvatar !== DEFAULT_AVATAR &&
+      fs.existsSync("." + oldAvatar)
+    ) {
+      fs.unlinkSync("." + oldAvatar);
     }
 
-    // Update database
-    const result = await pool.query(
-      `UPDATE users 
-       SET username=$1, phone_number=$2, avatar = COALESCE($3, avatar)
-       WHERE id=$4
-       RETURNING id, email, username, phone_number, avatar, created_at, last_login`,
-      [username, phone, newAvatar, userId]
-    );
+    const finalAvatar = newAvatarUrl || oldAvatar;
 
-    const u = result.rows[0];
+    // Update ke DB
+    await db.query(
+      `
+      UPDATE users SET 
+        username = COALESCE(?, username),
+        phone_number = COALESCE(?, phone_number),
+        avatar = ?
+      WHERE id = ?
+      `,
+      [username || null, phone || null, finalAvatar, userId]
+    );
 
     res.json({
       message: "Profile updated",
-      user: {
-        id: u.id,
-        email: u.email,
-        username: u.username,
-        phone: u.phone_number,
-        avatar: safeAvatar(u.avatar),
-        createdAt: toJakartaISO(u.created_at),
-        lastLogin: toJakartaISO(u.last_login),
-      },
+      avatar: finalAvatar,
     });
   } catch (error) {
     console.error("❌ Error updateProfile:", error);
-    res.status(500).json({ message: "Gagal update profile" });
+    res.status(500).json({ message: "Server error" });
   }
 };
