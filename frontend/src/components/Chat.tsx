@@ -32,10 +32,14 @@ export default function Chat({ userId, username }: ChatProps) {
 
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 
-  const user = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("user") || "{}") : {};
+  const user =
+    typeof window !== "undefined"
+      ? JSON.parse(localStorage.getItem("user") || "{}")
+      : {};
+
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
-  // display name fallback
+  // display name
   const displayName =
     username ||
     user?.username ||
@@ -43,22 +47,31 @@ export default function Chat({ userId, username }: ChatProps) {
     (user?.email ? String(user.email).split("@")[0] : undefined) ||
     "User";
 
-  // avatar support (placeholder)
+  // avatar
   const avatar = user?.avatar || null;
 
-  // add message if not exists
+  // =====================================================
+  //  Prevent Duplicate Messages
+  // =====================================================
   const addMessageIfNotExists = (msg: Message) => {
     setMessages((prev) => {
       if (!msg) return prev;
 
+      // based on message ID
       if (msg.id && prev.some((m) => m.id === msg.id)) return prev;
-      if (msg.file_url && prev.some((m) => m.file_url === msg.file_url)) return prev;
 
+      // based on image
+      if (msg.file_url && prev.some((m) => m.file_url === msg.file_url))
+        return prev;
+
+      // based on text + timestamp proximity
       if (msg.message) {
         const msgTime = new Date(msg.created_at ?? msg.createdAt ?? Date.now()).getTime();
+
         const exists = prev.some((m) => {
           if (!m.message) return false;
           const mt = new Date(m.created_at ?? m.createdAt ?? 0).getTime();
+
           return (
             m.message === msg.message &&
             (m.sender_email ?? "") === (msg.sender_email ?? "") &&
@@ -72,7 +85,9 @@ export default function Chat({ userId, username }: ChatProps) {
     });
   };
 
-  // fetch messages
+  // =====================================================
+  //  Fetch Messages
+  // =====================================================
   useEffect(() => {
     const token = localStorage.getItem("token");
 
@@ -81,14 +96,22 @@ export default function Chat({ userId, username }: ChatProps) {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       })
       .then((res) => {
-        const data: Message[] = Array.isArray(res.data) ? res.data : res.data?.data ?? [];
+        const data: Message[] = Array.isArray(res.data)
+          ? res.data
+          : res.data?.data ?? [];
+
         setMessages(data);
-        setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 200);
+
+        setTimeout(() => {
+          chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        }, 200);
       })
       .catch((err) => console.error("Fetch pesan gagal:", err));
   }, [API_URL]);
 
-  // socket listeners
+  // =====================================================
+  //  Socket Listeners
+  // =====================================================
   useEffect(() => {
     if (!socket) return;
 
@@ -111,7 +134,9 @@ export default function Chat({ userId, username }: ChatProps) {
 
       addMessageIfNotExists(normalized);
 
-      setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 60);
+      setTimeout(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 60);
     });
 
     return () => {
@@ -121,12 +146,13 @@ export default function Chat({ userId, username }: ChatProps) {
     };
   }, [userId, displayName]);
 
-  // auto scroll
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, uploadPreview]);
 
-  // send text message
+  // =====================================================
+  //  Send Text Message
+  // =====================================================
   const sendMessage = async () => {
     if (!input.trim()) return;
 
@@ -159,7 +185,9 @@ export default function Chat({ userId, username }: ChatProps) {
     socket.emit("sendMessage", msg);
   };
 
-  // upload image
+  // =====================================================
+  //  Upload File
+  // =====================================================
   const uploadFile = async (file: File) => {
     const token = localStorage.getItem("token");
     if (!token) return alert("Sesi habis. Login ulang.");
@@ -183,7 +211,9 @@ export default function Chat({ userId, username }: ChatProps) {
         onUploadProgress: (e: any) => {
           const percent = Math.round((e.loaded * 100) / (e.total || 1));
           setUploadPreview((prev) =>
-            prev ? { ...prev, progress: percent } : { url: previewUrl, progress: percent }
+            prev
+              ? { ...prev, progress: percent }
+              : { url: previewUrl, progress: percent }
           );
         },
       });
@@ -200,7 +230,9 @@ export default function Chat({ userId, username }: ChatProps) {
     }
   };
 
-  // progress circle
+  // =====================================================
+  //  Circular Progress Component
+  // =====================================================
   const CircularProgress = ({ percent }: { percent: number }) => {
     const size = 56;
     const stroke = 4;
@@ -209,8 +241,15 @@ export default function Chat({ userId, username }: ChatProps) {
     const offset = circumference * (1 - Math.max(0, Math.min(100, percent)) / 100);
 
     return (
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="block">
-        <circle cx={size / 2} cy={size / 2} r={radius} stroke="rgba(255,255,255,0.18)" strokeWidth={stroke} fill="none" />
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke="rgba(255,255,255,0.18)"
+          strokeWidth={stroke}
+          fill="none"
+        />
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -227,6 +266,9 @@ export default function Chat({ userId, username }: ChatProps) {
     );
   };
 
+  // =====================================================
+  //  UI
+  // =====================================================
   return (
     <div className="w-full h-[100dvh] flex justify-center bg-gray-900 overflow-hidden">
       <div className="w-full h-full max-w-[920px] flex flex-col bg-gray-850 border-x border-gray-700">
@@ -236,20 +278,20 @@ export default function Chat({ userId, username }: ChatProps) {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
 
-              {/* AVATAR */}
-              <div className="w-9 h-9 rounded-full overflow-hidden bg-blue-600 flex items-center justify-center text-white text-lg">
+              {/* AVATAR FINAL */}
+              <div className="w-10 h-10 rounded-full overflow-hidden bg-blue-600 flex items-center justify-center text-white text-lg">
                 {avatar ? (
                   <img
                     src={avatar}
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      e.currentTarget.style.display = "none"; // sembunyikan gambar rusak
-                      (e.currentTarget.parentNode as HTMLElement).innerHTML =
-                        `<span style='color:white;font-size:16px;font-weight:bold;'>${displayName?.[0]?.toUpperCase()}</span>`;
+                      e.currentTarget.style.display = "none";
+                      (e.currentTarget.parentElement as HTMLElement).innerHTML =
+                        `<span style="color:white;font-size:18px;font-weight:bold;">${displayName[0]?.toUpperCase()}</span>`;
                     }}
                   />
                 ) : (
-                  displayName?.[0]?.toUpperCase()
+                  displayName[0]?.toUpperCase()
                 )}
               </div>
 
@@ -261,14 +303,15 @@ export default function Chat({ userId, username }: ChatProps) {
 
             {/* MENU */}
             <div className="relative">
-              <button onClick={() => setShowMenu(!showMenu)} className="p-2 hover:bg-gray-700 rounded-full">
+              <button
+                onClick={() => setShowMenu(!showMenu)}
+                className="p-2 hover:bg-gray-700 rounded-full"
+              >
                 <Settings size={18} className="text-white" />
               </button>
 
               {showMenu && (
                 <div className="absolute right-0 top-10 bg-gray-800 w-40 rounded-md shadow-lg overflow-hidden">
-
-                  {/* EDIT PROFILE */}
                   <button
                     onClick={() => (window.location.href = "/edit-profile")}
                     className="px-4 py-2 w-full hover:bg-gray-700 text-white text-sm text-left border-b border-gray-700"
@@ -276,7 +319,6 @@ export default function Chat({ userId, username }: ChatProps) {
                     Edit Profile
                   </button>
 
-                  {/* LOGOUT */}
                   <button
                     onClick={() => {
                       localStorage.removeItem("token");
@@ -296,19 +338,26 @@ export default function Chat({ userId, username }: ChatProps) {
         {/* MESSAGES */}
         <main className="flex-1 min-h-0 overflow-y-auto px-4 py-2 space-y-4">
           {messages.map((m, i) => {
-            const mine = (m.sender_email ?? "").toLowerCase() === (user?.email ?? "").toLowerCase();
+            const mine =
+              (m.sender_email ?? "").toLowerCase() ===
+              (user?.email ?? "").toLowerCase();
+
             const ts = m.created_at ?? m.createdAt ?? "";
 
-            const display =
-              mine
-                ? "You"
-                : m.sender_name ||
-                  (m.sender_email ? String(m.sender_email).split("@")[0] : "User");
+            const display = mine
+              ? "You"
+              : m.sender_name ||
+                (m.sender_email
+                  ? String(m.sender_email).split("@")[0]
+                  : "User");
 
             return (
-              <div key={m.id ?? i} className={`flex flex-col ${mine ? "items-end" : "items-start"}`}>
-
-                {/* BUBBLE */}
+              <div
+                key={m.id ?? i}
+                className={`flex flex-col ${
+                  mine ? "items-end" : "items-start"
+                }`}
+              >
                 <div
                   className={`max-w-[80%] px-3 py-2 rounded-2xl text-sm ${
                     mine
@@ -332,7 +381,11 @@ export default function Chat({ userId, username }: ChatProps) {
                   )}
 
                   {/* TEXT */}
-                  {m.message && <div className="leading-snug break-words">{m.message}</div>}
+                  {m.message && (
+                    <div className="leading-snug break-words">
+                      {m.message}
+                    </div>
+                  )}
 
                   {/* TIME */}
                   <div className="text-[9px] text-gray-300 text-right mt-1">
@@ -355,7 +408,10 @@ export default function Chat({ userId, username }: ChatProps) {
         {uploadPreview && (
           <div className="px-4 pb-2 flex justify-end">
             <div className="relative w-[130px] h-[130px] rounded-xl overflow-hidden border border-gray-600">
-              <img src={uploadPreview.url} className="w-full h-full object-cover opacity-60" />
+              <img
+                src={uploadPreview.url}
+                className="w-full h-full object-cover opacity-60"
+              />
               <div className="absolute inset-0 flex items-center justify-center">
                 <CircularProgress percent={uploadPreview.progress} />
               </div>
@@ -368,10 +424,11 @@ export default function Chat({ userId, username }: ChatProps) {
 
         {/* INPUT AREA */}
         <div className="px-3 py-2 flex items-center gap-3 bg-gray-850 border-t border-gray-700 sticky bottom-0 z-10">
-
-          {/* Add button */}
           <div className="relative">
-            <button onClick={() => setShowUpload(!showUpload)} className="p-2 hover:bg-gray-700 rounded-full text-white">
+            <button
+              onClick={() => setShowUpload(!showUpload)}
+              className="p-2 hover:bg-gray-700 rounded-full text-white"
+            >
               <Plus size={20} />
             </button>
 
@@ -383,14 +440,15 @@ export default function Chat({ userId, username }: ChatProps) {
                     type="file"
                     className="hidden"
                     accept="image/*"
-                    onChange={(e) => e.target.files && uploadFile(e.target.files[0])}
+                    onChange={(e) =>
+                      e.target.files && uploadFile(e.target.files[0])
+                    }
                   />
                 </label>
               </div>
             )}
           </div>
 
-          {/* Input */}
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -399,8 +457,10 @@ export default function Chat({ userId, username }: ChatProps) {
             className="flex-1 px-3 py-2 bg-gray-800 rounded-xl text-white outline-none border border-gray-700 text-sm"
           />
 
-          {/* Send */}
-          <button onClick={sendMessage} className="p-3 bg-blue-600 rounded-full text-white">
+          <button
+            onClick={sendMessage}
+            className="p-3 bg-blue-600 rounded-full text-white"
+          >
             <Send size={18} />
           </button>
         </div>
