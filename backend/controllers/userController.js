@@ -18,14 +18,13 @@ export const toJakartaISO = (date) => {
 const DEFAULT_AVATAR =
   "https://res.cloudinary.com/ddoqewccs/image/upload/v1733640000/login-app/avatars/default.svg";
 
-/* Cloudinary URLs always valid → return directly */
 export const safeAvatar = (url) => {
   if (!url) return DEFAULT_AVATAR;
   return url;
 };
 
 /* ============================================================
-   🔹 GET ALL USERS (ADMIN)
+   🔹 GET ALL USERS
    ============================================================ */
 export const getAllUsers = async (req, res) => {
   try {
@@ -74,7 +73,7 @@ export const updateProfile = async (req, res) => {
     const userId = req.user.id;
     const { username, phone } = req.body;
 
-    // Ambil data user lama
+    // Ambil data lama
     const oldRes = await pool.query(
       "SELECT avatar FROM users WHERE id = $1",
       [userId]
@@ -87,9 +86,9 @@ export const updateProfile = async (req, res) => {
     const oldAvatar = oldRes.rows[0].avatar;
     let newAvatarURL = oldAvatar || DEFAULT_AVATAR;
 
-    /* ========================================================
-       🚀 Upload avatar ke Cloudinary kalau ada file
-       ======================================================== */
+    /* ============================================================
+       🚀 UPLOAD AVATAR JIKA ADA FILE
+       ============================================================ */
     if (req.file) {
       const uploadResult = await cloudinary.uploader.upload(req.file.path, {
         folder: "login-app/avatars",
@@ -98,28 +97,26 @@ export const updateProfile = async (req, res) => {
 
       newAvatarURL = uploadResult.secure_url;
 
-      /* ===========================
-         🚮 Hapus avatar lama di Cloudinary
-         ============================ */
+      /* ============================================================
+         🚮 HAPUS AVATAR LAMA DARI CLOUDINARY
+         ============================================================ */
       if (oldAvatar && oldAvatar !== DEFAULT_AVATAR) {
         try {
+          // Cloudinary publicId extractor FIX
           const publicId = oldAvatar
-            .split("/")
-            .slice(-1)[0]
-            .split(".")[0]; // ambil nama file tanpa ext
+            .split("/upload/")[1]    // ambil path setelah /upload/
+            .split(".")[0];          // hilangkan extension
 
-          await cloudinary.uploader.destroy(
-            `login-app/avatars/${publicId}`
-          );
+          await cloudinary.uploader.destroy(publicId);
         } catch (err) {
           console.log("⚠️ Gagal hapus avatar lama:", err.message);
         }
       }
     }
 
-    /* ========================================================
-       🔄 Update data user di PostgreSQL
-       ======================================================== */
+    /* ============================================================
+       🔄 UPDATE DATABASE
+       ============================================================ */
     const updateQuery = `
       UPDATE users
       SET 
