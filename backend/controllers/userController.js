@@ -8,8 +8,8 @@ import cloudinary from "../config/cloudinary.js";
 export const toJakartaISO = (date) => {
   if (!date) return null;
   const d = new Date(date);
-  const jakartaTime = new Date(d.getTime() + 7 * 60 * 60 * 1000);
-  return jakartaTime.toISOString();
+  const jkt = new Date(d.getTime() + 7 * 60 * 60 * 1000);
+  return jkt.toISOString();
 };
 
 /* ============================================================
@@ -66,12 +66,19 @@ export const getChatUsers = async (req, res) => {
 };
 
 /* ============================================================
-   🔹 UPDATE PROFILE + UPLOAD AVATAR (CLOUDINARY)
+   🔥 UPDATE PROFILE + UPLOAD AVATAR (CLOUDINARY)
    ============================================================ */
 export const updateProfile = async (req, res) => {
   try {
     const userId = req.user.id;
     const { username, phone } = req.body;
+
+    console.log("\n==============================");
+    console.log("📥 UPDATE PROFILE REQUEST");
+    console.log("==============================");
+    console.log("➡ userId:", userId);
+    console.log("➡ body:", req.body);
+    console.log("➡ file:", req.file);
 
     // Ambil data lama
     const oldRes = await pool.query(
@@ -80,16 +87,21 @@ export const updateProfile = async (req, res) => {
     );
 
     if (oldRes.rows.length === 0) {
+      console.log("❌ User not found");
       return res.status(404).json({ message: "User not found" });
     }
 
     const oldAvatar = oldRes.rows[0].avatar;
+    console.log("🖼 Old avatar:", oldAvatar);
+
     let newAvatarURL = oldAvatar || DEFAULT_AVATAR;
 
     /* ============================================================
-       🚀 UPLOAD AVATAR JIKA ADA FILE
+       🚀 UPLOAD AVATAR BARU KE CLOUDINARY
        ============================================================ */
     if (req.file) {
+      console.log("📤 Uploading NEW avatar to Cloudinary...");
+
       const uploadResult = await cloudinary.uploader.upload(req.file.path, {
         folder: "login-app/avatars",
         transformation: [{ width: 300, height: 300, crop: "fill" }],
@@ -97,26 +109,37 @@ export const updateProfile = async (req, res) => {
 
       newAvatarURL = uploadResult.secure_url;
 
+      console.log("✅ UPLOAD SUCCESS:");
+      console.log(uploadResult);
+
       /* ============================================================
-         🚮 HAPUS AVATAR LAMA DARI CLOUDINARY
+         🚮 HAPUS AVATAR LAMA
          ============================================================ */
       if (oldAvatar && oldAvatar !== DEFAULT_AVATAR) {
+        console.log("\n🗑 Deleting OLD avatar:", oldAvatar);
+
         try {
-          // Cloudinary publicId extractor FIX
-          const publicId = oldAvatar
-            .split("/upload/")[1]    // ambil path setelah /upload/
-            .split(".")[0];          // hilangkan extension
+          // Extract publicId
+          const split = oldAvatar.split("/upload/");
+          const afterUpload = split[1]; // "v123/login-app/avatars/xxx"
+          const publicId = afterUpload.split(".")[0];
+
+          console.log("🆔 Extracted publicId:", publicId);
 
           await cloudinary.uploader.destroy(publicId);
+
+          console.log("✅ OLD AVATAR DELETED");
         } catch (err) {
-          console.log("⚠️ Gagal hapus avatar lama:", err.message);
+          console.log("⚠️ Failed to delete old avatar:", err.message);
         }
       }
     }
 
     /* ============================================================
-       🔄 UPDATE DATABASE
+       💾 UPDATE DATABASE
        ============================================================ */
+    console.log("\n💾 Updating user in database...");
+
     const updateQuery = `
       UPDATE users
       SET 
@@ -135,6 +158,9 @@ export const updateProfile = async (req, res) => {
     ]);
 
     const updated = rows[0];
+
+    console.log("✅ DATABASE UPDATED:");
+    console.log(updated);
 
     return res.json({
       message: "Profile updated",

@@ -48,7 +48,7 @@ export const uploadMessageFile = async (req, res) => {
 
     if (req.file) {
       const result = await cloudinary.uploader.upload(req.file.path, {
-        folder: "chat_uploads",
+        folder: "login-app/messages",
         resource_type: "auto",
       });
 

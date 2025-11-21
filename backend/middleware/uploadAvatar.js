@@ -3,7 +3,6 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 
-// buat folder temporary lokal untuk upload
 const tempDir = "tmp";
 if (!fs.existsSync(tempDir)) {
   fs.mkdirSync(tempDir);
