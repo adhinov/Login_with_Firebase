@@ -51,9 +51,10 @@ export default function EditProfileForm() {
   };
 
   // Save profile
-  const handleSave = async () => {
-    try {
-      const token = localStorage.getItem("token");
+  // Save profile
+const handleSave = async () => {
+  try {
+    const token = localStorage.getItem("token");
       if (!token) return alert("Session expired");
 
       const form = new FormData();
@@ -73,7 +74,12 @@ export default function EditProfileForm() {
         }
       );
 
-      localStorage.setItem("user", JSON.stringify(res.data.user));
+      // 🔥 Ambil user yg benar dari backend
+      const updatedUser = res.data.updatedUser || res.data.user || res.data;
+
+      // 🔥 Simpan ke localStorage agar avatar TIDAK HILANG saat login ulang
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+
       alert("Profile updated!");
       router.push("/chat");
     } catch (err) {
