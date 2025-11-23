@@ -24,13 +24,21 @@ export const safeAvatar = (url) => {
 };
 
 /* ============================================================
-   🔹 GET ALL USERS — FIXED (gunakan role_id)
+   🔹 GET ALL USERS — FINAL VERSION
    ============================================================ */
 export const getAllUsers = async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT id, username, email, role_id, phone_number, avatar, created_at 
-       FROM users ORDER BY id ASC`
+      `SELECT 
+          id, 
+          username, 
+          email, 
+          role_id, 
+          phone_number, 
+          avatar, 
+          created_at
+       FROM users 
+       ORDER BY id ASC`
     );
 
     const users = result.rows.map((u) => ({
@@ -39,7 +47,7 @@ export const getAllUsers = async (req, res) => {
       email: u.email,
       role: u.role_id === 1 ? "admin" : "user",
       role_id: u.role_id,
-      phone: u.phone_number,
+      phone_number: u.phone_number || null,
       avatar: safeAvatar(u.avatar),
       created_at: toJakartaISO(u.created_at),
     }));
@@ -52,7 +60,7 @@ export const getAllUsers = async (req, res) => {
 };
 
 /* ============================================================
-   🔹 GET CHAT USERS — FIX
+   🔹 GET CHAT USERS
    ============================================================ */
 export const getChatUsers = async (req, res) => {
   try {
@@ -104,12 +112,10 @@ export const updateProfile = async (req, res) => {
     }
 
     const oldAvatar = oldRes.rows[0].avatar;
-    console.log("🖼 Old avatar:", oldAvatar);
-
     let newAvatarURL = oldAvatar || DEFAULT_AVATAR;
 
     /* ============================================================
-       🚀 UPLOAD AVATAR BARU KE CLOUDINARY
+       🚀 JIKA ADA AVATAR BARU → UPLOAD KE CLOUDINARY
        ============================================================ */
     if (req.file) {
       console.log("📤 Uploading NEW avatar to Cloudinary...");
@@ -121,27 +127,17 @@ export const updateProfile = async (req, res) => {
 
       newAvatarURL = uploadResult.secure_url;
 
-      console.log("✅ UPLOAD SUCCESS:");
-      console.log(uploadResult);
+      console.log("✅ UPLOAD SUCCESS:", uploadResult);
 
-      /* ============================================================
-         🚮 HAPUS AVATAR LAMA DARI CLOUDINARY
-         ============================================================ */
+      // Hapus avatar lama jika bukan default
       if (oldAvatar && oldAvatar !== DEFAULT_AVATAR) {
         try {
-          console.log("\n🗑 Deleting OLD avatar:", oldAvatar);
+          console.log("🗑 Deleting OLD avatar:", oldAvatar);
 
-          // Ambil bagian setelah "/upload/"
-          const urlParts = oldAvatar.split("/upload/")[1];
-
-          if (urlParts) {
-            // contoh: "v1763818070/login-app/avatars/abcd123.jpg"
-            const segments = urlParts.split("/");
-
-            // Buang "v123456"
+          const parts = oldAvatar.split("/upload/")[1];
+          if (parts) {
+            const segments = parts.split("/");
             const withoutVersion = segments.slice(1).join("/");
-
-            // Hilangkan ekstensi file
             const publicId = withoutVersion.replace(/\.[^/.]+$/, "");
 
             console.log("🆔 Extracted publicId:", publicId);
@@ -158,8 +154,6 @@ export const updateProfile = async (req, res) => {
     /* ============================================================
        💾 UPDATE DATABASE
        ============================================================ */
-    console.log("\n💾 Updating user in database...");
-
     const updateQuery = `
       UPDATE users
       SET 
@@ -179,8 +173,7 @@ export const updateProfile = async (req, res) => {
 
     const updated = rows[0];
 
-    console.log("✅ DATABASE UPDATED:");
-    console.log(updated);
+    console.log("✅ DATABASE UPDATED:", updated);
 
     return res.json({
       message: "Profile updated",

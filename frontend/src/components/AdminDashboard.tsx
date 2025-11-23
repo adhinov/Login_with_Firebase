@@ -32,18 +32,14 @@ const formatDateJakarta = (dateString?: string | null): string => {
     if (!dateString) return "-";
     try {
         const d = new Date(dateString);
-        // Cek validitas tanggal
         if (isNaN(d.getTime())) return dateString;
 
         return new Intl.DateTimeFormat("id-ID", {
             timeZone: "Asia/Jakarta",
             day: "2-digit",
             month: "short",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-            hourCycle: "h23",
-        }).format(d) + " WIB";
+            year: "numeric"
+        }).format(d);
     } catch {
         return dateString || "-";
     }
