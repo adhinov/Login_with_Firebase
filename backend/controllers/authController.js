@@ -7,12 +7,14 @@ import {
   updateLastLogin,
 } from "../models/userModel.js";
 import { Resend } from "resend";
-import nodemailer from "nodemailer";
-import { safeAvatar } from "./userController.js"; // pastikan path benar
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// ================= HELPER: mapping role_id → string =================
+// default avatar (sama dengan di userController)
+const DEFAULT_AVATAR =
+  "https://res.cloudinary.com/ddoqewccs/image/upload/v1733640000/login-app/avatars/default.svg";
+
+// helper: role mapping
 const getRoleString = (role_id) => {
   switch (role_id) {
     case 1:
@@ -20,6 +22,21 @@ const getRoleString = (role_id) => {
     case 2:
     default:
       return "user";
+  }
+};
+
+// helper: fetch avatar for user id (fallback ke default)
+const getAvatarForUserId = async (userId) => {
+  try {
+    const r = await pool.query("SELECT avatar FROM users WHERE id = $1", [
+      userId,
+    ]);
+    if (r.rows.length === 0) return DEFAULT_AVATAR;
+    const a = r.rows[0].avatar;
+    return a ? a : DEFAULT_AVATAR;
+  } catch (err) {
+    console.error("Error getAvatarForUserId:", err);
+    return DEFAULT_AVATAR;
   }
 };
 
@@ -51,12 +68,16 @@ export const register = async (req, res) => {
       phone_number || null
     );
 
+    // pastikan kita ambil avatar terbaru dari DB (createUser kadang tidak mengembalikan avatar)
+    const avatar = await getAvatarForUserId(newUser.id);
+
     const payload = {
       id: newUser.id,
       email: newUser.email,
       username: newUser.username,
       role: getRoleString(newUser.role_id),
       role_id: newUser.role_id,
+      avatar,
     };
 
     const token = jwt.sign(payload, process.env.JWT_SECRET, {
@@ -106,6 +127,9 @@ export const login = async (req, res) => {
 
     await updateLastLogin(user.id);
 
+    // ambil avatar terbaru dari DB (jika model tidak menyertakan)
+    const avatar = (user.avatar && user.avatar !== "") ? user.avatar : await getAvatarForUserId(user.id);
+
     const payload = {
       id: user.id,
       email: user.email,
@@ -113,6 +137,7 @@ export const login = async (req, res) => {
       role: getRoleString(user.role_id),
       role_id: user.role_id,
       last_login: previousLogin,
+      avatar,
     };
 
     const token = jwt.sign(payload, process.env.JWT_SECRET, {
@@ -158,6 +183,8 @@ export const loginAdmin = async (req, res) => {
 
     await updateLastLogin(user.id);
 
+    const avatar = (user.avatar && user.avatar !== "") ? user.avatar : await getAvatarForUserId(user.id);
+
     const payload = {
       id: user.id,
       email: user.email,
@@ -165,6 +192,7 @@ export const loginAdmin = async (req, res) => {
       role: "admin",
       role_id: 1,
       last_login: previousLogin,
+      avatar,
     };
 
     const token = jwt.sign(payload, process.env.JWT_SECRET, {
@@ -195,7 +223,7 @@ export const getUserProfile = async (req, res) => {
     }
 
     const result = await pool.query(
-      "SELECT id, email, username, role_id, created_at, last_login FROM users WHERE id = $1",
+      "SELECT id, email, username, role_id, avatar, created_at, last_login FROM users WHERE id = $1",
       [userId]
     );
 
@@ -211,6 +239,7 @@ export const getUserProfile = async (req, res) => {
       user: {
         ...user,
         role: getRoleString(user.role_id),
+        avatar: user.avatar ? user.avatar : DEFAULT_AVATAR,
       },
     });
   } catch (error) {
