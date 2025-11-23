@@ -113,22 +113,30 @@ export const updateProfile = async (req, res) => {
       console.log(uploadResult);
 
       /* ============================================================
-         🚮 HAPUS AVATAR LAMA
+         🚮 HAPUS AVATAR LAMA DARI CLOUDINARY
          ============================================================ */
       if (oldAvatar && oldAvatar !== DEFAULT_AVATAR) {
-        console.log("\n🗑 Deleting OLD avatar:", oldAvatar);
-
         try {
-          // Extract publicId
-          const split = oldAvatar.split("/upload/");
-          const afterUpload = split[1]; // "v123/login-app/avatars/xxx"
-          const publicId = afterUpload.split(".")[0];
+          console.log("\n🗑 Deleting OLD avatar:", oldAvatar);
 
-          console.log("🆔 Extracted publicId:", publicId);
+          // Ambil bagian setelah "/upload/"
+          const urlParts = oldAvatar.split("/upload/")[1];
 
-          await cloudinary.uploader.destroy(publicId);
+          if (urlParts) {
+            // contoh: "v1763818070/login-app/avatars/abcd123.jpg"
+            const segments = urlParts.split("/");
 
-          console.log("✅ OLD AVATAR DELETED");
+            // Buang "v123456"
+            const withoutVersion = segments.slice(1).join("/");
+
+            // Hilangkan ekstensi file
+            const publicId = withoutVersion.replace(/\.[^/.]+$/, "");
+
+            console.log("🆔 Extracted publicId:", publicId);
+
+            await cloudinary.uploader.destroy(publicId);
+            console.log("✅ OLD AVATAR DELETED");
+          }
         } catch (err) {
           console.log("⚠️ Failed to delete old avatar:", err.message);
         }
