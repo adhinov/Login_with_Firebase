@@ -28,7 +28,7 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 
-// ✅ Validasi form
+// 📝 Validasi dengan Zod
 const formSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
   password: z.string().min(1, { message: "Password is required." }),
@@ -54,7 +54,7 @@ export default function LoginForm() {
     },
   });
 
-  // ✅ Fungsi login ke backend
+  // 🔐 LOGIN
   async function login(email: string, password: string) {
     if (!API_URL) {
       throw new Error("API base URL is not configured (NEXT_PUBLIC_API_URL).");
@@ -69,23 +69,15 @@ export default function LoginForm() {
     });
 
     const result = await response.json();
+    if (!response.ok) throw new Error(result.message || "Login failed");
 
-    if (!response.ok) {
-      throw new Error(result?.message || "Login failed");
-    }
-
-    if (!result.user || !result.token) {
-      throw new Error("Invalid response from server.");
-    }
-
-    // Simpan ke localStorage
     localStorage.setItem("token", result.token);
     localStorage.setItem("user", JSON.stringify(result.user));
 
     return result;
   }
 
-  // ✅ Handler submit (dengan role-based redirect)
+  // 🚀 Submit handler
   async function onSubmit(data: LoginFormValues) {
     setErrorMessage(null);
     setLoading(true);
@@ -94,27 +86,17 @@ export default function LoginForm() {
       const result = await login(data.email, data.password);
       const role = result.user?.role || "user";
 
-      toast.success(`Selamat datang, ${result.user?.username || "User"} 🎉`, {
-        description:
-          role === "admin"
-            ? "Login berhasil! Mengarahkan ke Admin Dashboard..."
-            : "Login berhasil! Mengarahkan ke Chat Room...",
-        duration: 2500,
+      toast.success(`Welcome, ${result.user?.username} 🎉`, {
+        duration: 2000,
       });
 
-      // 🔀 Redirect berdasarkan role
       setTimeout(() => {
-        if (role === "admin") {
-          router.push("/adminDashboard");
-        } else {
-          router.push("/chat");
-        }
-      }, 1800);
+        router.push(role === "admin" ? "/adminDashboard" : "/chat");
+      }, 1500);
     } catch (error: any) {
-      setErrorMessage(error?.message ?? "Login failed");
-      toast.error("Login gagal ❌", {
-        description: error?.message ?? "Periksa kembali email dan password Anda.",
-        duration: 2500,
+      setErrorMessage(error.message);
+      toast.error("Login failed ❌", {
+        description: error.message,
       });
     } finally {
       setLoading(false);
@@ -122,6 +104,43 @@ export default function LoginForm() {
     }
   }
 
+  // ===================================================================
+  // 🌟  CUSTOM FLOATING LABEL COMPONENT
+  // ===================================================================
+  const FloatingLabel = ({
+    htmlFor,
+    label,
+  }: {
+    htmlFor: string;
+    label: string;
+  }) => (
+    <FormLabel
+      htmlFor={htmlFor}
+      className="
+        absolute left-10 px-1 bg-card z-10 
+        text-muted-foreground pointer-events-none
+
+        transition-all duration-300 ease-out
+        -translate-y-4 scale-75 top-2 opacity-70
+
+        peer-placeholder-shown:top-1/2
+        peer-placeholder-shown:-translate-y-1/2
+        peer-placeholder-shown:scale-100
+        peer-placeholder-shown:opacity-100
+
+        peer-focus:top-2
+        peer-focus:-translate-y-4
+        peer-focus:scale-75
+        peer-focus:opacity-80
+      "
+    >
+      {label}
+    </FormLabel>
+  );
+
+  // ===================================================================
+  // 🌟  UI LOGIN FORM
+  // ===================================================================
   return (
     <Card className="w-full max-w-[20rem] shadow-xl">
       <CardHeader>
@@ -130,9 +149,9 @@ export default function LoginForm() {
         </CardTitle>
       </CardHeader>
 
-      <CardContent className="pb-0">
+      <CardContent>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
             {/* Email */}
             <FormField
               control={form.control}
@@ -140,24 +159,21 @@ export default function LoginForm() {
               render={({ field }) => (
                 <FormItem>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+
                     <Input
                       id="email"
                       type="email"
-                      required
-                      autoComplete="email"
                       placeholder=" "
                       {...field}
-                      className="pl-12 text-sm peer"
+                      className="
+                        pl-12 text-sm peer
+                        transition-all duration-300
+                        focus:ring-2 focus:ring-lime-300/50
+                      "
                     />
-                    <FormLabel
-                      htmlFor="email"
-                      className="absolute text-sm text-muted-foreground transform -translate-y-4 scale-75 top-2 z-10 bg-card px-2 left-9 
-                      peer-placeholder-shown:scale-100 peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 
-                      peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4"
-                    >
-                      Email
-                    </FormLabel>
+
+                    <FloatingLabel htmlFor="email" label="Email" />
                   </div>
                   <FormMessage />
                 </FormItem>
@@ -171,35 +187,28 @@ export default function LoginForm() {
               render={({ field }) => (
                 <FormItem>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+
                     <Input
                       id="password"
                       type={showPassword ? "text" : "password"}
-                      required
-                      autoComplete="current-password"
                       placeholder=" "
                       {...field}
-                      className="pl-12 pr-10 text-sm peer"
+                      className="
+                        pl-12 pr-10 text-sm peer
+                        transition-all duration-300
+                        focus:ring-2 focus:ring-lime-300/50
+                      "
                     />
-                    <FormLabel
-                      htmlFor="password"
-                      className="absolute text-sm text-muted-foreground transform -translate-y-4 scale-75 top-2 z-10 bg-card px-2 left-9 
-                      peer-placeholder-shown:scale-100 peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 
-                      peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4"
-                    >
-                      Password
-                    </FormLabel>
+
+                    <FloatingLabel htmlFor="password" label="Password" />
+
                     <button
                       type="button"
                       onClick={() => setShowPassword((prev) => !prev)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground"
-                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
                     >
-                      {showPassword ? (
-                        <EyeOff className="h-5 w-5" />
-                      ) : (
-                        <Eye className="h-5 w-5" />
-                      )}
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
                   <FormMessage />
@@ -207,59 +216,49 @@ export default function LoginForm() {
               )}
             />
 
-            {/* Remember + Forgot */}
-            <div className="flex items-center justify-between pt-0">
+            {/* Remember Me + Forgot */}
+            <div className="flex items-center justify-between">
               <FormField
                 control={form.control}
                 name="rememberMe"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-start space-x-2 space-y-0">
+                  <FormItem className="flex items-center space-x-2">
                     <FormControl>
                       <Checkbox
                         checked={!!field.value}
                         onCheckedChange={(v) => field.onChange(Boolean(v))}
                       />
                     </FormControl>
-                    <FormLabel className="font-normal text-xs">
-                      Remember me
-                    </FormLabel>
+                    <FormLabel className="text-xs">Remember me</FormLabel>
                   </FormItem>
                 )}
               />
-              <Button
-                variant="link"
-                size="sm"
-                className="px-0 text-xs h-auto"
-                asChild
-              >
-                <Link href="/forgot-password">Forgot password?</Link>
-              </Button>
+
+              <Link href="/forgot-password" className="text-xs text-primary">
+                Forgot password?
+              </Link>
             </div>
 
-            {/* Submit */}
+            {/* Button */}
             <Button
               type="submit"
-              className="w-full text-lg py-6 mt-6 flex items-center justify-center"
               disabled={loading}
+              className="w-full py-5 text-lg flex justify-center items-center"
             >
               {loading ? (
                 <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin text-lime-300" />
-                  Processing...
+                  <Loader2 className="h-5 w-5 mr-2 animate-spin text-lime-300" />
+                  Loading...
                 </>
               ) : (
                 <>
-                  <LogIn className="mr-2 h-5 w-5" />
-                  Submit
+                  <LogIn className="h-5 w-5 mr-2" /> Submit
                 </>
               )}
             </Button>
 
             {errorMessage && (
-              <p
-                className="text-red-500 text-sm text-center mt-2"
-                aria-live="polite"
-              >
+              <p className="text-red-500 text-center text-sm mt-1">
                 {errorMessage}
               </p>
             )}
@@ -267,13 +266,13 @@ export default function LoginForm() {
         </Form>
       </CardContent>
 
-      <CardFooter className="flex-col items-center text-sm">
-        <p className="text-muted-foreground mt-4">
-          Don&apos;t have an account?{" "}
-          <Button variant="link" className="p-0 h-auto text-primary" asChild>
-            <Link href="/signup">Sign up</Link>
-          </Button>
-        </p>
+      <CardFooter className="flex justify-center text-sm">
+        <span className="text-muted-foreground">
+          Don’t have an account?{" "}
+          <Link href="/signup" className="text-primary font-medium">
+            Sign up
+          </Link>
+        </span>
       </CardFooter>
     </Card>
   );

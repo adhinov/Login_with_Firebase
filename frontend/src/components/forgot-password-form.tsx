@@ -1,5 +1,3 @@
-// src/components/forgot-password-form.tsx
-
 "use client";
 
 import * as React from "react";
@@ -10,26 +8,29 @@ import axios from "axios";
 import Link from "next/link";
 import { toast } from "sonner";
 import { Mail, Loader2, Send, CheckCircle2 } from "lucide-react";
+
 import {
   Card,
   CardContent,
   CardHeader,
-  CardDescription,
   CardTitle,
+  CardDescription,
   CardFooter,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+
 import {
   Form,
-  FormControl,
   FormField,
   FormItem,
   FormLabel,
+  FormControl,
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 
-// ✅ Validasi Email
+
+// VALIDATION
 const formSchema = z.object({
   email: z.string().email({ message: "Masukkan alamat email yang valid." }),
 });
@@ -38,38 +39,64 @@ type ForgotPasswordFormValues = z.infer<typeof formSchema>;
 
 export default function ForgotPasswordForm() {
   const [loading, setLoading] = React.useState(false);
-  const [sent, setSent] = React.useState(false); // ⬅️ state untuk "Link Sent!"
+  const [sent, setSent] = React.useState(false);
 
   const form = useForm<ForgotPasswordFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: { email: "" },
   });
 
-  // ======================== HANDLE SUBMIT ========================
+  // 🌟 Floating Label Component
+  const FloatingLabel = ({
+    htmlFor,
+    label,
+  }: {
+    htmlFor: string;
+    label: string;
+  }) => (
+    <FormLabel
+      htmlFor={htmlFor}
+      className="
+        absolute left-10 px-1 bg-card z-10 text-muted-foreground pointer-events-none
+
+        transition-all duration-300 ease-out
+        -translate-y-4 scale-75 top-2 opacity-70
+
+        peer-placeholder-shown:top-1/2
+        peer-placeholder-shown:-translate-y-1/2
+        peer-placeholder-shown:scale-100
+        peer-placeholder-shown:opacity-100
+
+        peer-focus:top-2
+        peer-focus:-translate-y-4
+        peer-focus:scale-75
+        peer-focus:opacity-80
+      "
+    >
+      {label}
+    </FormLabel>
+  );
+
+  // SUBMIT
   async function onSubmit(values: ForgotPasswordFormValues) {
     try {
       setLoading(true);
       setSent(false);
 
-      const res = await axios.post(
+      await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/api/auth/forgot-password`,
         { email: values.email }
       );
 
       toast.success("📩 Link reset password sudah dikirim!", {
         description: "Silakan cek inbox atau folder spam email kamu.",
-        duration: 4000,
       });
 
-      // ✅ Kosongkan field email setelah sukses
       form.reset({ email: "" });
 
-      // ✅ Ubah tombol jadi "Link Sent!" selama 10 detik
       setSent(true);
       setTimeout(() => setSent(false), 10000);
-
     } catch (error: any) {
-      console.error("Forgot password error:", error);
       toast.error("Gagal mengirim link reset ❌", {
         description:
           error.response?.data?.message ||
@@ -80,7 +107,6 @@ export default function ForgotPasswordForm() {
     }
   }
 
-  // ======================== RENDER UI ========================
   return (
     <Card className="w-full max-w-[20rem] shadow-xl">
       <CardHeader>
@@ -88,21 +114,23 @@ export default function ForgotPasswordForm() {
           Forgot Password
         </CardTitle>
         <CardDescription className="text-center text-xs">
-          Enter your Email to receive reset password via email inbox
+          Enter your Email to receive reset password via email inbox.
         </CardDescription>
       </CardHeader>
 
       <CardContent className="pb-0">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            {/* Email Field */}
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+
+            {/* EMAIL FIELD */}
             <FormField
               control={form.control}
               name="email"
               render={({ field }) => (
                 <FormItem>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+
                     <Input
                       id="email"
                       type="email"
@@ -111,27 +139,27 @@ export default function ForgotPasswordForm() {
                       autoComplete="email"
                       {...field}
                       disabled={loading || sent}
-                      className="pl-12 text-sm peer"
+                      className="
+                        pl-12 text-sm peer
+                        transition-all duration-300
+                        disabled:opacity-60
+                        focus:ring-2 focus:ring-lime-300/50
+                      "
                     />
-                    <FormLabel
-                      htmlFor="email"
-                      className="absolute text-sm text-muted-foreground transform -translate-y-4 scale-75 top-2 z-10 bg-card px-2 left-9
-                      peer-placeholder-shown:scale-100 peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2
-                      peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4"
-                    >
-                      Email
-                    </FormLabel>
+
+                    <FloatingLabel htmlFor="email" label="Email" />
                   </div>
+
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            {/* Tombol Submit */}
+            {/* SUBMIT BUTTON */}
             <Button
               type="submit"
-              className="w-full text-lg py-6 mt-6 flex items-center justify-center"
               disabled={loading || sent}
+              className="w-full text-lg py-6 flex items-center justify-center mt-6"
             >
               {loading ? (
                 <>
