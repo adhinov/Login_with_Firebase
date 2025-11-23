@@ -8,6 +8,7 @@ import {
 } from "../models/userModel.js";
 import { Resend } from "resend";
 import nodemailer from "nodemailer";
+import { safeAvatar } from "./userController.js"; // pastikan path benar
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -347,3 +348,38 @@ export const resetPassword = async (req, res) => {
   }
 };
 
+// ================= GET CURRENT USER (/api/auth/me) =================
+export const me = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ message: "Token tidak valid" });
+    }
+
+    const result = await pool.query(
+      `SELECT id, email, username, phone_number, avatar, role_id 
+       FROM users 
+       WHERE id = $1`,
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "User tidak ditemukan" });
+    }
+
+    const u = result.rows[0];
+
+    res.json({
+      id: u.id,
+      email: u.email,
+      username: u.username,
+      phone: u.phone_number,
+      role: u.role_id === 1 ? "admin" : "user",
+      avatar: safeAvatar(u.avatar), // ⬅ WAJIB! agar avatar TIDAK hilang
+    });
+  } catch (error) {
+    console.error("❌ /api/auth/me error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};

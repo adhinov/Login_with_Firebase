@@ -7,6 +7,7 @@ import {
   getUserProfile,
   forgotPassword,
   resetPassword,
+  me,
 } from "../controllers/authController.js";
 import { verifyToken } from "../middleware/verifyToken.js";
 
@@ -45,5 +46,7 @@ router.post("/forgot-password", forgotPassword);
 
 // Reset password (gunakan body, bukan param)
 router.post("/reset-password", resetPassword);
+
+router.get("/me", verifyToken, me);
 
 export default router;
