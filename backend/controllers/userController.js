@@ -24,17 +24,24 @@ export const safeAvatar = (url) => {
 };
 
 /* ============================================================
-   🔹 GET ALL USERS
+   🔹 GET ALL USERS — FIXED (gunakan role_id)
    ============================================================ */
 export const getAllUsers = async (req, res) => {
   try {
     const result = await pool.query(
-      "SELECT id, username, email, role, avatar FROM users ORDER BY id ASC"
+      `SELECT id, username, email, role_id, phone_number, avatar, created_at 
+       FROM users ORDER BY id ASC`
     );
 
     const users = result.rows.map((u) => ({
-      ...u,
+      id: u.id,
+      username: u.username,
+      email: u.email,
+      role: u.role_id === 1 ? "admin" : "user",
+      role_id: u.role_id,
+      phone: u.phone_number,
       avatar: safeAvatar(u.avatar),
+      created_at: toJakartaISO(u.created_at),
     }));
 
     res.json(users);
@@ -45,16 +52,21 @@ export const getAllUsers = async (req, res) => {
 };
 
 /* ============================================================
-   🔹 GET CHAT USERS
+   🔹 GET CHAT USERS — FIX
    ============================================================ */
 export const getChatUsers = async (req, res) => {
   try {
     const result = await pool.query(
-      "SELECT id, username, email, avatar FROM users ORDER BY id ASC"
+      `SELECT id, username, email, role_id, avatar 
+       FROM users ORDER BY id ASC`
     );
 
     const users = result.rows.map((u) => ({
-      ...u,
+      id: u.id,
+      username: u.username,
+      email: u.email,
+      role: u.role_id === 1 ? "admin" : "user",
+      role_id: u.role_id,
       avatar: safeAvatar(u.avatar),
     }));
 
