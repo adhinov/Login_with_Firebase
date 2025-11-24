@@ -31,6 +31,27 @@ export default function Chat({ userId, username }: ChatProps) {
   const [uploadPreview, setUploadPreview] = useState<{ url: string; progress: number } | null>(null);
 
   const chatEndRef = useRef<HTMLDivElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  // =====================================================
+  // THEME MODE STATE
+  // =====================================================
+  const [theme, setTheme] = useState<string>(
+    typeof window !== "undefined" ? localStorage.getItem("theme") || "dark" : "dark"
+  );
+
+  useEffect(() => {
+    try {
+      if (theme === "light") {
+        document.documentElement.classList.remove("dark");
+        document.documentElement.classList.add("light");
+      } else {
+        document.documentElement.classList.remove("light");
+        document.documentElement.classList.add("dark");
+      }
+      localStorage.setItem("theme", theme);
+    } catch (e) {}
+  }, [theme]);
 
   // initial user from localStorage (may be empty)
   const initialUser =
@@ -50,34 +71,28 @@ export default function Chat({ userId, username }: ChatProps) {
     "User";
 
   // =====================================================
-  // Helper: fetch current user from backend and update localStorage/state
-  // Endpoint used: GET ${API_URL}/api/auth/me  <-- if your backend uses different path, adjust it
+  // Fetch current user
   // =====================================================
   const fetchCurrentUser = async () => {
     try {
       const token = localStorage.getItem("token");
-      if (!token) return; // not logged in
+      if (!token) return;
 
       const res = await axios.get(`${API_URL.replace(/\/$/, "")}/api/auth/me`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
       if (res?.data) {
-        // normalize user object if wrapped
         const userData = res.data.user ?? res.data;
-
         localStorage.setItem("user", JSON.stringify(userData));
         setCurrentUser(userData);
         setAvatar(userData.avatar ?? null);
       }
-    } catch (err) {
-      // fail quietly — backend might not have /api/auth/me; keep localStorage user if exists
-      // console.warn("fetchCurrentUser failed:", err);
-    }
+    } catch {}
   };
 
   // =====================================================
-  // Prevent Duplicate Messages
+  // Prevent duplicate messages
   // =====================================================
   const addMessageIfNotExists = (msg: Message) => {
     setMessages((prev) => {
@@ -105,7 +120,7 @@ export default function Chat({ userId, username }: ChatProps) {
   };
 
   // =====================================================
-  // Fetch Messages (initial)
+  // Fetch messages on load
   // =====================================================
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -123,25 +138,20 @@ export default function Chat({ userId, username }: ChatProps) {
   }, [API_URL]);
 
   // =====================================================
-  // When component mounts: try refresh user from backend and add storage listener
+  // Handle storage updates
   // =====================================================
   useEffect(() => {
-    // try to refresh user from backend (if backend supports /api/auth/me)
     fetchCurrentUser();
 
-    // listen for localStorage changes (other tabs or after edit-profile)
     const onStorage = (ev: StorageEvent) => {
       if (ev.key === "user") {
         try {
           const u = ev.newValue ? JSON.parse(ev.newValue) : null;
           setCurrentUser(u);
           setAvatar(u?.avatar ?? null);
-        } catch {
-          // ignore parse errors
-        }
+        } catch {}
       }
       if (ev.key === "token" && !ev.newValue) {
-        // logged out in another tab
         setCurrentUser(null);
         setAvatar(null);
       }
@@ -149,11 +159,10 @@ export default function Chat({ userId, username }: ChatProps) {
 
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // =====================================================
-  // Socket Listeners
+  // Socket listeners
   // =====================================================
   useEffect(() => {
     if (!socket) return;
@@ -176,7 +185,6 @@ export default function Chat({ userId, username }: ChatProps) {
       };
 
       addMessageIfNotExists(normalized);
-
       setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 60);
     });
 
@@ -187,13 +195,12 @@ export default function Chat({ userId, username }: ChatProps) {
     };
   }, [userId, displayName]);
 
-  // auto scroll
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, uploadPreview]);
 
   // =====================================================
-  // Send Text Message
+  // Send text
   // =====================================================
   const sendMessage = async () => {
     if (!input.trim()) return;
@@ -219,8 +226,7 @@ export default function Chat({ userId, username }: ChatProps) {
         { message: msg.message, sender_name: msg.sender_name },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-    } catch (err) {
-      console.warn("POST gagal:", err);
+    } catch {
       socket.emit("sendMessage", msg);
     }
 
@@ -264,14 +270,13 @@ export default function Chat({ userId, username }: ChatProps) {
       socket.emit("sendMessage", finalMsg);
 
       setTimeout(() => setUploadPreview(null), 300);
-    } catch (err) {
-      console.error("Upload gagal:", err);
+    } catch {
       setUploadPreview(null);
     }
   };
 
   // =====================================================
-  // Circular Progress Component
+  // Circular Progress
   // =====================================================
   const CircularProgress = ({ percent }: { percent: number }) => {
     const size = 56;
@@ -299,27 +304,41 @@ export default function Chat({ userId, username }: ChatProps) {
     );
   };
 
+  // close menu when clicked outside
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowMenu(false);
+        setShowUpload(false);
+      }
+    };
+    document.addEventListener("click", onClick);
+    return () => document.removeEventListener("click", onClick);
+  }, []);
+
   // =====================================================
   // UI
   // =====================================================
   return (
-    <div className="w-full h-[100dvh] flex justify-center bg-gray-900 overflow-hidden">
-      <div className="w-full h-full max-w-[920px] flex flex-col bg-gray-850 border-x border-gray-700">
+    <div className="w-full h-[100dvh] flex justify-center overflow-hidden bg-gray-900 light:bg-gray-100 dark:bg-gray-900">
+      <div className="w-full h-full max-w-[920px] flex flex-col bg-gray-850 light:bg-white dark:bg-gray-850 border-x border-gray-700 light:border-gray-300">
+
         {/* HEADER */}
-        <div className="sticky top-0 z-20 bg-gray-850 px-4 py-2 border-b border-gray-700">
+        <div className="sticky top-0 z-20 bg-gray-850 light:bg-white dark:bg-gray-850 px-4 py-2 border-b border-gray-700 light:border-gray-300">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              {/* AVATAR FINAL */}
+
+              {/* AVATAR */}
               <div className="w-10 h-10 rounded-full overflow-hidden bg-blue-600 flex items-center justify-center text-white text-lg">
                 {avatar ? (
                   <img
                     src={avatar}
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      // fallback to initial
                       (e.currentTarget as HTMLImageElement).style.display = "none";
                       const parent = e.currentTarget.parentElement as HTMLElement;
-                      if (parent) parent.innerHTML = `<span style="color:white;font-size:18px;font-weight:bold;">${(displayName[0] || "U").toUpperCase()}</span>`;
+                      if (parent)
+                        parent.innerHTML = `<span style=\"color:white;font-size:18px;font-weight:bold;\">${(displayName[0] || "U").toUpperCase()}</span>`;
                     }}
                     alt="avatar"
                   />
@@ -329,24 +348,33 @@ export default function Chat({ userId, username }: ChatProps) {
               </div>
 
               <div>
-                <div className="text-white font-semibold text-sm">{displayName}</div>
-                <div className="text-xs text-gray-400">{onlineCount} online</div>
+                <div className="text-white light:text-gray-900 font-semibold text-sm">{displayName}</div>
+                <div className="text-xs text-gray-400 light:text-gray-600">{onlineCount} online</div>
               </div>
             </div>
 
             {/* MENU */}
-            <div className="relative">
-              <button onClick={() => setShowMenu(!showMenu)} className="p-2 hover:bg-gray-700 rounded-full">
-                <Settings size={18} className="text-white" />
+            <div className="relative" ref={menuRef}>
+              <button onClick={() => setShowMenu((s) => !s)} className="p-2 hover:bg-gray-700 light:hover:bg-gray-200 rounded-full">
+                <Settings size={18} className="text-white light:text-gray-800" />
               </button>
 
               {showMenu && (
-                <div className="absolute right-0 top-10 bg-gray-800 w-40 rounded-md shadow-lg overflow-hidden">
+                <div className="absolute right-0 top-10 dark:bg-gray-800 light:bg-white w-44 rounded-md shadow-lg overflow-hidden border dark:border-gray-700 light:border-gray-300">
+
                   <button
                     onClick={() => (window.location.href = "/edit-profile")}
-                    className="px-4 py-2 w-full hover:bg-gray-700 text-white text-sm text-left border-b border-gray-700"
+                    className="px-4 py-2 w-full hover:bg-gray-700 light:hover:bg-gray-100 text-white light:text-gray-800 text-sm text-left border-b border-gray-700 light:border-gray-200"
                   >
                     Edit Profile
+                  </button>
+
+                  {/* THEME TOGGLE */}
+                  <button
+                    onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
+                    className="px-4 py-2 w-full hover:bg-gray-700 light:hover:bg-gray-100 text-white light:text-gray-800 text-sm text-left border-b border-gray-700 light:border-gray-200"
+                  >
+                    {theme === "dark" ? "Light Mode" : "Dark Mode"}
                   </button>
 
                   <button
@@ -357,7 +385,7 @@ export default function Chat({ userId, username }: ChatProps) {
                       setAvatar(null);
                       window.location.href = "/login";
                     }}
-                    className="px-4 py-2 w-full hover:bg-gray-700 text-white text-sm text-left"
+                    className="px-4 py-2 w-full hover:bg-gray-700 light:hover:bg-gray-100 text-white light:text-gray-800 text-sm text-left"
                   >
                     Logout
                   </button>
@@ -379,13 +407,16 @@ export default function Chat({ userId, username }: ChatProps) {
 
             return (
               <div key={m.id ?? i} className={`flex flex-col ${mine ? "items-end" : "items-start"}`}>
-                <div className={`max-w-[80%] px-3 py-2 rounded-2xl text-sm ${mine ? "bg-blue-600 text-white rounded-br-none" : "bg-gray-700 text-gray-200 rounded-bl-none"}`}>
-                  {/* USERNAME */}
+                <div className={`max-w-[80%] px-3 py-2 rounded-2xl text-sm ${
+                  mine
+                    ? "bg-blue-600 text-white rounded-br-none"
+                    : "dark:bg-gray-700 dark:text-gray-200 light:bg-gray-200 light:text-gray-900 rounded-bl-none"
+                }`}>
+
                   <div className="text-xs font-semibold mb-1" style={{ color: "#39ff14" }}>
                     {display}
                   </div>
 
-                  {/* IMAGE */}
                   {m.file_type?.startsWith("image/") && m.file_url && (
                     <img
                       src={m.file_url}
@@ -395,11 +426,9 @@ export default function Chat({ userId, username }: ChatProps) {
                     />
                   )}
 
-                  {/* TEXT */}
                   {m.message && <div className="leading-snug break-words">{m.message}</div>}
 
-                  {/* TIME */}
-                  <div className="text-[9px] text-gray-300 text-right mt-1">
+                  <div className="text-[9px] text-gray-300 light:text-gray-600 text-right mt-1">
                     {ts ? new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}
                   </div>
                 </div>
@@ -418,29 +447,42 @@ export default function Chat({ userId, username }: ChatProps) {
               <div className="absolute inset-0 flex items-center justify-center">
                 <CircularProgress percent={uploadPreview.progress} />
               </div>
-              <div className="absolute bottom-2 w-full text-center text-white font-semibold text-xs">{uploadPreview.progress}%</div>
+              <div className="absolute bottom-2 w-full text-center text-white font-semibold text-xs">
+                {uploadPreview.progress}%
+              </div>
             </div>
           </div>
         )}
 
-        {/* INPUT AREA */}
-        <div className="px-3 py-2 flex items-center gap-3 bg-gray-850 border-t border-gray-700 sticky bottom-0 z-10">
+        {/* INPUT */}
+        <div className="px-3 py-2 flex items-center gap-3 bg-gray-850 light:bg-white dark:bg-gray-850 border-t border-gray-700 light:border-gray-300 sticky bottom-0 z-10">
           <div className="relative">
-            <button onClick={() => setShowUpload(!showUpload)} className="p-2 hover:bg-gray-700 rounded-full text-white">
+            <button onClick={() => setShowUpload((s) => !s)} className="p-2 hover:bg-gray-700 light:hover:bg-gray-200 rounded-full text-white light:text-gray-800">
               <Plus size={20} />
             </button>
 
             {showUpload && (
-              <div className="absolute bottom-12 left-0 w-44 bg-gray-800 border border-gray-700 rounded-md shadow-lg py-1">
-                <label className="flex items-center gap-2 px-4 py-2 hover:bg-gray-700 cursor-pointer text-white text-sm">
+              <div className="absolute bottom-12 left-0 w-44 dark:bg-gray-800 light:bg-white border border-gray-700 light:border-gray-300 rounded-md shadow-lg py-1">
+                <label className="flex items-center gap-2 px-4 py-2 hover:bg-gray-700 light:hover:bg-gray-100 cursor-pointer text-white light:text-gray-800 text-sm">
                   <ImageIcon size={18} /> Upload Gambar
-                  <input type="file" className="hidden" accept="image/*" onChange={(e) => e.target.files && uploadFile(e.target.files[0])} />
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept="image/*"
+                    onChange={(e) => e.target.files && uploadFile(e.target.files[0])}
+                  />
                 </label>
               </div>
             )}
           </div>
 
-          <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && sendMessage()} placeholder="Ketik pesan..." className="flex-1 px-3 py-2 bg-gray-800 rounded-xl text-white outline-none border border-gray-700 text-sm" />
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+            placeholder="Ketik pesan..."
+            className="flex-1 px-3 py-2 rounded-xl outline-none border border-gray-700 light:border-gray-400 text-sm dark:bg-gray-800 light:bg-gray-200 dark:text-white light:text-gray-900"
+          />
 
           <button onClick={sendMessage} className="p-3 bg-blue-600 rounded-full text-white">
             <Send size={18} />
