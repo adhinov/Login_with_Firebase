@@ -32,6 +32,7 @@ export default function Chat({ userId, username }: ChatProps) {
 
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const uploadRef = useRef<HTMLDivElement | null>(null);
 
   // =====================================================
   // THEME MODE STATE
@@ -307,10 +308,12 @@ export default function Chat({ userId, username }: ChatProps) {
   // close menu when clicked outside
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setShowMenu(false);
-        setShowUpload(false);
-      }
+      const target = e.target as Node;
+      const clickedMenu = menuRef.current && menuRef.current.contains(target);
+      const clickedUpload = uploadRef.current && uploadRef.current.contains(target);
+
+      if (!clickedMenu) setShowMenu(false);
+      if (!clickedUpload) setShowUpload(false);
     };
     document.addEventListener("click", onClick);
     return () => document.removeEventListener("click", onClick);
@@ -456,7 +459,7 @@ export default function Chat({ userId, username }: ChatProps) {
 
         {/* INPUT */}
         <div className="px-3 py-2 flex items-center gap-3 bg-gray-850 light:bg-white dark:bg-gray-850 border-t border-gray-700 light:border-gray-300 sticky bottom-0 z-10">
-          <div className="relative">
+          <div className="relative" ref={uploadRef}>
             <button onClick={() => setShowUpload((s) => !s)} className="p-2 hover:bg-gray-700 light:hover:bg-gray-200 rounded-full text-white light:text-gray-800">
               <Plus size={20} />
             </button>
