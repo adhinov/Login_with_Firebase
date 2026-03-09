@@ -3,6 +3,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  outputFileTracingRoot: __dirname,
 
   // ✅ Abaikan error di build (supaya deploy ke Vercel tidak gagal)
   typescript: {

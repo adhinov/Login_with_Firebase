@@ -29,10 +29,20 @@ export default function Chat({ userId, username }: ChatProps) {
   const [showUpload, setShowUpload] = useState(false);
   const [onlineCount, setOnlineCount] = useState<number>(0);
   const [uploadPreview, setUploadPreview] = useState<{ url: string; progress: number } | null>(null);
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pendingPreviewUrl, setPendingPreviewUrl] = useState<string | null>(null);
+  const [pendingCaption, setPendingCaption] = useState("");
+  const [showEmoji, setShowEmoji] = useState(false);
+  const [emojiQuery, setEmojiQuery] = useState("");
+  const [emojiCategory, setEmojiCategory] = useState("recent");
+  const [recentEmojis, setRecentEmojis] = useState<string[]>([]);
 
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const uploadRef = useRef<HTMLDivElement | null>(null);
+  const emojiRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   // =====================================================
   // THEME MODE STATE
@@ -237,7 +247,7 @@ export default function Chat({ userId, username }: ChatProps) {
   // =====================================================
   // Upload File
   // =====================================================
-  const uploadFile = async (file: File) => {
+  const uploadFile = async (file: File, caption?: string) => {
     const token = localStorage.getItem("token");
     if (!token) return alert("Sesi habis. Login ulang.");
 
@@ -246,7 +256,7 @@ export default function Chat({ userId, username }: ChatProps) {
 
     const form = new FormData();
     form.append("file", file);
-    form.append("message", "");
+    form.append("message", caption?.trim() ?? "");
     form.append("sender_id", String(userId));
     form.append("sender_email", currentUser?.email ?? "");
     form.append("sender_name", displayName);
@@ -274,6 +284,23 @@ export default function Chat({ userId, username }: ChatProps) {
     } catch {
       setUploadPreview(null);
     }
+  };
+
+  const closeUploadDialog = () => {
+    setShowUploadDialog(false);
+    setPendingFile(null);
+    setPendingCaption("");
+    if (pendingPreviewUrl) URL.revokeObjectURL(pendingPreviewUrl);
+    setPendingPreviewUrl(null);
+  };
+
+  const openUploadDialog = (file: File) => {
+    if (pendingPreviewUrl) URL.revokeObjectURL(pendingPreviewUrl);
+    const previewUrl = URL.createObjectURL(file);
+    setPendingFile(file);
+    setPendingPreviewUrl(previewUrl);
+    setPendingCaption("");
+    setShowUploadDialog(true);
   };
 
   // =====================================================
@@ -311,9 +338,11 @@ export default function Chat({ userId, username }: ChatProps) {
       const target = e.target as Node;
       const clickedMenu = menuRef.current && menuRef.current.contains(target);
       const clickedUpload = uploadRef.current && uploadRef.current.contains(target);
+      const clickedEmoji = emojiRef.current && emojiRef.current.contains(target);
 
       if (!clickedMenu) setShowMenu(false);
       if (!clickedUpload) setShowUpload(false);
+      if (!clickedEmoji) setShowEmoji(false);
     };
     document.addEventListener("click", onClick);
     return () => document.removeEventListener("click", onClick);
@@ -322,6 +351,80 @@ export default function Chat({ userId, username }: ChatProps) {
   // =====================================================
   // UI
   // =====================================================
+  const emojiCategories: Record<string, { label: string; items: string[] }> = {
+    recent: { label: "🕘", items: recentEmojis },
+    smileys: {
+      label: "😄",
+      items: ["😀", "😁", "😂", "🤣", "😃", "😄", "😅", "😆", "😉", "😊", "😍", "😘", "😗", "😙", "😚", "🙂", "🤗", "🤩", "🤔", "🤨", "😐", "😑", "😶", "🙄", "😏", "😣", "😥", "😮", "🤐", "😯", "😪", "😫", "😴", "😌", "😛", "😜", "😝", "🤤", "😒", "😓", "😔", "😕", "🙃", "🫠", "🫢", "🤭", "🤫", "🤥", "😳", "🥵", "🥶", "😱", "😨", "😰", "😢", "😭", "😤", "😡", "🤬", "😈", "👿"]
+    },
+    gestures: {
+      label: "👍",
+      items: ["👍", "👎", "👌", "🤌", "🤏", "✌️", "🤞", "🤟", "🤘", "🤙", "👈", "👉", "👆", "👇", "☝️", "✋", "🤚", "🖐️", "🖖", "👋", "👏", "🙌", "👐", "🤲", "🤝", "🙏", "💪", "🫶", "❤️", "💛", "💚", "💙", "💜", "🖤", "🤍", "🤎"]
+    },
+    nature: {
+      label: "🌿",
+      items: ["🌸", "🌹", "🌺", "🌻", "🌼", "🌷", "🌿", "☘️", "🍀", "🍁", "🍂", "🌲", "🌳", "🌴", "🌵", "🌱", "🌾", "🌊", "🔥", "⚡", "☀️", "🌙", "⭐", "✨", "🌈", "☁️", "🌧️", "⛈️", "❄️"]
+    },
+    food: {
+      label: "🍔",
+      items: ["🍏", "🍎", "🍊", "🍋", "🍌", "🍉", "🍇", "🍓", "🫐", "🍒", "🍑", "🥭", "🍍", "🥥", "🥝", "🍅", "🥑", "🍔", "🍕", "🌭", "🍟", "🌮", "🌯", "🥗", "🍜", "🍣", "🍱", "🍰", "🍩", "🍪"]
+    },
+    objects: {
+      label: "🎧",
+      items: ["📱", "💻", "⌚", "📷", "🎧", "🎮", "📚", "✏️", "📝", "💡", "🔑", "🎁", "🧩", "🔔", "⚙️"]
+    },
+    symbols: {
+      label: "✨",
+      items: ["✅", "❌", "⚠️", "❗", "❓", "💯", "♻️", "🔁", "🔄", "🔒", "🔓", "🔔", "🎵", "🎶", "✨", "🔥", "⭐"]
+    },
+  };
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("recentEmojis");
+      if (raw) {
+        const list = JSON.parse(raw);
+        if (Array.isArray(list)) setRecentEmojis(list);
+      }
+    } catch {}
+  }, []);
+
+  const saveRecent = (emoji: string) => {
+    setRecentEmojis((prev) => {
+      const next = [emoji, ...prev.filter((e) => e !== emoji)].slice(0, 24);
+      try {
+        localStorage.setItem("recentEmojis", JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  const insertEmoji = (emoji: string) => {
+    const el = inputRef.current;
+    if (!el) {
+      setInput((v) => v + emoji);
+      saveRecent(emoji);
+      return;
+    }
+    const start = el.selectionStart ?? input.length;
+    const end = el.selectionEnd ?? input.length;
+    const next = input.slice(0, start) + emoji + input.slice(end);
+    setInput(next);
+    requestAnimationFrame(() => {
+      el.focus();
+      const caret = start + emoji.length;
+      el.setSelectionRange(caret, caret);
+    });
+    saveRecent(emoji);
+  };
+
+  const allEmojis = Object.entries(emojiCategories).flatMap(([key, cat]) =>
+    key === "recent" ? [] : cat.items
+  );
+  const filteredEmojis = emojiQuery
+    ? allEmojis.filter((e) => e.includes(emojiQuery))
+    : emojiCategories[emojiCategory]?.items ?? [];
+
   return (
     <div className="w-full h-[100dvh] flex justify-center overflow-hidden bg-gray-900 light:bg-gray-100 dark:bg-gray-900">
       <div className="w-full h-full max-w-[920px] flex flex-col bg-gray-850 light:bg-white dark:bg-gray-850 border-x border-gray-700 light:border-gray-300">
@@ -408,8 +511,18 @@ export default function Chat({ userId, username }: ChatProps) {
               ? "You"
               : m.sender_name || (m.sender_email ? String(m.sender_email).split("@")[0] : "User");
 
+            const keyParts = [
+              m.id ?? "",
+              m.file_url ?? "",
+              m.created_at ?? m.createdAt ?? "",
+              m.sender_email ?? "",
+              m.message ?? "",
+              i,
+            ];
+            const rowKey = keyParts.join("|");
+
             return (
-              <div key={m.id ?? i} className={`flex flex-col ${mine ? "items-end" : "items-start"}`}>
+              <div key={rowKey} className={`flex flex-col ${mine ? "items-end" : "items-start"}`}>
                 <div className={`max-w-[80%] px-3 py-2 rounded-2xl text-sm ${
                   mine
                     ? "bg-blue-600 text-white rounded-br-none"
@@ -457,6 +570,70 @@ export default function Chat({ userId, username }: ChatProps) {
           </div>
         )}
 
+        {/* UPLOAD DIALOG */}
+        {showUploadDialog && (
+          <div
+            className="fixed inset-0 z-30 flex items-center justify-center bg-black/60"
+            onClick={closeUploadDialog}
+          >
+            <div
+              className="w-[92%] max-w-md rounded-xl border border-gray-700 light:border-gray-300 bg-gray-850 light:bg-white p-4 shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-sm font-semibold text-white light:text-gray-900 mb-3">
+                Tambahkan caption
+              </div>
+              <div className="w-full h-56 rounded-lg overflow-hidden border border-gray-700 light:border-gray-300 mb-3 bg-black/30 flex items-center justify-center">
+                {pendingPreviewUrl ? (
+                  <img src={pendingPreviewUrl} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-xs text-gray-400">Preview tidak tersedia</span>
+                )}
+              </div>
+
+              <input
+                value={pendingCaption}
+                onChange={(e) => setPendingCaption(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    if (pendingFile) {
+                      uploadFile(pendingFile, pendingCaption);
+                      closeUploadDialog();
+                    }
+                  }
+                  if (e.key === "Escape") {
+                    e.preventDefault();
+                    closeUploadDialog();
+                  }
+                }}
+                placeholder="Tulis caption..."
+                className="w-full px-3 py-2 rounded-lg outline-none border border-gray-700 light:border-gray-400 text-sm dark:bg-gray-800 light:bg-gray-100 dark:text-white light:text-gray-900"
+              />
+
+              <div className="mt-4 flex items-center justify-end gap-2">
+                <button
+                  onClick={closeUploadDialog}
+                  className="px-3 py-2 rounded-lg text-sm border border-gray-600 text-gray-200 light:text-gray-700 light:border-gray-300 hover:bg-gray-700/40 light:hover:bg-gray-100"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={() => {
+                    if (pendingFile) {
+                      uploadFile(pendingFile, pendingCaption);
+                      closeUploadDialog();
+                    }
+                  }}
+                  className="px-3 py-2 rounded-lg text-sm bg-blue-600 text-white hover:bg-blue-500"
+                >
+                  Kirim
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* INPUT */}
         <div className="px-3 py-2 flex items-center gap-3 bg-gray-850 light:bg-white dark:bg-gray-850 border-t border-gray-700 light:border-gray-300 sticky bottom-0 z-10">
           <div className="relative" ref={uploadRef}>
@@ -472,20 +649,88 @@ export default function Chat({ userId, username }: ChatProps) {
                     type="file"
                     className="hidden"
                     accept="image/*"
-                    onChange={(e) => e.target.files && uploadFile(e.target.files[0])}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setShowUpload(false);
+                      openUploadDialog(file);
+                      e.currentTarget.value = "";
+                    }}
                   />
                 </label>
               </div>
             )}
           </div>
 
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-            placeholder="Ketik pesan..."
-            className="flex-1 px-3 py-2 rounded-xl outline-none border border-gray-700 light:border-gray-400 text-sm dark:bg-gray-800 light:bg-gray-200 dark:text-white light:text-gray-900"
-          />
+          <div className="relative flex-1" ref={emojiRef}>
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+              placeholder="Ketik pesan..."
+              ref={inputRef}
+              className="w-full px-3 py-2 pr-10 rounded-xl outline-none border border-gray-700 light:border-gray-400 text-sm dark:bg-gray-800 light:bg-gray-200 dark:text-white light:text-gray-900"
+            />
+
+            <button
+              onClick={() => setShowEmoji((s) => !s)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full text-white light:text-gray-800 hover:bg-gray-700 light:hover:bg-gray-200"
+              title="Emoji"
+            >
+              😊
+            </button>
+
+            {showEmoji && (
+              <div className="absolute bottom-12 right-0 w-[320px] max-h-[320px] dark:bg-gray-800 light:bg-white border border-gray-700 light:border-gray-300 rounded-md shadow-lg p-2">
+                <input
+                  value={emojiQuery}
+                  onChange={(e) => {
+                    setEmojiQuery(e.target.value);
+                    setEmojiCategory("recent");
+                  }}
+                  placeholder="Cari emoji..."
+                  className="w-full mb-2 px-2 py-1 rounded border border-gray-700 light:border-gray-300 text-xs dark:bg-gray-900 light:bg-gray-100 dark:text-white light:text-gray-900"
+                />
+
+                <div className="flex items-center gap-1 mb-2">
+                  {Object.entries(emojiCategories).map(([key, cat]) => (
+                    <button
+                      key={key}
+                      onClick={() => {
+                        setEmojiCategory(key);
+                        setEmojiQuery("");
+                      }}
+                      className={`px-2 py-1 rounded text-xs ${
+                        emojiCategory === key ? "bg-blue-600 text-white" : "hover:bg-gray-700/40 light:hover:bg-gray-100"
+                      }`}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-8 gap-1 overflow-y-auto max-h-[220px] pr-1">
+                  {(emojiQuery ? filteredEmojis : filteredEmojis).map((e) => (
+                    <button
+                      key={e}
+                      onClick={() => {
+                        insertEmoji(e);
+                        setShowEmoji(false);
+                      }}
+                      className="text-lg hover:bg-gray-700/40 light:hover:bg-gray-100 rounded"
+                    >
+                      {e}
+                    </button>
+                  ))}
+                  {!filteredEmojis.length && (
+                    <div className="col-span-8 text-center text-xs text-gray-400 py-4">
+                      Emoji tidak ditemukan
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
 
           <button onClick={sendMessage} className="p-3 bg-blue-600 rounded-full text-white">
             <Send size={18} />
