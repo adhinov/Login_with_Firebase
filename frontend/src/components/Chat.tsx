@@ -681,7 +681,7 @@ export default function Chat({ userId, username }: ChatProps) {
             </button>
 
             {showEmoji && (
-              <div className="absolute bottom-12 right-0 w-[320px] max-h-[320px] dark:bg-gray-800 light:bg-white border border-gray-700 light:border-gray-300 rounded-md shadow-lg p-2">
+              <div className="absolute bottom-12 left-1/2 -translate-x-1/2 w-[92vw] max-w-[420px] max-h-[420px] dark:bg-gray-800 light:bg-white border border-gray-700 light:border-gray-300 rounded-md shadow-lg p-3 sm:left-auto sm:right-0 sm:translate-x-0 sm:w-[360px] sm:max-h-[360px]">
                 <input
                   value={emojiQuery}
                   onChange={(e) => {
@@ -709,7 +709,7 @@ export default function Chat({ userId, username }: ChatProps) {
                   ))}
                 </div>
 
-                <div className="grid grid-cols-8 gap-1 overflow-y-auto max-h-[220px] pr-1">
+                <div className="grid grid-cols-8 gap-2 overflow-y-auto max-h-[280px] pr-1">
                   {(emojiQuery ? filteredEmojis : filteredEmojis).map((e) => (
                     <button
                       key={e}
@@ -717,7 +717,7 @@ export default function Chat({ userId, username }: ChatProps) {
                         insertEmoji(e);
                         setShowEmoji(false);
                       }}
-                      className="text-lg hover:bg-gray-700/40 light:hover:bg-gray-100 rounded"
+                      className="text-[22px] sm:text-[20px] hover:bg-gray-700/40 light:hover:bg-gray-100 rounded"
                     >
                       {e}
                     </button>
