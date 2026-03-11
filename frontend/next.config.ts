@@ -4,6 +4,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   outputFileTracingRoot: __dirname,
+  allowedDevOrigins: ["http://192.168.43.93:3000"],
 
   // ✅ Abaikan error di build (supaya deploy ke Vercel tidak gagal)
   typescript: {

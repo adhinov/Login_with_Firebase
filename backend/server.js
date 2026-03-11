@@ -33,6 +33,7 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:5173",
+  "http://192.168.43.93:3000",
   "https://login-with-firebase-sandy.vercel.app",
 ];
 
@@ -129,6 +130,6 @@ io.on("connection", (socket) => {
    ============================================================ */
 
 const PORT = process.env.PORT || 8080;
-server.listen(PORT, () =>
+server.listen(PORT, "0.0.0.0", () =>
   console.log(`✅ Server running on port ${PORT}`)
 );

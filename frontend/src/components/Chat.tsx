@@ -707,6 +707,13 @@ export default function Chat({ userId, username }: ChatProps) {
                       {cat.label}
                     </button>
                   ))}
+                  <button
+                    onClick={() => setShowEmoji(false)}
+                    className="ml-auto px-2 py-1 rounded text-xs hover:bg-gray-700/40 light:hover:bg-gray-100"
+                    title="Keyboard"
+                  >
+                    ⌨️
+                  </button>
                 </div>
 
                 <div className="grid grid-cols-8 gap-2 overflow-y-auto max-h-[280px] pr-1">
@@ -715,7 +722,6 @@ export default function Chat({ userId, username }: ChatProps) {
                       key={e}
                       onClick={() => {
                         insertEmoji(e);
-                        setShowEmoji(false);
                       }}
                       className="text-[22px] sm:text-[20px] hover:bg-gray-700/40 light:hover:bg-gray-100 rounded"
                     >
